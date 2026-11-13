@@ -1,5 +1,4 @@
 import 'package:avoera_pos/main.dart';
-import 'package:avoera_pos/screens/kasir_screen.dart';
 import 'package:avoera_pos/screens/kelola_menu_screen.dart';
 import 'package:avoera_pos/store.dart';
 import 'package:flutter/material.dart';
