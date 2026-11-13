@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
+import '../widgets.dart';
 
 class DapurScreen extends StatelessWidget {
   const DapurScreen({super.key, required this.orders, required this.onAdvance});
@@ -14,14 +15,11 @@ class DapurScreen extends StatelessWidget {
     final columns = <(KitchenStatus, List<KitchenOrder>)>[
       for (final s in KitchenStatus.values) (s, orders.where((o) => o.status == s).toList()),
     ];
-    final header = const Padding(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Dapur', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-          Text('Tekan tombol di tiap pesanan untuk memajukan statusnya.', style: TextStyle(color: AppColors.muted, fontSize: 13)),
-        ],
+    const header = Padding(
+      padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
+      child: PageHeader(
+        title: 'Dapur',
+        subtitle: 'Tekan tombol di tiap pesanan untuk memajukan statusnya.',
       ),
     );
     if (wide) {
@@ -36,7 +34,7 @@ class DapurScreen extends StatelessWidget {
                 for (final (status, list) in columns)
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(AppSpacing.sm),
                       child: _Column(status: status, orders: list, onAdvance: onAdvance),
                     ),
                   ),
@@ -70,30 +68,31 @@ class _Column extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final empty = EmptyState(message: 'Tidak ada pesanan.', icon: Icons.receipt_long_outlined);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
           child: Row(
             children: [
-              Container(width: 9, height: 9, decoration: BoxDecoration(color: _color, shape: BoxShape.circle)),
-              const SizedBox(width: 8),
-              Text(status.label, style: const TextStyle(fontWeight: FontWeight.w800)),
-              const SizedBox(width: 6),
+              Container(width: 8, height: 8, decoration: BoxDecoration(color: _color, shape: BoxShape.circle)),
+              const SizedBox(width: AppSpacing.sm),
+              Text(status.label, style: AppText.body.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(width: AppSpacing.sm),
               StatusChip(label: '${orders.length}', color: _color),
             ],
           ),
         ),
         if (shrinkWrap)
           if (orders.isEmpty)
-            const Padding(padding: EdgeInsets.all(12), child: Text('Tidak ada pesanan.', style: TextStyle(color: AppColors.muted)))
+            empty
           else
             for (final o in orders) _OrderCard(order: o, onAdvance: onAdvance)
         else
           Expanded(
             child: orders.isEmpty
-                ? const Center(child: Text('Tidak ada pesanan.', style: TextStyle(color: AppColors.muted)))
+                ? empty
                 : ListView(children: [for (final o in orders) _OrderCard(order: o, onAdvance: onAdvance)]),
           ),
       ],
@@ -108,28 +107,30 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-      padding: const EdgeInsets.all(12),
-      decoration: cardDecoration(),
+    return AppCard(
+      margin: const EdgeInsets.fromLTRB(AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(order.id, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-              const SizedBox(width: 8),
+              Text(order.id, style: AppText.subtitle.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(width: AppSpacing.sm),
               StatusChip(label: order.tableLabel, color: AppColors.accentDark),
               const Spacer(),
-              Text(order.time, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+              Text(order.time, style: AppText.small.copyWith(color: AppColors.muted)),
             ],
           ),
           if (order.orderType != 'Dine-in')
-            Padding(padding: const EdgeInsets.only(top: 4), child: Text(order.orderType, style: const TextStyle(color: AppColors.muted, fontSize: 12))),
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(order.orderType, style: AppText.small.copyWith(color: AppColors.muted)),
+            ),
           const Divider(),
           for (final line in order.lines)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -139,23 +140,20 @@ class _OrderCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(line.name),
-                        if (line.note.isNotEmpty) Text(line.note, style: const TextStyle(color: AppColors.muted, fontSize: 12, fontStyle: FontStyle.italic)),
+                        if (line.note.isNotEmpty) Text(line.note, style: AppText.small.copyWith(color: AppColors.muted, fontStyle: FontStyle.italic)),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
+            child: PrimaryButton(
+              label: order.status.nextLabel,
+              backgroundColor: order.status == KitchenStatus.selesai ? AppColors.ink : null,
               onPressed: () => onAdvance(order),
-              style: FilledButton.styleFrom(
-                backgroundColor: order.status == KitchenStatus.selesai ? AppColors.ink : AppColors.accent,
-                padding: const EdgeInsets.symmetric(vertical: 11),
-              ),
-              child: Text(order.status.nextLabel),
             ),
           ),
         ],

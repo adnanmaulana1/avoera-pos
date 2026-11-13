@@ -20,6 +20,16 @@ dimajukan (Baru Masuk → Dimasak → Selesai → Sudah Diantar).
 Responsif: lebar ≥ 900 pakai sidebar kiri + kasir dua kolom;
 di HP pakai bottom navigation + bar keranjang di bawah.
 
+## Sistem desain
+
+Semua tampilan mengikuti satu sistem desain yang tertulis di
+[DESIGN.md](DESIGN.md): palet warna (satu aksen emerald), skala jarak
+kelipatan 4, skala radius, dan skala teks. Tokennya ada di
+`lib/theme.dart` (`AppColors`, `AppSpacing`, `AppRadius`, `AppText`) dan
+komponen bersama (PageHeader, AppCard, AppChip, QtyButton, PrimaryButton,
+EmptyState, sheet) ada di `lib/widgets.dart`. File layar tidak menulis
+warna/ukuran mentah sendiri.
+
 ## Jalan lokal
 
 Butuh Flutter 3.47.9 (Dart 3.13).
@@ -65,7 +75,8 @@ dengan **keystore debug bawaan**. Akibatnya:
 lib/
   main.dart            # shell navigasi + state bersama (keranjang, meja, dapur)
   data.dart            # model + data contoh (menu, meja, dapur, bahan, laporan)
-  theme.dart           # warna & gaya (satu aksen emerald, latar bersih)
+  theme.dart           # token desain (warna, jarak, radius, teks) + tema
+  widgets.dart         # komponen bersama (PageHeader, AppCard, AppChip, dll)
   screens/
     kasir_screen.dart
     meja_screen.dart

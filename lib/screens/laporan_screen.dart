@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
+import '../widgets.dart';
 
 class LaporanScreen extends StatelessWidget {
   const LaporanScreen({super.key});
@@ -14,23 +15,14 @@ class LaporanScreen extends StatelessWidget {
     final kritis = ingredients.where((i) => i.status != StockStatus.aman).toList();
     final maxWeekly = weeklySales.map((e) => e.amount).reduce((a, b) => a > b ? a : b);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        const Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Laporan', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                  Text('Ringkasan pemilik · Hari ini', style: TextStyle(color: AppColors.muted, fontSize: 13)),
-                ],
-              ),
-            ),
-            StatusChip(label: 'Data contoh', color: AppColors.warning),
-          ],
+        const PageHeader(
+          title: 'Laporan',
+          subtitle: 'Ringkasan pemilik · Hari ini',
+          trailing: StatusChip(label: 'Data contoh', color: AppColors.warning),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.lg),
         LayoutBuilder(
           builder: (context, c) {
             final cross = c.maxWidth >= 900 ? 4 : 2;
@@ -44,58 +36,58 @@ class LaporanScreen extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cross, crossAxisSpacing: 10, mainAxisSpacing: 10, mainAxisExtent: 104,
+                // 132: label kartu bisa 2 baris di sel sempit landscape;
+                // 104 meluber 21px, 124 masih sisa 1px (tes tablet 1280x800).
+                crossAxisCount: cross, crossAxisSpacing: AppSpacing.md, mainAxisSpacing: AppSpacing.md, mainAxisExtent: 132,
               ),
               itemCount: stats.length,
-              itemBuilder: (_, i) => Container(
-                decoration: cardDecoration(),
-                padding: const EdgeInsets.all(14),
+              itemBuilder: (_, i) => AppCard(
+                // Kartu statistik kompak: padding md (lihat DESIGN.md).
+                padding: const EdgeInsets.all(AppSpacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(stats[i].$3, color: AppColors.accentDark, size: 20),
                     const Spacer(),
-                    Text(stats[i].$2, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
-                    Text(stats[i].$1, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                    Text(stats[i].$2, style: AppText.number),
+                    Text(stats[i].$1, style: AppText.small.copyWith(color: AppColors.muted)),
                   ],
                 ),
               ),
             );
           },
         ),
-        const SizedBox(height: 20),
-        Container(
-          decoration: cardDecoration(),
-          padding: const EdgeInsets.all(16),
+        const SizedBox(height: AppSpacing.xl),
+        AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionTitle('Omzet 7 Hari Terakhir'),
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpacing.lg),
               SizedBox(
-                height: 170,
+                height: 180,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     for (final d in weeklySales)
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text('${(d.amount / 1000000).toStringAsFixed(1).replaceAll('.', ',')}jt',
-                                  style: const TextStyle(fontSize: 10.5, color: AppColors.muted)),
-                              const SizedBox(height: 4),
+                                  style: AppText.caption.copyWith(color: AppColors.muted)),
+                              const SizedBox(height: AppSpacing.xs),
                               Container(
                                 height: 120 * (d.amount / maxWeekly),
                                 decoration: BoxDecoration(
-                                  color: d.day == 'Sab' ? AppColors.accent : const Color(0xFFA7F3D0),
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                  color: d.day == 'Sab' ? AppColors.chartBarActive : AppColors.chartBar,
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xs)),
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(d.day, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(d.day, style: AppText.small.copyWith(fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
@@ -106,32 +98,30 @@ class LaporanScreen extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.xl),
         LayoutBuilder(
           builder: (context, c) {
             final sideBySide = c.maxWidth >= 900;
-            final topCard = Container(
-              decoration: cardDecoration(),
-              padding: const EdgeInsets.all(16),
+            final topCard = AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SectionTitle('Menu Paling Laris'),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   for (var i = 0; i < topMenus.length; i++)
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                       child: Row(
                         children: [
                           CircleAvatar(
                             radius: 14,
-                            backgroundColor: const Color(0xFFECFDF5),
-                            child: Text('${i + 1}', style: const TextStyle(color: AppColors.accentDark, fontWeight: FontWeight.w800, fontSize: 12)),
+                            backgroundColor: AppColors.accentSoft,
+                            child: Text('${i + 1}', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w800)),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: AppSpacing.md),
                           Expanded(child: Text(topMenus[i].name, style: const TextStyle(fontWeight: FontWeight.w600))),
-                          Text('${topMenus[i].sold} terjual', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-                          const SizedBox(width: 10),
+                          Text('${topMenus[i].sold} terjual', style: AppText.small.copyWith(color: AppColors.muted)),
+                          const SizedBox(width: AppSpacing.md),
                           Text(rupiah(topMenus[i].revenue), style: const TextStyle(fontWeight: FontWeight.w700)),
                         ],
                       ),
@@ -139,29 +129,25 @@ class LaporanScreen extends StatelessWidget {
                 ],
               ),
             );
-            final stockCard = Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFFDE68A)),
-              ),
-              padding: const EdgeInsets.all(16),
+            final stockCard = AppCard(
+              color: AppColors.warningSoft,
+              borderColor: AppColors.warningBorder,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SectionTitle('Stok Bahan Kritis'),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   if (kritis.isEmpty) const Text('Semua stok aman.'),
                   for (final ing in kritis)
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                       child: Row(
                         children: [
                           Icon(ing.status == StockStatus.habis ? Icons.error_outline : Icons.warning_amber_outlined,
-                              color: ing.status == StockStatus.habis ? AppColors.danger : AppColors.warning, size: 19),
-                          const SizedBox(width: 8),
+                              color: ing.status == StockStatus.habis ? AppColors.danger : AppColors.warning, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
                           Expanded(child: Text(ing.name, style: const TextStyle(fontWeight: FontWeight.w600))),
-                          Text('Sisa ${stockText(ing.stock)} ${ing.unit}', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                          Text('Sisa ${stockText(ing.stock)} ${ing.unit}', style: AppText.small.copyWith(color: AppColors.muted)),
                         ],
                       ),
                     ),
@@ -169,20 +155,18 @@ class LaporanScreen extends StatelessWidget {
               ),
             );
             if (sideBySide) {
-              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: topCard), const SizedBox(width: 12), Expanded(child: stockCard)]);
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: topCard), const SizedBox(width: AppSpacing.md), Expanded(child: stockCard)]);
             }
-            return Column(children: [topCard, const SizedBox(height: 12), stockCard]);
+            return Column(children: [topCard, const SizedBox(height: AppSpacing.md), stockCard]);
           },
         ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: cardDecoration(),
-          padding: const EdgeInsets.all(16),
+        const SizedBox(height: AppSpacing.md),
+        AppCard(
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SectionTitle('Pembayaran Hari Ini'),
-              SizedBox(height: 10),
+              SizedBox(height: AppSpacing.md),
               _PayRow(label: 'QRIS', value: 'Rp1.940.000 · 57%'),
               _PayRow(label: 'Tunai', value: 'Rp1.025.000 · 30%'),
               _PayRow(label: 'E-wallet / Debit', value: 'Rp455.000 · 13%'),
@@ -201,7 +185,7 @@ class _PayRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
+import '../widgets.dart';
 
 class StokScreen extends StatefulWidget {
   const StokScreen({super.key});
@@ -23,64 +24,60 @@ class _StokScreenState extends State<StokScreen> {
       };
     }).toList();
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        const Text('Stok Bahan', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
-        const Text('Bahan berkurang otomatis dari resep tiap menu terjual (tampilan contoh).',
-            style: TextStyle(color: AppColors.muted, fontSize: 13)),
-        const SizedBox(height: 12),
+        const PageHeader(
+          title: 'Stok Bahan',
+          subtitle: 'Bahan berkurang otomatis dari resep tiap menu terjual (tampilan contoh).',
+        ),
+        const SizedBox(height: AppSpacing.md),
         Wrap(
-          spacing: 8,
+          spacing: AppSpacing.sm,
           children: [
             for (final f in ['Semua', 'Aman', 'Kritis', 'Habis'])
-              ChoiceChip(
-                label: Text(f),
+              AppChip(
+                label: f,
                 selected: _filter == f,
                 onSelected: (_) => setState(() => _filter = f),
-                selectedColor: AppColors.accent,
-                labelStyle: TextStyle(color: _filter == f ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600),
-                backgroundColor: Colors.white,
               ),
           ],
         ),
-        const SizedBox(height: 12),
-        if (list.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Tidak ada bahan pada filter ini.', style: TextStyle(color: AppColors.muted)))),
+        const SizedBox(height: AppSpacing.md),
+        if (list.isEmpty)
+          const EmptyState(message: 'Tidak ada bahan pada filter ini.', icon: Icons.inventory_2_outlined),
         for (final ing in list)
-          Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
-            decoration: cardDecoration(),
+          AppCard(
+            margin: const EdgeInsets.only(bottom: AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(ing.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
+                    Expanded(child: Text(ing.name, style: AppText.subtitle)),
                     StatusChip(
                       label: switch (ing.status) { StockStatus.aman => 'Aman', StockStatus.kritis => 'Kritis', StockStatus.habis => 'Habis' },
                       color: switch (ing.status) { StockStatus.aman => AppColors.accentDark, StockStatus.kritis => AppColors.warning, StockStatus.habis => AppColors.danger },
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpacing.sm),
                 Text('Sisa ${stockText(ing.stock)} ${ing.unit} · Batas minimum ${stockText(ing.minStock)} ${ing.unit}',
-                    style: const TextStyle(color: AppColors.muted, fontSize: 12.5)),
-                const SizedBox(height: 10),
+                    style: AppText.small.copyWith(color: AppColors.muted)),
+                const SizedBox(height: AppSpacing.md),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   child: LinearProgressIndicator(
                     value: ing.ratio,
                     minHeight: 8,
-                    backgroundColor: const Color(0xFFF3F4F6),
+                    backgroundColor: AppColors.track,
                     color: switch (ing.status) { StockStatus.aman => AppColors.accent, StockStatus.kritis => AppColors.warning, StockStatus.habis => AppColors.danger },
                   ),
                 ),
                 if (ing.status != StockStatus.aman) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     ing.status == StockStatus.habis ? 'Segera pesan lagi — bahan sudah habis.' : 'Stok di bawah batas minimum — siapkan pesanan pembelian.',
-                    style: TextStyle(color: ing.status == StockStatus.habis ? AppColors.danger : AppColors.warning, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: AppText.small.copyWith(color: ing.status == StockStatus.habis ? AppColors.danger : AppColors.warning, fontWeight: FontWeight.w600),
                   ),
                 ],
               ],

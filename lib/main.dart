@@ -219,65 +219,66 @@ class _SideBar extends StatelessWidget {
     return Container(
       width: 218,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         border: Border(right: BorderSide(color: AppColors.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 20, 18, 6),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.sm),
             child: Row(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.local_cafe, color: Colors.white, size: 21),
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                  child: const Icon(Icons.local_cafe, color: AppColors.card, size: 20),
                 ),
-                const SizedBox(width: 10),
-                const Expanded(
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Avoera POS', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                      Text('Resto · Cafe · Kopi', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.muted, fontSize: 11)),
+                      Text('Avoera POS', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.subtitle.copyWith(fontWeight: FontWeight.w800)),
+                      Text('Resto · Cafe · Kopi', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(color: AppColors.muted)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
             child: Row(
               children: [
-                Icon(Icons.circle, size: 8, color: AppColors.accent),
-                SizedBox(width: 6),
+                const Icon(Icons.circle, size: 8, color: AppColors.accent),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: Text('Shift pagi · Kasir: Rina', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.muted, fontSize: 11.5)),
+                  child: Text('Shift pagi · Kasir: Rina', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(color: AppColors.muted)),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           for (var i = 0; i < _navItems.length; i++)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
               child: Material(
-                color: index == i ? const Color(0xFFECFDF5) : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
+                color: index == i ? AppColors.accentSoft : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
                 child: ListTile(
                   dense: true,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  minTileHeight: 44,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
                   leading: Icon(
                     index == i ? _navItems[i].selectedIcon : _navItems[i].icon,
                     color: index == i ? AppColors.accentDark : AppColors.muted,
-                    size: 21,
+                    size: 24,
                   ),
                   title: Text(
                     _navItems[i].label,
-                    style: TextStyle(
+                    style: AppText.body.copyWith(
                       fontWeight: index == i ? FontWeight.w700 : FontWeight.w500,
                       color: index == i ? AppColors.accentDark : AppColors.ink,
                     ),
@@ -288,9 +289,9 @@ class _SideBar extends StatelessWidget {
               ),
             ),
           const Spacer(),
-          const Padding(
-            padding: EdgeInsets.all(18),
-            child: Text('UI contoh · Tanpa backend\nData tidak tersimpan permanen.', style: TextStyle(color: AppColors.muted, fontSize: 11)),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Text('UI contoh · Tanpa backend\nData tidak tersimpan permanen.', style: AppText.caption.copyWith(color: AppColors.muted)),
           ),
         ],
       ),

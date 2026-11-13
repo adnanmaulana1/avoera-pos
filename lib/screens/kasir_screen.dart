@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
+import '../widgets.dart';
 
 class KasirScreen extends StatefulWidget {
   const KasirScreen({
@@ -89,43 +90,28 @@ class _KasirScreenState extends State<KasirScreen> {
 
   Widget _buildMenuArea() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Kasir', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                    Text('Ketuk menu untuk memilih varian. Ketuk + untuk tambah cepat.',
-                        style: TextStyle(color: AppColors.muted, fontSize: 12)),
-                  ],
-                ),
-              ),
-              _tablePicker(),
-            ],
+          PageHeader(
+            title: 'Kasir',
+            subtitle: 'Ketuk menu untuk memilih varian. Ketuk + untuk tambah cepat.',
+            trailing: _tablePicker(),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
                 child: TextField(
                   onChanged: (v) => setState(() => _query = v),
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     hintText: 'Cari menu…',
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+                    prefixIcon: Icon(Icons.search, size: 20),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'Dine-in', label: Text('Dine-in')),
@@ -133,41 +119,36 @@ class _KasirScreenState extends State<KasirScreen> {
                 ],
                 selected: {_orderType},
                 onSelectionChanged: (s) => setState(() => _orderType = s.first),
-                style: const ButtonStyle(visualDensity: VisualDensity.compact),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
-            height: 38,
+            height: 44,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
               itemBuilder: (_, i) {
                 final c = categories[i];
-                final active = c == _category;
-                return ChoiceChip(
-                  label: Text(c),
-                  selected: active,
+                return AppChip(
+                  label: c,
+                  selected: c == _category,
                   onSelected: (_) => setState(() => _category = c),
-                  selectedColor: AppColors.accent,
-                  labelStyle: TextStyle(color: active ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600),
-                  backgroundColor: Colors.white,
                 );
               },
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           Expanded(
             child: _filtered.isEmpty
-                ? const Center(child: Text('Menu tidak ditemukan.', style: TextStyle(color: AppColors.muted)))
+                ? const EmptyState(message: 'Menu tidak ditemukan.\nCoba kata kunci atau kategori lain.', icon: Icons.search_off_outlined)
                 : GridView.builder(
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 180,
                       mainAxisExtent: 168,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
+                      crossAxisSpacing: AppSpacing.md,
+                      mainAxisSpacing: AppSpacing.md,
                     ),
                     itemCount: _filtered.length,
                     itemBuilder: (_, i) => _MenuCard(
@@ -192,18 +173,18 @@ class _KasirScreenState extends State<KasirScreen> {
               ))
           .toList(),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         decoration: cardDecoration(),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.table_restaurant_outlined, size: 18, color: AppColors.accent),
-            const SizedBox(width: 6),
+            const Icon(Icons.table_restaurant_outlined, size: 20, color: AppColors.accent),
+            const SizedBox(width: AppSpacing.sm),
             Text(
               widget.selectedTable == null ? 'Pilih Meja' : 'Meja ${widget.selectedTable!.number}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              style: AppText.body.copyWith(fontWeight: FontWeight.w700),
             ),
-            const Icon(Icons.expand_more, size: 18),
+            const Icon(Icons.expand_more, size: 20),
           ],
         ),
       ),
@@ -212,8 +193,8 @@ class _KasirScreenState extends State<KasirScreen> {
 
   Widget _buildMobileCartBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-      decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: AppColors.border))),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
+      decoration: const BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.border))),
       child: Row(
         children: [
           Expanded(
@@ -221,15 +202,14 @@ class _KasirScreenState extends State<KasirScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('$_itemCount item', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-                Text(rupiah(_grandTotal), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                Text('$_itemCount item', style: AppText.small.copyWith(color: AppColors.muted)),
+                Text(rupiah(_grandTotal), style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
               ],
             ),
           ),
-          FilledButton(
+          PrimaryButton(
+            label: 'Lihat Keranjang',
             onPressed: widget.cart.isEmpty ? null : () => _openCartSheet(),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
-            child: const Text('Lihat Keranjang'),
           ),
         ],
       ),
@@ -237,28 +217,36 @@ class _KasirScreenState extends State<KasirScreen> {
   }
 
   void _openCartSheet() {
-    showModalBottomSheet<void>(
+    showAppSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => SizedBox(
         height: MediaQuery.sizeOf(context).height * 0.78,
-        child: _CartPanel(
-          cart: widget.cart,
-          selectedTable: widget.selectedTable,
-          orderType: _orderType,
-          subtotal: _subtotal,
-          service: _service,
-          tax: _tax,
-          grandTotal: _grandTotal,
-          onInc: (c) { widget.onInc(c); setState(() {}); },
-          onDec: (c) { widget.onDec(c); setState(() {}); },
-          onRemove: (c) { widget.onRemove(c); setState(() {}); },
-          onPay: () {
-            Navigator.pop(context);
-            _openPayment(context);
-          },
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.md),
+              child: SheetHandle(),
+            ),
+            Expanded(
+              child: _CartPanel(
+                cart: widget.cart,
+                selectedTable: widget.selectedTable,
+                orderType: _orderType,
+                subtotal: _subtotal,
+                service: _service,
+                tax: _tax,
+                grandTotal: _grandTotal,
+                onInc: (c) { widget.onInc(c); setState(() {}); },
+                onDec: (c) { widget.onDec(c); setState(() {}); },
+                onRemove: (c) { widget.onRemove(c); setState(() {}); },
+                onPay: () {
+                  Navigator.pop(context);
+                  _openPayment(context);
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -269,75 +257,73 @@ class _KasirScreenState extends State<KasirScreen> {
     var sugar = 'Gula normal';
     var qty = 1;
     final noteCtrl = TextEditingController();
-    await showModalBottomSheet<void>(
+    await showAppSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) {
           final extra = size == 'Besar' ? 4000 : 0;
           final unit = item.price + extra;
           return Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.viewInsetsOf(ctx).bottom),
+            padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.lg + MediaQuery.viewInsetsOf(ctx).bottom),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SheetHandle(),
+                const SizedBox(height: AppSpacing.md),
                 Row(
                   children: [
-                    Expanded(child: Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-                    Text(rupiah(unit), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.accentDark)),
+                    Expanded(child: Text(item.name, style: AppText.title.copyWith(fontWeight: FontWeight.w800))),
+                    Text(rupiah(unit), style: AppText.body.copyWith(fontWeight: FontWeight.w700, color: AppColors.accentDark)),
                   ],
                 ),
-                const SizedBox(height: 14),
-                const Text('Ukuran', style: TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpacing.lg),
+                Text('Ukuran', style: AppText.body.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppSpacing.sm),
                 Wrap(
-                  spacing: 8,
+                  spacing: AppSpacing.sm,
                   children: [
                     for (final s in ['Reguler', 'Besar (+Rp4.000)'])
-                      ChoiceChip(
-                        label: Text(s),
+                      AppChip(
+                        label: s,
                         selected: (s.startsWith('Besar') ? 'Besar' : 'Reguler') == size,
                         onSelected: (_) => setSheet(() => size = s.startsWith('Besar') ? 'Besar' : 'Reguler'),
                       ),
                   ],
                 ),
                 if (item.isDrink) ...[
-                  const SizedBox(height: 12),
-                  const Text('Level Gula', style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('Level Gula', style: AppText.body.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: AppSpacing.sm),
                   Wrap(
-                    spacing: 8,
+                    spacing: AppSpacing.sm,
                     children: [
                       for (final s in ['Gula normal', 'Less sugar', 'Tanpa gula'])
-                        ChoiceChip(label: Text(s), selected: sugar == s, onSelected: (_) => setSheet(() => sugar = s)),
+                        AppChip(label: s, selected: sugar == s, onSelected: (_) => setSheet(() => sugar = s)),
                     ],
                   ),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: noteCtrl,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     hintText: 'Catatan, contoh: tidak pedas, es sedikit…',
-                    isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: [
-                    IconButton.outlined(onPressed: qty > 1 ? () => setSheet(() => qty--) : null, icon: const Icon(Icons.remove)),
+                    QtyButton(icon: Icons.remove, onPressed: qty > 1 ? () => setSheet(() => qty--) : null),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('$qty', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                      child: Text('$qty', style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
                     ),
-                    IconButton.outlined(onPressed: () => setSheet(() => qty++), icon: const Icon(Icons.add)),
-                    const SizedBox(width: 12),
+                    QtyButton(icon: Icons.add, onPressed: () => setSheet(() => qty++)),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.accent, padding: const EdgeInsets.symmetric(vertical: 14)),
+                      child: PrimaryButton(
+                        label: 'Tambah · ${rupiah(unit * qty)}',
                         onPressed: () {
                           final variant = item.isDrink ? '$size · $sugar' : size;
                           for (var i = 0; i < qty; i++) {
@@ -345,7 +331,6 @@ class _KasirScreenState extends State<KasirScreen> {
                           }
                           Navigator.pop(ctx);
                         },
-                        child: Text('Tambah · ${rupiah(unit * qty)}'),
                       ),
                     ),
                   ],
@@ -377,32 +362,30 @@ class _KasirScreenState extends State<KasirScreen> {
                   children: [
                     for (final m in ['Tunai', 'QRIS'])
                       Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(m),
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
+                        child: AppChip(
+                          label: m,
                           selected: method == m,
                           onSelected: (_) => setDlg(() => method = m),
-                          selectedColor: AppColors.accent,
-                          labelStyle: TextStyle(color: method == m ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600),
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Total bayar'),
-                    Text(rupiah(_grandTotal), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    Text(rupiah(_grandTotal), style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
                   ],
                 ),
                 if (method == 'Tunai') ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   const Text('Uang diterima', style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpacing.sm),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
                     children: [
                       for (final amt in [_grandTotal, 50000, 100000, 200000])
                         ActionChip(
@@ -411,22 +394,22 @@ class _KasirScreenState extends State<KasirScreen> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     paid == null ? 'Pilih nominal uang diterima.' : 'Kembalian: ${rupiah(change < 0 ? 0 : change)}',
                     style: const TextStyle(color: AppColors.muted),
                   ),
                 ] else ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: cardDecoration(),
-                    child: const Column(
+                    child: Column(
                       children: [
-                        Icon(Icons.qr_code_2, size: 64, color: AppColors.ink),
-                        SizedBox(height: 6),
-                        Text('Tampilkan QR ini ke pelanggan', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+                        const Icon(Icons.qr_code_2, size: 64, color: AppColors.ink),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text('Tampilkan QR ini ke pelanggan', style: AppText.small.copyWith(color: AppColors.muted)),
                       ],
                     ),
                   ),
@@ -436,7 +419,6 @@ class _KasirScreenState extends State<KasirScreen> {
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
                 onPressed: (method == 'Tunai' && (paid == null || paid! < _grandTotal)) ? null : () => Navigator.pop(ctx, method),
                 child: const Text('Proses Bayar'),
               ),
@@ -456,21 +438,20 @@ class _KasirScreenState extends State<KasirScreen> {
           children: [
             Container(
               width: 64, height: 64,
-              decoration: const BoxDecoration(color: Color(0xFFECFDF5), shape: BoxShape.circle),
+              decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
               child: const Icon(Icons.check, color: AppColors.accent, size: 36),
             ),
-            const SizedBox(height: 14),
-            const Text('Pembayaran Berhasil', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.lg),
+            Text('Pembayaran Berhasil', style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: AppSpacing.sm),
             Text('Metode: $methodResult · ${rupiah(paidTotal)}',
                 style: const TextStyle(color: AppColors.muted)),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             const Text('Pesanan diteruskan ke dapur.', style: TextStyle(color: AppColors.muted)),
           ],
         ),
         actions: [
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Selesai'),
           ),
@@ -489,11 +470,11 @@ class _MenuCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
         child: Container(
           decoration: cardDecoration(),
           child: Column(
@@ -502,27 +483,23 @@ class _MenuCard extends StatelessWidget {
               Container(
                 height: 76,
                 width: double.infinity,
-                decoration: BoxDecoration(color: item.color, borderRadius: const BorderRadius.vertical(top: Radius.circular(13))),
-                child: Center(child: Icon(item.icon, color: Colors.white, size: 34)),
+                decoration: BoxDecoration(color: item.color, borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.md))),
+                child: Center(child: Icon(item.icon, color: AppColors.card, size: 32)),
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 6, 6),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                            style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
                       ),
                       Row(
                         children: [
-                          Expanded(child: Text(rupiah(item.price), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
-                          IconButton.filled(
-                            onPressed: onQuickAdd,
-                            icon: const Icon(Icons.add, size: 18),
-                            style: IconButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: Colors.white, minimumSize: const Size(30, 30)),
-                          ),
+                          Expanded(child: Text(rupiah(item.price), style: AppText.body.copyWith(fontWeight: FontWeight.w800))),
+                          QtyButton(icon: Icons.add, filled: true, onPressed: onQuickAdd),
                         ],
                       ),
                     ],
@@ -564,10 +541,10 @@ class _CartPanel extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
           child: Row(
             children: [
-              const Expanded(child: Text('Pesanan', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+              Expanded(child: Text('Pesanan', style: AppText.title.copyWith(fontWeight: FontWeight.w800))),
               StatusChip(
                 label: selectedTable == null ? orderType : 'Meja ${selectedTable!.number}',
                 color: AppColors.accentDark,
@@ -578,20 +555,15 @@ class _CartPanel extends StatelessWidget {
         const Divider(height: 1),
         Expanded(
           child: cart.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('Keranjang masih kosong.\nKetuk menu untuk menambah.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted)),
-                  ),
-                )
+              ? const EmptyState(message: 'Keranjang masih kosong.\nKetuk menu untuk menambah.', icon: Icons.shopping_basket_outlined)
               : ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   itemCount: cart.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1, indent: 16, endIndent: 16),
+                  separatorBuilder: (_, _) => const Divider(height: 1, indent: AppSpacing.lg, endIndent: AppSpacing.lg),
                   itemBuilder: (_, i) {
                     final c = cart[i];
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -601,27 +573,20 @@ class _CartPanel extends StatelessWidget {
                               Text(rupiah(c.total), style: const TextStyle(fontWeight: FontWeight.w700)),
                             ],
                           ),
-                          Text(c.variant, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-                          if (c.note.isNotEmpty) Text('Catatan: ${c.note}', style: const TextStyle(color: AppColors.muted, fontSize: 12, fontStyle: FontStyle.italic)),
-                          const SizedBox(height: 4),
+                          Text(c.variant, style: AppText.small.copyWith(color: AppColors.muted)),
+                          if (c.note.isNotEmpty) Text('Catatan: ${c.note}', style: AppText.small.copyWith(color: AppColors.muted, fontStyle: FontStyle.italic)),
+                          const SizedBox(height: AppSpacing.xs),
                           Row(
                             children: [
-                              IconButton.outlined(
-                                onPressed: () => onDec(c),
-                                icon: const Icon(Icons.remove, size: 16),
-                                style: IconButton.styleFrom(minimumSize: const Size(28, 28), padding: EdgeInsets.zero),
-                              ),
-                              Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('${c.qty}', style: const TextStyle(fontWeight: FontWeight.w800))),
-                              IconButton.outlined(
-                                onPressed: () => onInc(c),
-                                icon: const Icon(Icons.add, size: 16),
-                                style: IconButton.styleFrom(minimumSize: const Size(28, 28), padding: EdgeInsets.zero),
-                              ),
+                              QtyButton(icon: Icons.remove, onPressed: () => onDec(c)),
+                              Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs), child: Text('${c.qty}', style: const TextStyle(fontWeight: FontWeight.w800))),
+                              QtyButton(icon: Icons.add, onPressed: () => onInc(c)),
                               const Spacer(),
                               TextButton.icon(
                                 onPressed: () => onRemove(c),
-                                icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                                label: const Text('Hapus', style: TextStyle(color: AppColors.danger, fontSize: 12)),
+                                style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                                icon: const Icon(Icons.delete_outline, size: 20),
+                                label: const Text('Hapus'),
                               ),
                             ],
                           ),
@@ -632,7 +597,7 @@ class _CartPanel extends StatelessWidget {
                 ),
         ),
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
           decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
           child: Column(
             children: [
@@ -643,17 +608,16 @@ class _CartPanel extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Total', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  Text(rupiah(grandTotal), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                  Text('Total', style: AppText.subtitle.copyWith(fontWeight: FontWeight.w800)),
+                  Text(rupiah(grandTotal), style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: PrimaryButton(
+                  label: 'Bayar Sekarang',
                   onPressed: cart.isEmpty ? null : onPay,
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.accent, padding: const EdgeInsets.symmetric(vertical: 15)),
-                  child: const Text('Bayar Sekarang', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -664,12 +628,12 @@ class _CartPanel extends StatelessWidget {
   }
 
   Widget _row(String label, int value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-            Text(rupiah(value), style: const TextStyle(fontSize: 13)),
+            Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
+            Text(rupiah(value), style: AppText.small),
           ],
         ),
       );
