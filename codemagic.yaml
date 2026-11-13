@@ -1,0 +1,49 @@
+# Codemagic CI untuk Avoera POS (Android).
+#
+# Dua workflow, KEDUANYA manual (tidak ada trigger otomatis) supaya tidak ada
+# build yang jalan tanpa disadari:
+#   - android-release : flutter pub get + flutter build apk --release
+#   - android-debug   : flutter pub get + flutter build apk --debug
+#
+# Project Flutter ada di ROOT repo ini (bukan subfolder mobile/),
+# jadi artifacts ada di build/app/outputs/flutter-apk/*.apk.
+#
+# Mesin mac_mini_m2 mengikuti pola WeLaundry: build memakai kuota gratis
+# Codemagic 500 menit macOS/bulan.
+#
+# Catatan keystore: belum ada keystore rilis sendiri, jadi APK release
+# ditandatangani dengan keystore DEBUG bawaan (default Flutter/Codemagic).
+# Cukup untuk uji internal. Untuk rilis ke pelanggan/Play Store nanti,
+# buat keystore rilis dan daftarkan di Codemagic (Environment / Code signing).
+workflows:
+  android-release:
+    name: Android Release
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: 3.47.9
+    scripts:
+      - name: Cek versi Java
+        script: java -version
+      - name: Ambil dependencies
+        script: flutter pub get
+      - name: Build release APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+
+  android-debug:
+    name: Android Debug
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: 3.47.9
+    scripts:
+      - name: Cek versi Java
+        script: java -version
+      - name: Ambil dependencies
+        script: flutter pub get
+      - name: Build debug APK
+        script: flutter build apk --debug
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
