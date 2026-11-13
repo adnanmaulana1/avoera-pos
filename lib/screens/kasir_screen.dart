@@ -9,6 +9,8 @@ class KasirScreen extends StatefulWidget {
     required this.cart,
     required this.selectedTable,
     required this.tables,
+    required this.servicePercent,
+    required this.taxPercent,
     required this.onSelectTable,
     required this.onAdd,
     required this.onInc,
@@ -20,6 +22,10 @@ class KasirScreen extends StatefulWidget {
   final List<CartItem> cart;
   final CafeTable? selectedTable;
   final List<CafeTable> tables;
+
+  /// Persen biaya dari Pengaturan — berlaku langsung di hitungan kasir.
+  final int servicePercent;
+  final int taxPercent;
   final ValueChanged<CafeTable> onSelectTable;
   final void Function(MenuItem menu, String variant, int unitPrice, String note) onAdd;
   final ValueChanged<CartItem> onInc;
@@ -37,8 +43,8 @@ class _KasirScreenState extends State<KasirScreen> {
   String _orderType = 'Dine-in';
 
   int get _subtotal => widget.cart.fold(0, (a, c) => a + c.total);
-  int get _service => (_subtotal * 0.05).round();
-  int get _tax => (_subtotal * 0.10).round();
+  int get _service => (_subtotal * widget.servicePercent / 100).round();
+  int get _tax => (_subtotal * widget.taxPercent / 100).round();
   int get _grandTotal => _subtotal + _service + _tax;
   int get _itemCount => widget.cart.fold(0, (a, c) => a + c.qty);
 
@@ -77,6 +83,8 @@ class _KasirScreenState extends State<KasirScreen> {
             subtotal: _subtotal,
             service: _service,
             tax: _tax,
+            servicePercent: widget.servicePercent,
+            taxPercent: widget.taxPercent,
             grandTotal: _grandTotal,
             onInc: widget.onInc,
             onDec: widget.onDec,
@@ -238,6 +246,8 @@ class _KasirScreenState extends State<KasirScreen> {
                 subtotal: _subtotal,
                 service: _service,
                 tax: _tax,
+                servicePercent: widget.servicePercent,
+                taxPercent: widget.taxPercent,
                 grandTotal: _grandTotal,
                 onInc: (c) { widget.onInc(c); setState(() {}); },
                 onDec: (c) { widget.onDec(c); setState(() {}); },
@@ -524,6 +534,8 @@ class _CartPanel extends StatelessWidget {
     required this.subtotal,
     required this.service,
     required this.tax,
+    required this.servicePercent,
+    required this.taxPercent,
     required this.grandTotal,
     required this.onInc,
     required this.onDec,
@@ -535,6 +547,7 @@ class _CartPanel extends StatelessWidget {
   final CafeTable? selectedTable;
   final String orderType;
   final int subtotal, service, tax, grandTotal;
+  final int servicePercent, taxPercent;
   final ValueChanged<CartItem> onInc, onDec, onRemove;
   final VoidCallback onPay;
 
@@ -604,8 +617,8 @@ class _CartPanel extends StatelessWidget {
           child: Column(
             children: [
               _row('Subtotal', subtotal),
-              _row('Biaya layanan (5%)', service),
-              _row('Pajak (10%)', tax),
+              _row('Biaya layanan ($servicePercent%)', service),
+              _row('Pajak ($taxPercent%)', tax),
               const Divider(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

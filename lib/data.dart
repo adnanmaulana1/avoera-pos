@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+// ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
+// appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
+const appName = 'Avoera POS';
+const appVersion = '0.2.0';
+const appStudio = 'Webtales Studio';
+
 String rupiah(int value) {
   final s = value.toString();
   final buf = StringBuffer('Rp');

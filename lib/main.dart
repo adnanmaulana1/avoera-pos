@@ -8,6 +8,7 @@ import 'screens/meja_screen.dart';
 import 'screens/dapur_screen.dart';
 import 'screens/laporan_screen.dart';
 import 'screens/stok_screen.dart';
+import 'screens/pengaturan_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +55,7 @@ const _navItems = <_NavItem>[
   _NavItem('Dapur', Icons.soup_kitchen_outlined, Icons.soup_kitchen),
   _NavItem('Laporan', Icons.bar_chart_outlined, Icons.bar_chart),
   _NavItem('Stok Bahan', Icons.inventory_2_outlined, Icons.inventory_2),
+  _NavItem('Pengaturan', Icons.settings_outlined, Icons.settings),
 ];
 
 class HomeShell extends StatefulWidget {
@@ -70,6 +72,13 @@ class _HomeShellState extends State<HomeShell> {
   final List<KitchenOrder> _kitchen = seedKitchenOrders();
   CafeTable? _selectedTable;
   int _orderCounter = 1043;
+
+  // ---------- Pengaturan (diubah dari layar Pengaturan) ----------
+  String _businessName = 'Avoera Cafe & Resto';
+  String _businessAddress = 'Jl. Merdeka No. 10, Polewali Mandar';
+  String _businessPhone = '0812-3456-7890';
+  int _servicePercent = 5;
+  int _taxPercent = 10;
 
   // ---------- Cart actions ----------
   void _addToCart(MenuItem menu, String variant, int unitPrice, String note) {
@@ -141,6 +150,8 @@ class _HomeShellState extends State<HomeShell> {
         cart: _cart,
         selectedTable: _selectedTable,
         tables: _tables,
+        servicePercent: _servicePercent,
+        taxPercent: _taxPercent,
         onSelectTable: _selectTable,
         onAdd: _addToCart,
         onInc: _inc,
@@ -157,6 +168,18 @@ class _HomeShellState extends State<HomeShell> {
       DapurScreen(orders: _kitchen, onAdvance: _advanceKitchen),
       const LaporanScreen(),
       const StokScreen(),
+      PengaturanScreen(
+        businessName: _businessName,
+        businessAddress: _businessAddress,
+        businessPhone: _businessPhone,
+        servicePercent: _servicePercent,
+        taxPercent: _taxPercent,
+        onBusinessNameChanged: (v) => setState(() => _businessName = v),
+        onBusinessAddressChanged: (v) => setState(() => _businessAddress = v),
+        onBusinessPhoneChanged: (v) => setState(() => _businessPhone = v),
+        onServicePercentChanged: (v) => setState(() => _servicePercent = v),
+        onTaxPercentChanged: (v) => setState(() => _taxPercent = v),
+      ),
     ];
 
     return LayoutBuilder(
@@ -189,6 +212,10 @@ class _HomeShellState extends State<HomeShell> {
           bottomNavigationBar: NavigationBar(
             selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
+            // 6 menu: label hanya di menu aktif, sisanya ikon saja —
+            // kalau semua label dipaksa tampil, tulisannya bertabrakan
+            // di layar HP (ketahuan dari screenshot 390px).
+            labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
             destinations: [
               for (var i = 0; i < _navItems.length; i++)
                 NavigationDestination(
@@ -291,7 +318,7 @@ class _SideBar extends StatelessWidget {
           const Spacer(),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Text('UI contoh · Tanpa backend\nData tidak tersimpan permanen.', style: AppText.caption.copyWith(color: AppColors.muted)),
+            child: Text('UI contoh · Tanpa backend\nData tidak tersimpan permanen.\n\n$appName v$appVersion · by $appStudio', style: AppText.caption.copyWith(color: AppColors.muted)),
           ),
         ],
       ),

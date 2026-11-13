@@ -14,7 +14,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull, reason: 'Kasir di $size');
 
-    for (final label in ['Meja', 'Dapur', 'Laporan', 'Stok Bahan', 'Kasir']) {
+    for (final label in ['Meja', 'Dapur', 'Laporan', 'Stok Bahan', 'Pengaturan', 'Kasir']) {
       await tester.tap(find.text(label).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: '$label di $size');
