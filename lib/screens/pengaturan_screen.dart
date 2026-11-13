@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'kelola_widgets.dart';
 
 /// Layar Pengaturan: profil usaha, biaya transaksi (langsung berlaku
 /// di kasir), dan Tentang aplikasi. Semua nilai tinggal di HomeShell —
@@ -21,6 +22,12 @@ class PengaturanScreen extends StatelessWidget {
     required this.onBusinessPhoneChanged,
     required this.onServicePercentChanged,
     required this.onTaxPercentChanged,
+    required this.menuCount,
+    required this.tableCount,
+    required this.ingredientCount,
+    required this.onManageMenus,
+    required this.onManageTables,
+    required this.onManageIngredients,
   });
 
   final String businessName;
@@ -33,6 +40,14 @@ class PengaturanScreen extends StatelessWidget {
   final ValueChanged<String> onBusinessPhoneChanged;
   final ValueChanged<int> onServicePercentChanged;
   final ValueChanged<int> onTaxPercentChanged;
+
+  /// Jumlah data saat ini + pintu ke layar kelola (CRUD).
+  final int menuCount;
+  final int tableCount;
+  final int ingredientCount;
+  final VoidCallback onManageMenus;
+  final VoidCallback onManageTables;
+  final VoidCallback onManageIngredients;
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +143,41 @@ class PengaturanScreen extends StatelessWidget {
           style: AppText.caption.copyWith(color: AppColors.muted),
         ),
         const SizedBox(height: AppSpacing.xl),
+        const SectionTitle('Kelola Data'),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              _SettingRow(
+                icon: Icons.restaurant_menu_outlined,
+                label: 'Kelola Menu',
+                value: '$menuCount menu',
+                onTap: onManageMenus,
+              ),
+              const Divider(height: 1, indent: 68),
+              _SettingRow(
+                icon: Icons.table_restaurant_outlined,
+                label: 'Kelola Meja',
+                value: '$tableCount meja',
+                onTap: onManageTables,
+              ),
+              const Divider(height: 1, indent: 68),
+              _SettingRow(
+                icon: Icons.inventory_2_outlined,
+                label: 'Kelola Stok Bahan',
+                value: '$ingredientCount bahan',
+                onTap: onManageIngredients,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Tambah, ubah, dan hapus data. Semua tersimpan permanen di perangkat ini.',
+          style: AppText.caption.copyWith(color: AppColors.muted),
+        ),
+        const SizedBox(height: AppSpacing.xl),
         const SectionTitle('Tentang'),
         const SizedBox(height: AppSpacing.sm),
         AppCard(
@@ -172,7 +222,7 @@ class PengaturanScreen extends StatelessWidget {
       final value = controller.text.trim();
       if (value.isNotEmpty) onSave(value);
     }
-    controller.dispose();
+    disposeControllersLater([controller]);
   }
 
   Future<void> _editPercent(
@@ -204,7 +254,7 @@ class PengaturanScreen extends StatelessWidget {
       final value = int.tryParse(controller.text.trim());
       if (value != null) onSave(value.clamp(0, 100));
     }
-    controller.dispose();
+    disposeControllersLater([controller]);
   }
 }
 

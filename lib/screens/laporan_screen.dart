@@ -4,7 +4,10 @@ import '../theme.dart';
 import '../widgets.dart';
 
 class LaporanScreen extends StatelessWidget {
-  const LaporanScreen({super.key});
+  const LaporanScreen({super.key, required this.ingredients});
+
+  /// Stok dari data tersimpan — kartu stok kritis mengikuti data asli.
+  final List<Ingredient> ingredients;
 
   static const int omzetHariIni = 3420000;
   static const int transaksiHariIni = 128;

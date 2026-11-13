@@ -7,6 +7,7 @@ class KasirScreen extends StatefulWidget {
   const KasirScreen({
     super.key,
     required this.cart,
+    required this.menus,
     required this.selectedTable,
     required this.tables,
     required this.servicePercent,
@@ -20,6 +21,9 @@ class KasirScreen extends StatefulWidget {
   });
 
   final List<CartItem> cart;
+
+  /// Daftar menu dari data tersimpan (bisa berubah lewat Kelola Menu).
+  final List<MenuItem> menus;
   final CafeTable? selectedTable;
   final List<CafeTable> tables;
 
@@ -48,7 +52,7 @@ class _KasirScreenState extends State<KasirScreen> {
   int get _grandTotal => _subtotal + _service + _tax;
   int get _itemCount => widget.cart.fold(0, (a, c) => a + c.qty);
 
-  List<MenuItem> get _filtered => menuItems.where((m) {
+  List<MenuItem> get _filtered => widget.menus.where((m) {
         final inCat = _category == 'Semua' || m.category == _category;
         final inQuery = m.name.toLowerCase().contains(_query.toLowerCase());
         return inCat && inQuery;

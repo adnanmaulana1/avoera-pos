@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
+import 'store.dart';
 import 'theme.dart';
 import 'screens/kasir_screen.dart';
 import 'screens/meja_screen.dart';
@@ -9,6 +10,9 @@ import 'screens/dapur_screen.dart';
 import 'screens/laporan_screen.dart';
 import 'screens/stok_screen.dart';
 import 'screens/pengaturan_screen.dart';
+import 'screens/kelola_menu_screen.dart';
+import 'screens/kelola_meja_screen.dart';
+import 'screens/kelola_stok_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,17 +72,116 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
   final List<CartItem> _cart = [];
-  final List<CafeTable> _tables = seedTables();
   final List<KitchenOrder> _kitchen = seedKitchenOrders();
   CafeTable? _selectedTable;
   int _orderCounter = 1043;
 
-  // ---------- Pengaturan (diubah dari layar Pengaturan) ----------
-  String _businessName = 'Avoera Cafe & Resto';
-  String _businessAddress = 'Jl. Merdeka No. 10, Polewali Mandar';
-  String _businessPhone = '0812-3456-7890';
-  int _servicePercent = 5;
-  int _taxPercent = 10;
+  // ---------- Data tersimpan (dimuat dari LocalStore) ----------
+  bool _ready = false;
+  List<MenuItem> _menus = [];
+  List<CafeTable> _tables = [];
+  List<Ingredient> _ingredients = [];
+  AppSettings _settings = AppSettings();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final data = await LocalStore.load();
+    if (!mounted) return;
+    setState(() {
+      _menus = data.menus;
+      _tables = data.tables;
+      _ingredients = data.ingredients;
+      _settings = data.settings;
+      _ready = true;
+    });
+  }
+
+  // ---------- CRUD: Menu ----------
+  void _addMenu(MenuItem m) {
+    setState(() => _menus.add(m));
+    LocalStore.saveMenus(_menus);
+  }
+
+  void _menuChanged() {
+    setState(() {});
+    LocalStore.saveMenus(_menus);
+  }
+
+  void _deleteMenu(MenuItem m) {
+    setState(() {
+      _menus.remove(m);
+      _cart.removeWhere((c) => c.menu.id == m.id);
+    });
+    LocalStore.saveMenus(_menus);
+  }
+
+  // ---------- CRUD: Meja ----------
+  void _addTable(CafeTable t) {
+    setState(() {
+      _tables.add(t);
+      _tables.sort((a, b) => a.number.compareTo(b.number));
+    });
+    LocalStore.saveTables(_tables);
+  }
+
+  void _tableChanged() {
+    setState(() => _tables.sort((a, b) => a.number.compareTo(b.number)));
+    LocalStore.saveTables(_tables);
+  }
+
+  void _deleteTable(CafeTable t) {
+    setState(() {
+      _tables.remove(t);
+      if (_selectedTable == t) _selectedTable = null;
+    });
+    LocalStore.saveTables(_tables);
+  }
+
+  // ---------- CRUD: Stok bahan ----------
+  void _addIngredient(Ingredient i) {
+    setState(() => _ingredients.add(i));
+    LocalStore.saveIngredients(_ingredients);
+  }
+
+  void _ingredientChanged() {
+    setState(() {});
+    LocalStore.saveIngredients(_ingredients);
+  }
+
+  void _deleteIngredient(Ingredient i) {
+    setState(() => _ingredients.remove(i));
+    LocalStore.saveIngredients(_ingredients);
+  }
+
+  // ---------- Pengaturan ----------
+  void _settingChanged(void Function() apply) {
+    setState(apply);
+    LocalStore.saveSettings(_settings);
+  }
+
+  // ---------- Buka layar kelola ----------
+  void _openKelolaMenu() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => KelolaMenuScreen(menus: _menus, onAdd: _addMenu, onChanged: _menuChanged, onDelete: _deleteMenu),
+        ),
+      );
+
+  void _openKelolaMeja() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => KelolaMejaScreen(tables: _tables, onAdd: _addTable, onChanged: _tableChanged, onDelete: _deleteTable),
+        ),
+      );
+
+  void _openKelolaStok() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => KelolaStokScreen(ingredients: _ingredients, onAdd: _addIngredient, onChanged: _ingredientChanged, onDelete: _deleteIngredient),
+        ),
+      );
 
   // ---------- Cart actions ----------
   void _addToCart(MenuItem menu, String variant, int unitPrice, String note) {
@@ -125,6 +228,7 @@ class _HomeShellState extends State<HomeShell> {
       }
       _cart.clear();
     });
+    LocalStore.saveTables(_tables);
   }
 
   // ---------- Kitchen ----------
@@ -145,13 +249,17 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_ready) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final screens = <Widget>[
       KasirScreen(
         cart: _cart,
+        menus: _menus,
         selectedTable: _selectedTable,
         tables: _tables,
-        servicePercent: _servicePercent,
-        taxPercent: _taxPercent,
+        servicePercent: _settings.servicePercent,
+        taxPercent: _settings.taxPercent,
         onSelectTable: _selectTable,
         onAdd: _addToCart,
         onInc: _inc,
@@ -166,19 +274,25 @@ class _HomeShellState extends State<HomeShell> {
         onGoKasir: () => setState(() => _index = 0),
       ),
       DapurScreen(orders: _kitchen, onAdvance: _advanceKitchen),
-      const LaporanScreen(),
-      const StokScreen(),
+      LaporanScreen(ingredients: _ingredients),
+      StokScreen(ingredients: _ingredients),
       PengaturanScreen(
-        businessName: _businessName,
-        businessAddress: _businessAddress,
-        businessPhone: _businessPhone,
-        servicePercent: _servicePercent,
-        taxPercent: _taxPercent,
-        onBusinessNameChanged: (v) => setState(() => _businessName = v),
-        onBusinessAddressChanged: (v) => setState(() => _businessAddress = v),
-        onBusinessPhoneChanged: (v) => setState(() => _businessPhone = v),
-        onServicePercentChanged: (v) => setState(() => _servicePercent = v),
-        onTaxPercentChanged: (v) => setState(() => _taxPercent = v),
+        businessName: _settings.businessName,
+        businessAddress: _settings.businessAddress,
+        businessPhone: _settings.businessPhone,
+        servicePercent: _settings.servicePercent,
+        taxPercent: _settings.taxPercent,
+        menuCount: _menus.length,
+        tableCount: _tables.length,
+        ingredientCount: _ingredients.length,
+        onBusinessNameChanged: (v) => _settingChanged(() => _settings.businessName = v),
+        onBusinessAddressChanged: (v) => _settingChanged(() => _settings.businessAddress = v),
+        onBusinessPhoneChanged: (v) => _settingChanged(() => _settings.businessPhone = v),
+        onServicePercentChanged: (v) => _settingChanged(() => _settings.servicePercent = v),
+        onTaxPercentChanged: (v) => _settingChanged(() => _settings.taxPercent = v),
+        onManageMenus: _openKelolaMenu,
+        onManageTables: _openKelolaMeja,
+        onManageIngredients: _openKelolaStok,
       ),
     ];
 
@@ -318,7 +432,7 @@ class _SideBar extends StatelessWidget {
           const Spacer(),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Text('UI contoh · Tanpa backend\nData tidak tersimpan permanen.\n\n$appName v$appVersion · by $appStudio', style: AppText.caption.copyWith(color: AppColors.muted)),
+            child: Text('Data tersimpan di perangkat ini.\nLaporan masih contoh.\n\n$appName v$appVersion · by $appStudio', style: AppText.caption.copyWith(color: AppColors.muted)),
           ),
         ],
       ),

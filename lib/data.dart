@@ -3,8 +3,40 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.2.0';
+const appVersion = '0.3.0';
 const appStudio = 'Webtales Studio';
+
+// ---------- Pengaturan (tersimpan permanen) ----------
+class AppSettings {
+  AppSettings({
+    this.businessName = 'Avoera Cafe & Resto',
+    this.businessAddress = 'Jl. Merdeka No. 10, Polewali Mandar',
+    this.businessPhone = '0812-3456-7890',
+    this.servicePercent = 5,
+    this.taxPercent = 10,
+  });
+  String businessName;
+  String businessAddress;
+  String businessPhone;
+  int servicePercent;
+  int taxPercent;
+
+  Map<String, dynamic> toJson() => {
+        'businessName': businessName,
+        'businessAddress': businessAddress,
+        'businessPhone': businessPhone,
+        'servicePercent': servicePercent,
+        'taxPercent': taxPercent,
+      };
+
+  factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
+        businessName: j['businessName'] as String? ?? 'Avoera Cafe & Resto',
+        businessAddress: j['businessAddress'] as String? ?? '',
+        businessPhone: j['businessPhone'] as String? ?? '',
+        servicePercent: (j['servicePercent'] as num?)?.toInt() ?? 5,
+        taxPercent: (j['taxPercent'] as num?)?.toInt() ?? 10,
+      );
+}
 
 String rupiah(int value) {
   final s = value.toString();
@@ -18,7 +50,7 @@ String rupiah(int value) {
 
 // ---------- Menu ----------
 class MenuItem {
-  const MenuItem({
+  MenuItem({
     required this.id,
     required this.name,
     required this.category,
@@ -28,17 +60,40 @@ class MenuItem {
     this.isDrink = false,
   });
   final String id;
-  final String name;
-  final String category;
-  final int price;
-  final Color color;
-  final IconData icon;
-  final bool isDrink;
+  String name;
+  String category;
+  int price;
+  Color color;
+  IconData icon;
+  bool isDrink;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'category': category,
+        'price': price,
+        'color': color.toARGB32(),
+        'icon': icon.codePoint,
+        'isDrink': isDrink,
+      };
+
+  factory MenuItem.fromJson(Map<String, dynamic> j) => MenuItem(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        category: j['category'] as String,
+        price: (j['price'] as num).toInt(),
+        color: Color((j['color'] as num).toInt()),
+        // Ikon memang dibaca dari data tersimpan, jadi codePoint-nya
+        // tidak bisa konstan — wajar untuk ikon hasil CRUD.
+        // ignore: non_const_argument_for_const_parameter
+        icon: IconData((j['icon'] as num).toInt(), fontFamily: 'MaterialIcons'),
+        isDrink: j['isDrink'] as bool? ?? false,
+      );
 }
 
 const categories = ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Camilan', 'Paket'];
 
-const menuItems = <MenuItem>[
+List<MenuItem> seedMenus() => <MenuItem>[
   MenuItem(id: 'k1', name: 'Kopi Susu Gula Aren', category: 'Kopi', price: 18000, color: Color(0xFF8D6E63), icon: Icons.local_cafe, isDrink: true),
   MenuItem(id: 'k2', name: 'Americano', category: 'Kopi', price: 15000, color: Color(0xFF4E342E), icon: Icons.coffee, isDrink: true),
   MenuItem(id: 'k3', name: 'Caffe Latte', category: 'Kopi', price: 22000, color: Color(0xFFA1887F), icon: Icons.local_cafe, isDrink: true),
@@ -79,12 +134,30 @@ extension TableStatusLabel on TableStatus {
 
 class CafeTable {
   CafeTable({required this.number, required this.capacity, required this.status, this.guestName, this.openAmount = 0, this.since});
-  final int number;
-  final int capacity;
+  int number;
+  int capacity;
   TableStatus status;
   String? guestName;
   int openAmount;
   String? since;
+
+  Map<String, dynamic> toJson() => {
+        'number': number,
+        'capacity': capacity,
+        'status': status.index,
+        'guestName': guestName,
+        'openAmount': openAmount,
+        'since': since,
+      };
+
+  factory CafeTable.fromJson(Map<String, dynamic> j) => CafeTable(
+        number: (j['number'] as num).toInt(),
+        capacity: (j['capacity'] as num).toInt(),
+        status: TableStatus.values[(j['status'] as num).toInt()],
+        guestName: j['guestName'] as String?,
+        openAmount: (j['openAmount'] as num?)?.toInt() ?? 0,
+        since: j['since'] as String?,
+      );
 }
 
 List<CafeTable> seedTables() => [
@@ -175,12 +248,28 @@ List<KitchenOrder> seedKitchenOrders() => [
 enum StockStatus { aman, kritis, habis }
 
 class Ingredient {
-  const Ingredient({required this.name, required this.stock, required this.unit, required this.minStock, required this.maxStock});
-  final String name;
-  final double stock;
-  final String unit;
-  final double minStock;
-  final double maxStock;
+  Ingredient({required this.name, required this.stock, required this.unit, required this.minStock, required this.maxStock});
+  String name;
+  double stock;
+  String unit;
+  double minStock;
+  double maxStock;
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'stock': stock,
+        'unit': unit,
+        'minStock': minStock,
+        'maxStock': maxStock,
+      };
+
+  factory Ingredient.fromJson(Map<String, dynamic> j) => Ingredient(
+        name: j['name'] as String,
+        stock: (j['stock'] as num).toDouble(),
+        unit: j['unit'] as String,
+        minStock: (j['minStock'] as num).toDouble(),
+        maxStock: (j['maxStock'] as num).toDouble(),
+      );
   StockStatus get status {
     if (stock <= 0) return StockStatus.habis;
     if (stock <= minStock) return StockStatus.kritis;
@@ -190,7 +279,7 @@ class Ingredient {
   double get ratio => maxStock == 0 ? 0 : (stock / maxStock).clamp(0, 1).toDouble();
 }
 
-const ingredients = <Ingredient>[
+List<Ingredient> seedIngredients() => <Ingredient>[
   Ingredient(name: 'Biji Kopi Arabika', stock: 0.85, unit: 'kg', minStock: 1, maxStock: 10),
   Ingredient(name: 'Susu Segar', stock: 3.5, unit: 'liter', minStock: 4, maxStock: 20),
   Ingredient(name: 'Gula Aren Cair', stock: 1.2, unit: 'liter', minStock: 1.5, maxStock: 8),

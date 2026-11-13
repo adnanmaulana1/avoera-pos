@@ -4,7 +4,10 @@ import '../theme.dart';
 import '../widgets.dart';
 
 class StokScreen extends StatefulWidget {
-  const StokScreen({super.key});
+  const StokScreen({super.key, required this.ingredients});
+
+  /// Bahan dari data tersimpan (bisa berubah lewat Kelola Stok Bahan).
+  final List<Ingredient> ingredients;
 
   @override
   State<StokScreen> createState() => _StokScreenState();
@@ -15,7 +18,7 @@ class _StokScreenState extends State<StokScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final list = ingredients.where((i) {
+    final list = widget.ingredients.where((i) {
       return switch (_filter) {
         'Aman' => i.status == StockStatus.aman,
         'Kritis' => i.status == StockStatus.kritis,
@@ -28,7 +31,7 @@ class _StokScreenState extends State<StokScreen> {
       children: [
         const PageHeader(
           title: 'Stok Bahan',
-          subtitle: 'Bahan berkurang otomatis dari resep tiap menu terjual (tampilan contoh).',
+          subtitle: 'Stok tersimpan permanen. Tambah & ubah lewat Pengaturan → Kelola Stok Bahan.',
         ),
         const SizedBox(height: AppSpacing.md),
         Wrap(

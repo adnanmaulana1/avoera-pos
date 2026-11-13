@@ -1,10 +1,14 @@
 import 'package:avoera_pos/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Cek tampilan tablet: semua layar dibuka di ukuran landscape & portrait,
 // tidak boleh ada overflow / error tata letak.
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  // Penyimpanan lokal perlu contoh kosong supaya muat data tidak menggantung.
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   Future<void> checkAllScreens(WidgetTester tester, Size size) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
