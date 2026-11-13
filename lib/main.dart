@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'data.dart';
 import 'theme.dart';
@@ -9,6 +10,20 @@ import 'screens/laporan_screen.dart';
 import 'screens/stok_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Layar penuh dari ujung ke ujung, TAPI status bar & tombol navigasi
+  // Android tetap terlihat. Isi aplikasi dijaga SafeArea di HomeShell
+  // supaya tidak ada konten yang tertutup kedua bar itu.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   runApp(const KasirFnbApp());
 }
 
@@ -149,20 +164,28 @@ class _HomeShellState extends State<HomeShell> {
         final wide = constraints.maxWidth >= 900;
         if (wide) {
           return Scaffold(
-            body: Row(
-              children: [
-                _SideBar(
-                  index: _index,
-                  kitchenCount: _kitchen.where((o) => o.status == KitchenStatus.baru).length,
-                  onChanged: (i) => setState(() => _index = i),
-                ),
-                Expanded(child: IndexedStack(index: _index, children: screens)),
-              ],
+            body: SafeArea(
+              child: Row(
+                children: [
+                  _SideBar(
+                    index: _index,
+                    kitchenCount: _kitchen.where((o) => o.status == KitchenStatus.baru).length,
+                    onChanged: (i) => setState(() => _index = i),
+                  ),
+                  Expanded(child: IndexedStack(index: _index, children: screens)),
+                ],
+              ),
             ),
           );
         }
         return Scaffold(
-          body: IndexedStack(index: _index, children: screens),
+          // Atas dilindungi SafeArea supaya judul tidak tertutup status bar.
+          // Bawah tidak perlu: NavigationBar sudah menjaga jarak dari
+          // tombol navigasi Android.
+          body: SafeArea(
+            bottom: false,
+            child: IndexedStack(index: _index, children: screens),
+          ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
