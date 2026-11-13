@@ -46,15 +46,18 @@ class AppRadius {
 }
 
 /// Skala teks — satu-satunya tempat fontSize ditulis. Lihat DESIGN.md.
+/// fontFamily dipatok di sini juga: gaya komponen (tombol, chip, segmented)
+/// memakai AppText apa adanya, jadi tanpa ini font-nya jatuh ke bawaan
+/// merek HP dan tampilan bisa bergeser antar perangkat.
 class AppText {
-  static const caption = TextStyle(fontSize: 11);
-  static const small = TextStyle(fontSize: 12);
-  static const body = TextStyle(fontSize: 14);
-  static const subtitle = TextStyle(fontSize: 15, fontWeight: FontWeight.w700);
-  static const title = TextStyle(fontSize: 17, fontWeight: FontWeight.w700);
-  static const pageTitle = TextStyle(fontSize: 20, fontWeight: FontWeight.w800);
-  static const number = TextStyle(fontSize: 22, fontWeight: FontWeight.w800);
-  static const hero = TextStyle(fontSize: 26, fontWeight: FontWeight.w800);
+  static const caption = TextStyle(fontFamily: 'Roboto', fontSize: 11);
+  static const small = TextStyle(fontFamily: 'Roboto', fontSize: 12);
+  static const body = TextStyle(fontFamily: 'Roboto', fontSize: 14);
+  static const subtitle = TextStyle(fontFamily: 'Roboto', fontSize: 15, fontWeight: FontWeight.w700);
+  static const title = TextStyle(fontFamily: 'Roboto', fontSize: 17, fontWeight: FontWeight.w700);
+  static const pageTitle = TextStyle(fontFamily: 'Roboto', fontSize: 20, fontWeight: FontWeight.w800);
+  static const number = TextStyle(fontFamily: 'Roboto', fontSize: 22, fontWeight: FontWeight.w800);
+  static const hero = TextStyle(fontFamily: 'Roboto', fontSize: 26, fontWeight: FontWeight.w800);
 }
 
 ThemeData buildTheme() {
@@ -66,7 +69,10 @@ ThemeData buildTheme() {
       primary: AppColors.accent,
       surface: AppColors.card,
     ),
-    fontFamily: null, // font bawaan, aman offline
+    // Roboto = font sistem Android (tetap aman offline), dipatok supaya
+    // tampilan teks konsisten di semua merek HP/tablet — font bawaan
+    // tiap merek berbeda dan bikin desain bergeser.
+    fontFamily: 'Roboto',
   );
 
   const chipBorder = BorderSide(color: AppColors.border);

@@ -8,6 +8,9 @@ Prinsip (antislop-ui): tanpa glassmorphism, tanpa gradasi, tanpa glow.
 Satu aksen dipakai hemat, hanya di momen penting (aksi utama, keadaan
 terpilih, status). Radius dan bayangan adalah penanda hierarki, bukan dekorasi.
 
+Font dipatok **Roboto** (font sistem Android, aman offline) di `AppText`
+dan di tema — font bawaan tiap merek HP berbeda dan bikin tampilan bergeser.
+
 ## Warna (AppColors)
 
 | Token | Nilai | Pakai untuk |

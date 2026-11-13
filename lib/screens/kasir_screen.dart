@@ -146,7 +146,9 @@ class _KasirScreenState extends State<KasirScreen> {
                 : GridView.builder(
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 180,
-                      mainAxisExtent: 168,
+                      // 184: nama menu 2 baris (mis. "Nasi Goreng Kampung")
+                      // butuh ruang penuh; di 168 baris keduanya kepotong.
+                      mainAxisExtent: 184,
                       crossAxisSpacing: AppSpacing.md,
                       mainAxisSpacing: AppSpacing.md,
                     ),
