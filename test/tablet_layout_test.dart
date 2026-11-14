@@ -18,8 +18,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull, reason: 'Kasir di $size');
 
+    // Di lebar HP (<900) menu Laporan/Stok/Pengaturan ada di sidebar
+    // geser — buka dulu lewat tombol Lainnya di bar bawah.
+    final phoneLayout = size.width < 900;
+    const drawerLabels = ['Laporan', 'Stok Bahan', 'Pengaturan'];
     for (final label in ['Meja', 'Dapur', 'Laporan', 'Stok Bahan', 'Pengaturan', 'Kasir']) {
-      await tester.tap(find.text(label).last);
+      if (phoneLayout && drawerLabels.contains(label)) {
+        await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Lainnya')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text(label)));
+      } else {
+        await tester.tap(find.text(label).last);
+      }
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: '$label di $size');
     }

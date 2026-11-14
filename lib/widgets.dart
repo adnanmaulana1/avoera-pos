@@ -72,7 +72,9 @@ class AppChip extends StatelessWidget {
 
   final String label;
   final bool selected;
-  final ValueChanged<bool> onSelected;
+  // Boleh null = chip nonaktif (mis. chip nominal uang yang lebih
+  // kecil dari total bayar di dialog pembayaran).
+  final ValueChanged<bool>? onSelected;
 
   @override
   Widget build(BuildContext context) {

@@ -50,6 +50,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('Audit: navigasi HP — menu utama di bawah, lainnya di sidebar geser', (tester) async {
+    await pumpPhone(tester);
+    // Bar bawah hanya 4 tombol: 3 menu utama + Lainnya.
+    final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+    expect(bar.destinations.length, 4, reason: 'Bar bawah harus berisi Kasir, Meja, Dapur, Lainnya');
+    expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Pengaturan')), findsNothing,
+        reason: 'Pengaturan tidak lagi di bar bawah');
+
+    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Lainnya')));
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: find.byType(Drawer), matching: find.text('MENU LAINNYA')), findsOneWidget);
+    await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Pengaturan')));
+    await tester.pumpAndSettle();
+    expect(find.text('Kelola Data'), findsOneWidget, reason: 'Pengaturan harus terbuka dari drawer');
+    // Selama di menu drawer, sorotan bar bawah jatuh ke 'Lainnya'.
+    expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex, 3);
+  });
+
   testWidgets('Audit: cari menu & filter kategori bekerja', (tester) async {
     await pumpPhone(tester);
     await tester.enterText(find.byType(TextField).first, 'matcha');
@@ -133,6 +151,8 @@ void main() {
     await tester.tap(proses);
     await tester.pumpAndSettle();
     expect(find.text('Pembayaran Berhasil'), findsOneWidget);
+    // Siram timer dispose controller dialog (500ms).
+    await tester.pump(const Duration(milliseconds: 600));
   });
 
   testWidgets('Audit: bayar QRIS lolos sampai dapur', (tester) async {
@@ -216,7 +236,10 @@ void main() {
 
   testWidgets('Audit: stok — filter Habis & Aman menyaring dengan benar', (tester) async {
     await pumpPhone(tester);
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Stok Bahan')));
+    // Stok Bahan kini di sidebar geser: buka lewat tombol Lainnya.
+    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Lainnya')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Stok Bahan')));
     await tester.pumpAndSettle();
     // 'Habis'/'Aman' juga teks chip status di kartu bahan — ketuk chip filternya.
     await tester.tap(find.widgetWithText(ChoiceChip, 'Habis'));

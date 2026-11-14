@@ -338,28 +338,133 @@ class _HomeShellState extends State<HomeShell> {
             bottom: false,
             child: IndexedStack(index: _index, children: screens),
           ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            // 6 menu: label hanya di menu aktif, sisanya ikon saja —
-            // kalau semua label dipaksa tampil, tulisannya bertabrakan
-            // di layar HP (ketahuan dari screenshot 390px).
-            labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-            destinations: [
-              for (var i = 0; i < _navItems.length; i++)
-                NavigationDestination(
-                  icon: Badge(
-                    isLabelVisible: i == 2 && _kitchen.where((o) => o.status == KitchenStatus.baru).isNotEmpty,
-                    label: Text('${_kitchen.where((o) => o.status == KitchenStatus.baru).length}'),
-                    child: Icon(_navItems[i].icon),
+          // Menu utama (Kasir, Meja, Dapur) tinggal di bar bawah; menu
+          // lain (Laporan, Stok, Pengaturan) pindah ke sidebar geser
+          // yang dibuka dari tombol 'Lainnya' — permintaan Adnan
+          // 2026-11-14: bar bawah lega, menu harian gampang dijangkau.
+          drawer: _PhoneDrawer(
+            index: _index,
+            businessName: _settings.businessName,
+            onSelect: (i) => setState(() => _index = i),
+          ),
+          bottomNavigationBar: Builder(
+            builder: (barCtx) => NavigationBar(
+              // Sedang di menu drawer → sorot 'Lainnya'.
+              selectedIndex: _index <= 2 ? _index : 3,
+              onDestinationSelected: (i) {
+                if (i == 3) {
+                  Scaffold.of(barCtx).openDrawer();
+                } else {
+                  setState(() => _index = i);
+                }
+              },
+              destinations: [
+                for (var i = 0; i < 3; i++)
+                  NavigationDestination(
+                    icon: Badge(
+                      isLabelVisible: i == 2 && _kitchen.where((o) => o.status == KitchenStatus.baru).isNotEmpty,
+                      label: Text('${_kitchen.where((o) => o.status == KitchenStatus.baru).length}'),
+                      child: Icon(_navItems[i].icon),
+                    ),
+                    selectedIcon: Icon(_navItems[i].selectedIcon),
+                    label: _navItems[i].label,
                   ),
-                  selectedIcon: Icon(_navItems[i].selectedIcon),
-                  label: _navItems[i].label,
+                const NavigationDestination(
+                  icon: Icon(Icons.menu),
+                  selectedIcon: Icon(Icons.menu),
+                  label: 'Lainnya',
                 ),
-            ],
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+/// Sidebar geser (drawer) khusus HP: menampung menu selain tiga menu
+/// utama di bar bawah. Tampilannya meniru sidebar tablet supaya
+/// rasanya satu keluarga.
+class _PhoneDrawer extends StatelessWidget {
+  const _PhoneDrawer({required this.index, required this.businessName, required this.onSelect});
+  final int index;
+  final String businessName;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: AppColors.card,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.md),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                    child: const Icon(Icons.local_cafe, color: AppColors.card, size: 20),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(appName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.subtitle.copyWith(fontWeight: FontWeight.w800)),
+                        Text(businessName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(color: AppColors.muted)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.sm),
+              child: Text('MENU LAINNYA', style: AppText.caption.copyWith(color: AppColors.muted, fontWeight: FontWeight.w700)),
+            ),
+            for (var i = 3; i < _navItems.length; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                child: Material(
+                  color: index == i ? AppColors.accentSoft : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: ListTile(
+                    dense: true,
+                    minTileHeight: 48,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+                    leading: Icon(
+                      index == i ? _navItems[i].selectedIcon : _navItems[i].icon,
+                      color: index == i ? AppColors.accentDark : AppColors.muted,
+                      size: 24,
+                    ),
+                    title: Text(
+                      _navItems[i].label,
+                      style: AppText.body.copyWith(
+                        fontWeight: index == i ? FontWeight.w700 : FontWeight.w500,
+                        color: index == i ? AppColors.accentDark : AppColors.ink,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      onSelect(i);
+                    },
+                  ),
+                ),
+              ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Text('$appName v$appVersion · by $appStudio', style: AppText.caption.copyWith(color: AppColors.muted)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

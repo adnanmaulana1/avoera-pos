@@ -372,6 +372,9 @@ class _KasirScreenState extends State<KasirScreen> {
   Future<void> _openPayment(BuildContext context) async {
     var method = 'Tunai';
     int? paid;
+    // Kolom nominal & chip berbagi satu nilai: memilih chip mengisi
+    // kolom (berformat titik), mengetik memperbarui pilihan chip.
+    final amountCtrl = TextEditingController();
     final methodResult = await showDialog<String>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -397,6 +400,10 @@ class _KasirScreenState extends State<KasirScreen> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
+                _payRow('Subtotal', _subtotal),
+                _payRow('Biaya layanan (${widget.servicePercent}%)', _service),
+                _payRow('Pajak (${widget.taxPercent}%)', _tax),
+                const Divider(),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -413,24 +420,33 @@ class _KasirScreenState extends State<KasirScreen> {
                     runSpacing: AppSpacing.sm,
                     children: [
                       for (final amt in [_grandTotal, 50000, 100000, 200000])
-                        ActionChip(
-                          label: Text(amt == _grandTotal ? 'Uang pas' : rupiah(amt)),
-                          onPressed: amt >= _grandTotal ? () => setDlg(() => paid = amt) : null,
+                        AppChip(
+                          label: amt == _grandTotal ? 'Uang pas' : rupiah(amt),
+                          selected: paid == amt,
+                          onSelected: amt >= _grandTotal
+                              ? (_) => setDlg(() {
+                                    paid = amt;
+                                    amountCtrl.text = _formatRibuan(amt);
+                                  })
+                              : null,
                         ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   TextField(
+                    controller: amountCtrl,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    inputFormatters: [_RibuanFormatter()],
                     decoration: const InputDecoration(prefixText: 'Rp ', hintText: 'atau ketik nominal sendiri'),
-                    onChanged: (v) => setDlg(() => paid = int.tryParse(v)),
+                    onChanged: (v) => setDlg(() => paid = int.tryParse(v.replaceAll('.', ''))),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    paid == null ? 'Pilih nominal uang diterima.' : 'Kembalian: ${rupiah(change < 0 ? 0 : change)}',
-                    style: const TextStyle(color: AppColors.muted),
-                  ),
+                  if (paid == null)
+                    Text('Pilih nominal atau ketik jumlah uang diterima.', style: AppText.small.copyWith(color: AppColors.muted))
+                  else if (paid! < _grandTotal)
+                    Text('Masih kurang ${rupiah(_grandTotal - paid!)}', style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w700))
+                  else
+                    Text('Kembalian: ${rupiah(change)}', style: AppText.body.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w800)),
                 ] else ...[
                   const SizedBox(height: AppSpacing.md),
                   Container(
@@ -459,6 +475,7 @@ class _KasirScreenState extends State<KasirScreen> {
         },
       ),
     );
+    disposeControllersLater([amountCtrl]);
     if (methodResult == null || !context.mounted) return;
     final paidTotal = _grandTotal;
     // Label tiket dapur mengikuti pilihan kasir: meja terpilih selalu
@@ -498,6 +515,40 @@ class _KasirScreenState extends State<KasirScreen> {
         ],
       ),
     );
+  }
+}
+
+/// Baris ringkasan kecil di dialog pembayaran (Subtotal dsb).
+Widget _payRow(String label, int value) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
+          Text(rupiah(value), style: AppText.small),
+        ],
+      ),
+    );
+
+/// 50000 -> '50.000' (pemisah ribuan gaya Indonesia).
+String _formatRibuan(int n) {
+  final s = n.toString();
+  final buf = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+    buf.write(s[i]);
+  }
+  return buf.toString();
+}
+
+/// Mengetik nominal langsung tampil berformat titik: 50000 -> 50.000.
+class _RibuanFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return const TextEditingValue(text: '');
+    final text = _formatRibuan(int.parse(digits));
+    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
   }
 }
 
