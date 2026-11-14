@@ -31,7 +31,7 @@ class _StokScreenState extends State<StokScreen> {
       children: [
         const PageHeader(
           title: 'Stok Bahan',
-          subtitle: 'Stok tersimpan permanen. Tambah & ubah lewat Pengaturan → Kelola Stok Bahan.',
+          subtitle: 'Stok tersimpan permanen. Tambah & ubah lewat Pengaturan, bagian Kelola Stok Bahan.',
         ),
         const SizedBox(height: AppSpacing.md),
         Wrap(

@@ -565,6 +565,10 @@ class _MenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Desain v0.6.0: blok warna raksasa dihapus (terkesan kekanakan).
+    // Warna menu tetap jadi identitas produk, tapi cukup sebagai
+    // rona kotak ikon kecil — selebihnya kartu putih bersih ala POS
+    // profesional: ikon, nama, kategori, harga, tombol tambah.
     return Material(
       color: AppColors.card,
       borderRadius: BorderRadius.circular(AppRadius.md),
@@ -573,34 +577,36 @@ class _MenuCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           decoration: cardDecoration(),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 76,
-                width: double.infinity,
-                decoration: BoxDecoration(color: item.color, borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.md))),
-                child: Center(child: Icon(item.icon, color: AppColors.card, size: 32)),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                            style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
-                      ),
-                      Row(
-                        children: [
-                          Expanded(child: Text(rupiah(item.price), style: AppText.body.copyWith(fontWeight: FontWeight.w800))),
-                          QtyButton(icon: Icons.add, filled: true, onPressed: onQuickAdd),
-                        ],
-                      ),
-                    ],
-                  ),
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: item.color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
+                child: Icon(item.icon, color: item.color, size: 22),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                        style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(item.category, style: AppText.caption.copyWith(color: AppColors.muted)),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(child: Text(rupiah(item.price), style: AppText.body.copyWith(fontWeight: FontWeight.w800))),
+                  QtyButton(icon: Icons.add, filled: true, onPressed: onQuickAdd),
+                ],
               ),
             ],
           ),

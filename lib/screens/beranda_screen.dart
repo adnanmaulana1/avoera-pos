@@ -47,6 +47,14 @@ class BerandaScreen extends StatelessWidget {
     return 'Selamat malam';
   }
 
+  static const _hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+  static const _bulan = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  ];
+
+  String _tanggal(DateTime d) => '${_hari[d.weekday - 1]}, ${d.day} ${_bulan[d.month - 1]} ${d.year}';
+
   bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
   @override
@@ -77,7 +85,9 @@ class BerandaScreen extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         Text(_sapaan(now), style: AppText.pageTitle),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.xs),
+        Text(_tanggal(now), style: AppText.small.copyWith(color: AppColors.muted)),
+        const SizedBox(height: AppSpacing.md),
         Row(
           children: [
             Container(
@@ -92,24 +102,53 @@ class BerandaScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
-        // Kartu penjualan: emerald pekat satu warna (bukan gradasi).
+        // Kartu penjualan: emerald pekat satu warna (bukan gradasi),
+        // satu-satunya elemen berbayangan di aplikasi + tekstur dua
+        // lingkaran sewarna — momen terpenting pemilik usaha.
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.lg)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text('Penjualan hari ini', style: AppText.small.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
-                  const Spacer(),
-                  Text('Diperbarui $jam', style: AppText.caption.copyWith(color: Colors.white70)),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(rupiah(totalToday), style: AppText.hero.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
-              const SizedBox(height: AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.accent,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: AppShadows.heroCard,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: Stack(
+              children: [
+                Positioned(
+                  right: -50,
+                  top: -70,
+                  child: Container(
+                    width: 190,
+                    height: 190,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.07)),
+                  ),
+                ),
+                Positioned(
+                  right: 60,
+                  bottom: -80,
+                  child: Container(
+                    width: 130,
+                    height: 130,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.05)),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text('Penjualan hari ini', style: AppText.small.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
+                          const Spacer(),
+                          Text('Diperbarui $jam', style: AppText.caption.copyWith(color: Colors.white70)),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(rupiah(totalToday), style: AppText.display.copyWith(color: Colors.white)),
+                      const SizedBox(height: AppSpacing.md),
               if (pct != null)
                 Row(
                   children: [
@@ -131,10 +170,14 @@ class BerandaScreen extends StatelessWidget {
                 )
               else
                 Text('Penjualan tercatat otomatis setiap ada pembayaran di kasir.', style: AppText.small.copyWith(color: Colors.white70)),
-            ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.xl),
         Row(
           children: [
             Expanded(child: _StatCard(label: 'Transaksi', value: '$countToday')),
@@ -239,7 +282,7 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
           const SizedBox(height: AppSpacing.xs),
-          Text(value, style: AppText.subtitle.copyWith(fontWeight: FontWeight.w800)),
+          Text(value, style: AppText.number),
         ],
       ),
     );

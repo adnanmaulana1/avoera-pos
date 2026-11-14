@@ -45,10 +45,10 @@ class MejaScreen extends StatelessWidget {
                 crossAxisCount: cross,
                 crossAxisSpacing: AppSpacing.md,
                 mainAxisSpacing: AppSpacing.md,
-                // 168: isi kartu terisi (nomor + kursi + chip + tamu + sejak)
-                // butuh ±160 di font tes; di bawah itu Column meluber
-                // (ketahuan dari tes tablet 1280x800 & 800x1280).
-                mainAxisExtent: 168,
+                // 180: isi kartu terisi (nomor + kursi + chip + tamu +
+                // nominal baris sendiri + sejak) butuh ±172 di font tes;
+                // di bawah itu Column meluber (tes tablet yang menangkap).
+                mainAxisExtent: 180,
               ),
               itemCount: tables.length,
               itemBuilder: (_, i) {
@@ -80,7 +80,11 @@ class MejaScreen extends StatelessWidget {
                           StatusChip(label: t.status.label, color: t.status.color),
                           if (t.status != TableStatus.kosong) ...[
                             const SizedBox(height: AppSpacing.sm),
-                            Text('${t.guestName ?? ''} · ${rupiah(t.openAmount)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(fontWeight: FontWeight.w600)),
+                            // Nama & nominal di baris terpisah: digabung
+                            // satu baris nominalnya kepotong di kartu
+                            // sempit ('Budi · Rp124.0…').
+                            Text(t.guestName ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(fontWeight: FontWeight.w600)),
+                            Text(rupiah(t.openAmount), style: AppText.small.copyWith(fontWeight: FontWeight.w800)),
                             if (t.since != null) Text('Sejak ${t.since}', style: AppText.caption.copyWith(color: AppColors.muted)),
                           ],
                         ],

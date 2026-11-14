@@ -49,8 +49,29 @@ bukan token UI — boleh tetap di data.
 | xs | 6 | Khusus elemen kecil: ujung batang grafik |
 | sm | 10 | Logo, item navigasi sidebar |
 | md | 14 | Kartu, tombol, kolom isian, dialog kecil |
-| lg | 20 | Sheet bawah (sudut atas), dialog |
+| lg | 20 | Sheet bawah (sudut atas), dialog, kartu utama Beranda |
 | pill | 999 | Chip status, chip pilihan, bar stok |
+
+## Bayangan (AppShadows) — dosis ketat
+
+Hanya SATU elemen boleh berbayangan: kartu penjualan Beranda
+(`AppShadows.heroCard`, emerald gelap, blur 24, offset y10) — karena
+ia angka pertama yang dicek pemilik tiap membuka aplikasi. Semua
+kartu/ tombol/daftar lain duduk RATA dengan garis tepi. Bayangan di
+mana-mana = tidak ada hierarki (antislop-ui R-12).
+
+## Keputusan v0.6.0 (polesan UI/UX)
+
+- **Kartu menu kasir:** blok warna penuh 76px dihapus — terkesan
+  kekanakan. Warna menu tetap identitas produk, tapi cukup sebagai
+  rona (alpha 0,14) kotak ikon 40px; ikon memakai warna menu itu
+  sendiri. Sisa kartu: nama (w600), kategori (caption muted), harga
+  (w800), tombol +.
+- **Kartu penjualan Beranda:** emerald pekat + dua lingkaran putih
+  sangat tipis (alpha 0,07/0,05) sebagai tekstur sewarna — bukan
+  gradasi, bukan orbe cahaya. Angka memakai `AppText.display`.
+- **Tanggal asli** di bawah sapaan Beranda (hari, tanggal, bulan,
+  tahun Bahasa Indonesia) — detail nyata, bukan ornamen.
 
 Radius menandai tingkat: pill = label/pilihan, md = permukaan kerja,
 lg = permukaan yang melayang di atas layar (sheet/dialog).
@@ -67,6 +88,7 @@ lg = permukaan yang melayang di atas layar (sheet/dialog).
 | pageTitle | 20 | Judul halaman (satu per layar, lewat PageHeader) |
 | number | 22 | Angka statistik di kartu laporan |
 | hero | 26 | Angka paling menonjol tunggal (nomor meja) |
+| display | 32 | KHUSUS angka penjualan hari ini di Beranda — satu-satunya |
 
 Berat yang dipakai: 400 normal, 600 semibold, 700 bold, 800 extrabold.
 Teks tidak pernah lebih kecil dari 11.

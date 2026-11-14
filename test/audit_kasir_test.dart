@@ -275,7 +275,9 @@ void main() {
 
     await tester.tap(find.text('Meja').last);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Pelanggan · Rp36.800'), findsOneWidget,
+    // Nama & nominal kini dua baris terpisah di kartu meja.
+    expect(find.text('Pelanggan'), findsOneWidget);
+    expect(find.text('Rp36.800'), findsOneWidget,
         reason: 'Dulu kartu meja diam di Rp0 walau sudah pesan & bayar — itu bug');
   });
 

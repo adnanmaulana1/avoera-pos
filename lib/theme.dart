@@ -58,6 +58,19 @@ class AppText {
   static const pageTitle = TextStyle(fontFamily: 'Roboto', fontSize: 20, fontWeight: FontWeight.w800);
   static const number = TextStyle(fontFamily: 'Roboto', fontSize: 22, fontWeight: FontWeight.w800);
   static const hero = TextStyle(fontFamily: 'Roboto', fontSize: 26, fontWeight: FontWeight.w800);
+  // Khusus angka penjualan di Beranda: satu angka terpenting di
+  // aplikasi, jadi satu-satunya yang berhak sebesar ini.
+  static const display = TextStyle(fontFamily: 'Roboto', fontSize: 32, fontWeight: FontWeight.w800);
+}
+
+/// Bayangan hanya untuk SATU elemen: kartu penjualan Beranda —
+/// angka yang pertama dicek pemilik tiap membuka aplikasi.
+/// Semua elemen lain duduk rata (antislop-ui R-12: bayangan adalah
+/// penanda tingkat kepentingan, bukan dekorasi merata).
+class AppShadows {
+  static final heroCard = <BoxShadow>[
+    BoxShadow(color: AppColors.accentDark.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 10)),
+  ];
 }
 
 ThemeData buildTheme() {
