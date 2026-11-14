@@ -57,6 +57,25 @@ void main() {
     expect(loaded.settings.taxPercent, 11);
   });
 
+  test('MenuItem: data lama (codePoint) terbaca sebagai ikon yang benar', () {
+    // Format ≤0.3.2 hanya menyimpan codePoint. Sesudah ikon diganti
+    // nomor urut (demi build release), data lama WAJIB tetap terbaca.
+    final legacy = <String, dynamic>{
+      'id': 'x1',
+      'name': 'Paket Lama',
+      'category': 'Paket',
+      'price': 50000,
+      'color': 0xFF00897B,
+      'icon': Icons.groups.codePoint,
+      'isDrink': false,
+    };
+    final item = MenuItem.fromJson(legacy);
+    expect(item.icon, Icons.groups, reason: 'Ikon groups dari data lama harus utuh');
+    // Simpan ulang → format baru berisi iconIndex dan tetap terbaca.
+    final roundTrip = MenuItem.fromJson(item.toJson());
+    expect(roundTrip.icon, Icons.groups);
+  });
+
   test('LocalStore: belum pernah simpan → dapat data contoh', () async {
     SharedPreferences.setMockInitialValues({});
     final loaded = await LocalStore.load();

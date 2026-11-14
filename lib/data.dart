@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.3.2';
+const appVersion = '0.3.3';
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -49,6 +49,44 @@ String rupiah(int value) {
 }
 
 // ---------- Menu ----------
+
+/// Daftar ikon menu resmi. MenuItem menyimpan NOMOR URUT di daftar
+/// ini — BUKAN IconData rakitan dari codePoint. Alasannya teknis tapi
+/// penting: build release Flutter membuang ikon font yang tak dipakai
+/// (tree-shake), dan IconData rakitan membuat build release GAGAL
+/// total (ketahuan 2026-11-14 saat pertama kali build release lokal).
+/// Urutan daftar ini TIDAK BOLEH digeser — nomor urut tersimpan di
+/// data pengguna. Boleh menambah di paling belakang.
+const menuIconChoices = <IconData>[
+  Icons.local_cafe,
+  Icons.coffee,
+  Icons.coffee_maker,
+  Icons.emoji_food_beverage,
+  Icons.local_drink,
+  Icons.rice_bowl,
+  Icons.dinner_dining,
+  Icons.ramen_dining,
+  Icons.set_meal,
+  Icons.fastfood,
+  Icons.bakery_dining,
+  Icons.breakfast_dining,
+  Icons.tapas,
+  Icons.card_giftcard,
+  Icons.group,
+  Icons.cake,
+  Icons.groups, // dipakai menu paket contoh lama
+];
+
+int _iconIndexOf(IconData icon) {
+  final i = menuIconChoices.indexWhere((c) => c.codePoint == icon.codePoint);
+  return i < 0 ? 0 : i;
+}
+
+int _iconIndexFromCodePoint(int codePoint) {
+  final i = menuIconChoices.indexWhere((c) => c.codePoint == codePoint);
+  return i < 0 ? 0 : i;
+}
+
 class MenuItem {
   MenuItem({
     required this.id,
@@ -56,16 +94,19 @@ class MenuItem {
     required this.category,
     required this.price,
     required this.color,
-    required this.icon,
+    required IconData icon,
     this.isDrink = false,
-  });
+  }) : iconIndex = _iconIndexOf(icon);
   final String id;
   String name;
   String category;
   int price;
   Color color;
-  IconData icon;
+  int iconIndex;
   bool isDrink;
+
+  IconData get icon => menuIconChoices[iconIndex.clamp(0, menuIconChoices.length - 1)];
+  set icon(IconData v) => iconIndex = _iconIndexOf(v);
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -74,21 +115,24 @@ class MenuItem {
         'price': price,
         'color': color.toARGB32(),
         'icon': icon.codePoint,
+        'iconIndex': iconIndex,
         'isDrink': isDrink,
       };
 
-  factory MenuItem.fromJson(Map<String, dynamic> j) => MenuItem(
-        id: j['id'] as String,
-        name: j['name'] as String,
-        category: j['category'] as String,
-        price: (j['price'] as num).toInt(),
-        color: Color((j['color'] as num).toInt()),
-        // Ikon memang dibaca dari data tersimpan, jadi codePoint-nya
-        // tidak bisa konstan — wajar untuk ikon hasil CRUD.
-        // ignore: non_const_argument_for_const_parameter
-        icon: IconData((j['icon'] as num).toInt(), fontFamily: 'MaterialIcons'),
-        isDrink: j['isDrink'] as bool? ?? false,
-      );
+  factory MenuItem.fromJson(Map<String, dynamic> j) {
+    // Data baru menyimpan iconIndex; data lama (≤0.3.2) hanya
+    // menyimpan codePoint di 'icon' — petakan tanpa merakit IconData.
+    final idx = (j['iconIndex'] as num?)?.toInt() ?? _iconIndexFromCodePoint((j['icon'] as num).toInt());
+    return MenuItem(
+      id: j['id'] as String,
+      name: j['name'] as String,
+      category: j['category'] as String,
+      price: (j['price'] as num).toInt(),
+      color: Color((j['color'] as num).toInt()),
+      icon: menuIconChoices[idx.clamp(0, menuIconChoices.length - 1)],
+      isDrink: j['isDrink'] as bool? ?? false,
+    );
+  }
 }
 
 const categories = ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Camilan', 'Paket'];

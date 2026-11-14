@@ -22,25 +22,8 @@ const menuPalette = <Color>[
   Color(0xFF5D4037),
 ];
 
-/// Ikon yang bisa dipilih untuk kartu menu.
-const menuIcons = <IconData>[
-  Icons.local_cafe,
-  Icons.coffee,
-  Icons.coffee_maker,
-  Icons.emoji_food_beverage,
-  Icons.local_drink,
-  Icons.rice_bowl,
-  Icons.dinner_dining,
-  Icons.ramen_dining,
-  Icons.set_meal,
-  Icons.fastfood,
-  Icons.bakery_dining,
-  Icons.breakfast_dining,
-  Icons.tapas,
-  Icons.card_giftcard,
-  Icons.group,
-  Icons.cake,
-];
+/// Ikon yang bisa dipilih untuk kartu menu = daftar resmi di
+/// data.dart (menuIconChoices), supaya nomor urutnya stabil.
 
 /// Kelola Menu: tambah, ubah, hapus menu. Perubahan langsung tampil
 /// di kasir dan tersimpan permanen lewat callback ke HomeShell.
@@ -122,7 +105,7 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
     final priceCtrl = TextEditingController(text: item == null ? '' : '${item.price}');
     var category = item?.category ?? 'Kopi';
     var color = item?.color ?? menuPalette.first;
-    var icon = item?.icon ?? menuIcons.first;
+    var icon = item?.icon ?? menuIconChoices.first;
     var isDrink = item?.isDrink ?? false;
     String? error;
 
@@ -227,7 +210,7 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
-                  for (final ic in menuIcons)
+                  for (final ic in menuIconChoices)
                     GestureDetector(
                       onTap: () => setSheet(() => icon = ic),
                       child: Container(
