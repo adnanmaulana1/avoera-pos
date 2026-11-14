@@ -39,6 +39,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
   final _pin2Ctrl = TextEditingController();
   bool _tables = true;
   bool _kitchen = true;
+  bool _pinTerlihat = false;
+  bool _pin2Terlihat = false;
   String? _error;
 
   static const _pages = <(String, String, String)>[
@@ -176,76 +178,174 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
     );
   }
 
+  /// Dekorasi kolom isian KHUSUS wizard (desain ulang 2026-11-15
+  /// atas permintaan Adnan): latar putih + garis tepi tipis + sudut
+  /// 12, aksen emerald saat fokus. Halaman lain tetap memakai gaya
+  /// isian global.
+  InputDecoration _dekorWizard(String hint, {Widget? suffix}) {
+    final garis = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: AppColors.border),
+    );
+    return InputDecoration(
+      hintText: hint,
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: AppColors.card,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: garis,
+      enabledBorder: garis,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.accent, width: 1.4),
+      ),
+      counterStyle: TextStyle(color: AppColors.muted, fontSize: 11),
+    );
+  }
+
+  Widget _labelSeksi(String teks) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: Text(
+          teks,
+          style: TextStyle(color: AppColors.muted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.4),
+        ),
+      );
+
+  Widget _ikonSamping(IconData ikon) => Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(10)),
+        child: Icon(ikon, color: AppColors.accentDark, size: 20),
+      );
+
   Widget _wizardView() {
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.xl),
       children: [
-        const SizedBox(height: AppSpacing.lg),
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
-          child: const Icon(Icons.storefront_outlined, color: AppColors.accentDark, size: 28),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Text('Atur Cabang Pertama', style: AppText.pageTitle),
-        const SizedBox(height: AppSpacing.xs),
-        Text('Tiga hal ini cukup untuk mulai jualan. Sisanya bisa diubah kapan saja di Pengaturan.', style: AppText.small.copyWith(color: AppColors.muted)),
-        const SizedBox(height: AppSpacing.xl),
-        const FormLabel('Nama Usaha'),
-        TextField(controller: _usahaCtrl, decoration: const InputDecoration(hintText: 'cth. Kopi Senja')),
-        const SizedBox(height: AppSpacing.md),
-        const FormLabel('Nama Cabang Pertama'),
-        TextField(controller: _cabangCtrl, decoration: const InputDecoration(hintText: 'cth. Cabang Utama')),
-        const SizedBox(height: AppSpacing.md),
-        const FormLabel('PIN Kasir (4–6 angka)'),
-        TextField(
-          controller: _pinCtrl,
-          keyboardType: TextInputType.number,
-          obscureText: true,
-          maxLength: 6,
-          decoration: const InputDecoration(hintText: 'Untuk persetujuan penting di kasir'),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        const FormLabel('Ulangi PIN'),
-        TextField(
-          controller: _pin2Ctrl,
-          keyboardType: TextInputType.number,
-          obscureText: true,
-          maxLength: 6,
-          decoration: const InputDecoration(hintText: 'Ketik ulang PIN yang sama'),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Container(
-          decoration: cardDecoration(),
-          clipBehavior: Clip.antiAlias,
-          child: Material(
-            type: MaterialType.transparency,
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SwitchListTile(
-                  title: Text('Memakai meja', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
-                  subtitle: Text('Matikan bila kedai tanpa meja (hanya pesan & bayar).', style: AppText.small.copyWith(color: AppColors.muted)),
-                  value: _tables,
-                  onChanged: (v) => setState(() => _tables = v),
+                // Kepala ringkas: lencana ikon + judul + penjelasan.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(14)),
+                      child: const Icon(Icons.storefront_outlined, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Atur Cabang Pertama', style: AppText.pageTitle.copyWith(fontSize: 22)),
+                          const SizedBox(height: 2),
+                          Text('Tiga hal ini cukup untuk mulai jualan. Sisanya bisa diubah kapan saja di Pengaturan.', style: AppText.small.copyWith(color: AppColors.muted)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  title: Text('Memakai layar dapur', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
-                  subtitle: Text('Matikan bila pesanan tidak perlu antre di dapur.', style: AppText.small.copyWith(color: AppColors.muted)),
-                  value: _kitchen,
-                  onChanged: (v) => setState(() => _kitchen = v),
+                const SizedBox(height: AppSpacing.xl),
+                _labelSeksi('USAHA'),
+                const FormLabel('Nama Usaha'),
+                TextField(controller: _usahaCtrl, decoration: _dekorWizard('cth. Kopi Senja')),
+                const SizedBox(height: AppSpacing.sm),
+                const FormLabel('Nama Cabang Pertama'),
+                TextField(controller: _cabangCtrl, decoration: _dekorWizard('cth. Cabang Utama')),
+                const SizedBox(height: AppSpacing.xl),
+                _labelSeksi('KEAMANAN'),
+                const FormLabel('PIN Kasir (4–6 angka)'),
+                TextField(
+                  controller: _pinCtrl,
+                  keyboardType: TextInputType.number,
+                  obscureText: !_pinTerlihat,
+                  maxLength: 6,
+                  decoration: _dekorWizard(
+                    'Untuk persetujuan penting di kasir',
+                    suffix: IconButton(
+                      icon: Icon(_pinTerlihat ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: AppColors.muted),
+                      onPressed: () => setState(() => _pinTerlihat = !_pinTerlihat),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                const FormLabel('Ulangi PIN'),
+                TextField(
+                  controller: _pin2Ctrl,
+                  keyboardType: TextInputType.number,
+                  obscureText: !_pin2Terlihat,
+                  maxLength: 6,
+                  decoration: _dekorWizard(
+                    'Ketik ulang PIN yang sama',
+                    suffix: IconButton(
+                      icon: Icon(_pin2Terlihat ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: AppColors.muted),
+                      onPressed: () => setState(() => _pin2Terlihat = !_pin2Terlihat),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                _labelSeksi('MODE OPERASIONAL'),
+                Container(
+                  decoration: cardDecoration(),
+                  clipBehavior: Clip.antiAlias,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          secondary: _ikonSamping(Icons.table_restaurant_outlined),
+                          title: Text('Memakai meja', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                          subtitle: Text('Matikan bila kedai tanpa meja (hanya pesan & bayar).', style: AppText.small.copyWith(color: AppColors.muted)),
+                          value: _tables,
+                          activeTrackColor: AppColors.accent,
+                          onChanged: (v) => setState(() => _tables = v),
+                        ),
+                        const Divider(height: 1),
+                        SwitchListTile(
+                          secondary: _ikonSamping(Icons.soup_kitchen_outlined),
+                          title: Text('Memakai layar dapur', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                          subtitle: Text('Matikan bila pesanan tidak perlu antre di dapur.', style: AppText.small.copyWith(color: AppColors.muted)),
+                          value: _kitchen,
+                          activeTrackColor: AppColors.accent,
+                          onChanged: (v) => setState(() => _kitchen = v),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.07),
+                      border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, size: 18, color: AppColors.danger),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(child: Text(_error!, style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w600))),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.xl),
+                SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(label: 'Mulai Berjualan', icon: Icons.rocket_launch_outlined, onPressed: _finish),
                 ),
               ],
             ),
           ),
         ),
-        if (_error != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          Text(_error!, style: AppText.small.copyWith(color: AppColors.danger)),
-        ],
-        const SizedBox(height: AppSpacing.xl),
-        PrimaryButton(label: 'Mulai Berjualan', icon: Icons.rocket_launch_outlined, onPressed: _finish),
       ],
     );
   }

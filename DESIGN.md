@@ -282,3 +282,7 @@ untuk hasil akhir.
   formulir yang makin panjang (editor menu + resep + bundle) membuat
   tombol yang ikut bergulir berhenti beberapa piksel di luar tepi
   bawah layar 800px dan tidak terjangkau ketukan.
+
+## v0.9.1 (2026-11-15) — Desain ulang splash & wizard pertama (permintaan Adnan dari screenshot HP)
+- Splash TOTAL: logo tidak lagi di dalam kotak putih. Berkas baru assets/branding/avorea-logo-gelap.png = varian logo asli untuk latar gelap (pola latar dibuang via keying PIL; hijau gelap badan alpukat + teks 'MAESTRO ALPUKAT KOCOK' diangkat ke hijau muda sage agar terbaca di emerald; kuning & bentuk asli utuh). Latar emerald gradasi halus 3 titik + cahaya radial lembut + cincin tipis di sudut (CustomPainter). Loader = garis tipis kuning brand (bukan spinner). Footer huruf renggang samar. Mekanisme tampil & alur startup TIDAK berubah. Pelajaran: Stack di body Scaffold WAJIB fit: StackFit.expand — tanpa itu Stack menyusut selebar isi & konten bergeser kiri (ketahuan dari bedah frame: ada garis sambungan vertikal di 79% lebar).
+- Wizard 'Atur Cabang Pertama': kepala ringkas (lencana ikon emerald + judul 22 + subjudul), seksi berlabel huruf renggang (USAHA/KEAMANAN/MODE OPERASIONAL), kolom isian KHUSUS wizard berlatar putih + garis tepi tipis + fokus aksen (halaman lain tetap gaya global), PIN dapat show/hide (ikon mata), kartu saklar berikon samping + rel emerald, galat jadi spanduk merah lembut berikon, tombol Mulai Berjualan lebar penuh, lebar formulir dibatasi 520 di layar lebar. Semua label/validasi/logika sama persis.
