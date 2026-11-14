@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
@@ -309,6 +310,11 @@ class _SetupCelebrationState extends State<SetupCelebration> with SingleTickerPr
         final kontenKeluar = t < 0.7 ? 1.0 : (1 - (t - 0.7) / 0.12).clamp(0.0, 1.0);
         final opasitas = (kontenMasuk * kontenKeluar).clamp(0.0, 1.0);
         final skalaKonten = 0.92 + 0.08 * Curves.easeOutCubic.transform(kontenMasuk);
+        // Centang DIGAMBAR, bukan ikon diam (permintaan Adnan):
+        // lingkaran menyapu penuh dulu, lalu garis centang ditarik.
+        final gambar = ((t - 0.30) / 0.30).clamp(0.0, 1.0);
+        final lingkaran = Curves.easeOutCubic.transform((gambar / 0.55).clamp(0.0, 1.0));
+        final centang = Curves.easeOutCubic.transform(((gambar - 0.45) / 0.55).clamp(0.0, 1.0));
         // Material transparan WAJIB ada: tanpa leluhur Material,
         // teks dirender dengan garis bawah kuning bawaan Flutter.
         return Material(
@@ -338,14 +344,9 @@ class _SetupCelebrationState extends State<SetupCelebration> with SingleTickerPr
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 84,
-                          height: 84,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.card, width: 3),
-                          ),
-                          child: Icon(Icons.check, color: AppColors.card, size: 44),
+                        CustomPaint(
+                          size: const Size(84, 84),
+                          painter: _CentangPainter(lingkaran: lingkaran, centang: centang, warna: AppColors.card),
                         ),
                         const SizedBox(height: AppSpacing.xl),
                         Text(widget.judul, textAlign: TextAlign.center, style: AppText.hero.copyWith(color: AppColors.card)),
@@ -362,4 +363,46 @@ class _SetupCelebrationState extends State<SetupCelebration> with SingleTickerPr
       },
     );
   }
+}
+
+
+/// Pelukis centang perayaan: lingkaran disapu searah jarum jam dari
+/// atas, lalu centang ditarik mengikuti panjang jalurnya.
+class _CentangPainter extends CustomPainter {
+  const _CentangPainter({required this.lingkaran, required this.centang, required this.warna});
+  final double lingkaran;
+  final double centang;
+  final Color warna;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cat = Paint()
+      ..color = warna
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    if (lingkaran > 0) {
+      final tengah = Offset(size.width / 2, size.height / 2);
+      canvas.drawArc(
+        Rect.fromCircle(center: tengah, radius: size.width / 2 - 2),
+        -math.pi / 2,
+        math.pi * 2 * lingkaran,
+        false,
+        cat,
+      );
+    }
+    if (centang > 0) {
+      final jalur = Path()
+        ..moveTo(size.width * 0.31, size.height * 0.52)
+        ..lineTo(size.width * 0.44, size.height * 0.65)
+        ..lineTo(size.width * 0.70, size.height * 0.37);
+      final metrik = jalur.computeMetrics().first;
+      canvas.drawPath(metrik.extractPath(0, metrik.length * centang), cat);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CentangPainter old) =>
+      old.lingkaran != lingkaran || old.centang != centang || old.warna != warna;
 }
