@@ -523,7 +523,12 @@ class _HomeShellState extends State<HomeShell> {
       debugPrint('Sinkron gagal: $e');
       _syncing = false;
       if (mounted) setState(() => _syncStatus = StatusSinkron.gagal);
-      if (!diam) messenger.showSnackBar(const SnackBar(content: Text('Sinkron gagal — periksa URL, kunci anon, dan koneksi internet.')));
+      if (!diam) {
+        messenger.showSnackBar(SnackBar(
+          content: Text('Sinkron gagal: ${ringkasErrorSinkron(e)}'),
+          duration: const Duration(seconds: 8),
+        ));
+      }
     }
   }
 
@@ -787,9 +792,15 @@ class _HomeShellState extends State<HomeShell> {
         businessKey: _settings.businessKey,
         lastSyncLabel: _settings.lastSyncLabel,
         onSupabaseChanged: (u, k, b) => _settingChanged(() {
-          _settings.supabaseUrl = u;
-          _settings.supabaseAnonKey = k;
-          _settings.businessKey = b;
+          // Bersihkan otomatis: spasi/enter dari hasil tempel & garis
+          // miring di ujung URL adalah sebab gagal sinkron paling umum.
+          var url = u.trim();
+          while (url.endsWith('/')) {
+            url = url.substring(0, url.length - 1);
+          }
+          _settings.supabaseUrl = url;
+          _settings.supabaseAnonKey = k.trim();
+          _settings.businessKey = b.trim();
         }),
         onSyncNow: _syncNow,
         modeTema: _settings.modeTema,

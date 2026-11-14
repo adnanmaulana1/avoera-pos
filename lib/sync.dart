@@ -16,6 +16,25 @@ import 'data.dart';
 /// PIN & kredensial TIDAK ikut diunggah (dibuang dari salinan
 /// pengaturan sebelum kirim).
 
+/// Ubah error sinkron mentah menjadi sebab singkat yang bisa dibaca
+/// pemilik di layar (permintaan Adnan 2026-11-14: pesan "periksa URL,
+/// kunci, internet" tidak membantu — sebut sebab aslinya).
+String ringkasErrorSinkron(Object e) {
+  if (e is PostgrestException) {
+    final kode = (e.code ?? '').trim();
+    final pesan = e.message.trim();
+    return kode.isEmpty ? pesan : '$pesan (kode $kode)';
+  }
+  final s = e.toString();
+  if (s.contains('SocketException') || s.contains('Failed host lookup') || s.contains('ClientException')) {
+    return 'tidak bisa menjangkau server Supabase — periksa koneksi internet & alamat URL proyek.';
+  }
+  if (s.contains('Invalid argument') || s.contains('FormatException')) {
+    return 'format URL proyek tidak sah — harus berbentuk https://xxxx.supabase.co.';
+  }
+  return s.length > 140 ? '${s.substring(0, 140)}…' : s;
+}
+
 class HasilSinkron {
   HasilSinkron({required this.menus, required this.ingredients, required this.branches, required this.transactions, required this.pengaturanServer, required this.ringkasan});
   final List<MenuItem> menus;
@@ -42,10 +61,16 @@ Future<HasilSinkron> sinkronkanSupabase({
   required List<Branch> branches,
   required List<TxRecord> transactions,
 }) async {
-  final kode = settings.businessKey;
+  final kode = settings.businessKey.trim();
+  // Jaring pengaman kedua (selain pembersihan saat disimpan):
+  // URL dibersihkan dari spasi & garis miring ujung, kunci dari spasi.
+  var url = settings.supabaseUrl.trim();
+  while (url.endsWith('/')) {
+    url = url.substring(0, url.length - 1);
+  }
   final client = SupabaseClient(
-    settings.supabaseUrl,
-    settings.supabaseAnonKey,
+    url,
+    settings.supabaseAnonKey.trim(),
     headers: {'x-business-key': kode},
   );
   final sekarang = DateTime.now().toUtc().toIso8601String();
