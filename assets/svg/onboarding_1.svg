@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180">
+  <rect x="10" y="10" width="220" height="160" rx="20" fill="#ECFDF5"/>
+  <rect x="55" y="118" width="130" height="10" rx="5" fill="#059669"/>
+  <rect x="70" y="128" width="100" height="8" rx="4" fill="#A7F3D0"/>
+  <!-- mesin kasir -->
+  <rect x="88" y="52" width="64" height="44" rx="8" fill="#059669"/>
+  <rect x="97" y="61" width="46" height="20" rx="4" fill="#ECFDF5"/>
+  <circle cx="106" cy="88" r="3" fill="#A7F3D0"/>
+  <circle cx="120" cy="88" r="3" fill="#A7F3D0"/>
+  <circle cx="134" cy="88" r="3" fill="#A7F3D0"/>
+  <rect x="82" y="96" width="76" height="22" rx="6" fill="#047857"/>
+  <!-- struk -->
+  <path d="M104 52 v-18 h32 v18 l-5 -5 -5 5 -6 -5 -5 5 -6 -5 z" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="2"/>
+  <rect x="110" y="40" width="20" height="3" rx="1.5" fill="#9CA3AF"/>
+  <rect x="110" y="46" width="14" height="3" rx="1.5" fill="#D1D5DB"/>
+  <!-- cangkir kopi -->
+  <path d="M168 92 h30 l-4 26 h-22 z" fill="#FFFFFF" stroke="#059669" stroke-width="3"/>
+  <path d="M198 98 q12 3 0 14" fill="none" stroke="#059669" stroke-width="3"/>
+  <path d="M176 78 q4 -6 0 -12 M188 78 q4 -6 0 -12" stroke="#A7F3D0" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- koin -->
+  <circle cx="48" cy="66" r="11" fill="#F59E0B"/>
+  <circle cx="196" cy="40" r="8" fill="#F59E0B" opacity="0.7"/>
+</svg>

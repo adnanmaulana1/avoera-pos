@@ -12,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // tambah menu → buka keranjang → ubah jumlah → hapus → bayar → dapur.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() => SharedPreferences.setMockInitialValues({'avoera.settings.v1': '{"onboarded":true}'}));
 
   // Muat font Roboto asli: font bawaan tes jauh lebih lebar daripada
   // Roboto, bikin dialog pembayaran terlihat meluber padahal di HP

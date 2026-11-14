@@ -28,12 +28,16 @@ const menuPalette = <Color>[
 /// Kelola Menu: tambah, ubah, hapus menu. Perubahan langsung tampil
 /// di kasir dan tersimpan permanen lewat callback ke HomeShell.
 class KelolaMenuScreen extends StatefulWidget {
-  const KelolaMenuScreen({super.key, required this.menus, required this.onAdd, required this.onChanged, required this.onDelete});
+  const KelolaMenuScreen({super.key, required this.menus, required this.onAdd, required this.onChanged, required this.onDelete, this.embedded = false});
 
   final List<MenuItem> menus;
   final ValueChanged<MenuItem> onAdd;
   final VoidCallback onChanged;
   final ValueChanged<MenuItem> onDelete;
+
+  /// true = dipakai sebagai isi layar Produk (tanpa Scaffold/AppBar
+  /// sendiri; judul disediakan layar induk).
+  final bool embedded;
 
   @override
   State<KelolaMenuScreen> createState() => _KelolaMenuScreenState();
@@ -42,9 +46,15 @@ class KelolaMenuScreen extends StatefulWidget {
 class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) return _body();
     return Scaffold(
       appBar: AppBar(title: const Text('Kelola Menu')),
-      body: Column(
+      body: _body(),
+    );
+  }
+
+  Widget _body() {
+    return Column(
         children: [
           Expanded(
             child: widget.menus.isEmpty
@@ -96,7 +106,6 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
             ),
           ),
         ],
-      ),
     );
   }
 

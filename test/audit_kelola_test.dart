@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:avoera_pos/main.dart';
 import 'package:avoera_pos/screens/pengaturan_screen.dart';
+import 'package:avoera_pos/screens/stok_screen.dart';
 import 'package:avoera_pos/widgets.dart';
 import 'package:avoera_pos/store.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // bukti permanen sesudah aplikasi "dimatikan" dan dibuka lagi.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() => SharedPreferences.setMockInitialValues({'avoera.settings.v1': '{"onboarded":true}'}));
 
   setUpAll(() async {
     const dir = '/home/hatch/tools/flutter/bin/cache/artifacts/material_fonts';
@@ -47,6 +48,21 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Baris Kelola kini lebih ke bawah (ada bagian Cabang & Keamanan)
+  /// — gulir daftar Pengaturan sampai barisnya terbangun, lalu ketuk.
+  Future<void> tapKelola(WidgetTester tester, String label) async {
+    await tester.scrollUntilVisible(
+      find.text(label),
+      120,
+      scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byType(Scrollable)),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text(label));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(label));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('Audit: ubah pajak di Pengaturan langsung berlaku di Kasir + tersimpan', (tester) async {
     await pumpWide(tester);
     await tester.tap(find.text('Kopi Tubruk'));
@@ -74,7 +90,7 @@ void main() {
   testWidgets('Audit: Kelola Meja — tambah, ubah kapasitas, hapus, semua permanen', (tester) async {
     await pumpWide(tester);
     await kePengaturan(tester);
-    await tester.tap(find.text('Kelola Meja'));
+    await tapKelola(tester, 'Kelola Meja');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Tambah Meja'));
@@ -121,11 +137,7 @@ void main() {
   testWidgets('Audit: Kelola Stok — tambah bahan tampil di Stok + permanen', (tester) async {
     await pumpWide(tester);
     await kePengaturan(tester);
-    // Bagian Fitur baru bikin daftar Pengaturan lebih panjang —
-    // baris Kelola Stok Bahan bisa di bawah lipatan, gulir dulu.
-    await tester.ensureVisible(find.text('Kelola Stok Bahan'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Kelola Stok Bahan'));
+    await tapKelola(tester, 'Kelola Stok Bahan');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tambah Bahan'));
     await tester.pumpAndSettle();
@@ -147,14 +159,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Stok Bahan').first);
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Es Batu Kristal'), 120, scrollable: find.byType(Scrollable).first);
+    // Scrollable dibatasi ke layar Stok — sidebar kini juga punya
+    // gulirannya sendiri, .first bisa salah sasaran.
+    await tester.scrollUntilVisible(find.text('Es Batu Kristal'), 120,
+        scrollable: find.descendant(of: find.byType(StokScreen), matching: find.byType(Scrollable)));
     expect(find.text('Es Batu Kristal'), findsOneWidget, reason: 'Bahan baru harus tampil di layar Stok');
   });
 
   testWidgets('Audit: Kelola Menu — ubah harga & hapus menu, permanen', (tester) async {
     await pumpWide(tester);
     await kePengaturan(tester);
-    await tester.tap(find.text('Kelola Menu'));
+    await tapKelola(tester, 'Kelola Menu');
     await tester.pumpAndSettle();
 
     Finder barisMenu(String nama) => find.ancestor(of: find.text(nama), matching: find.byType(AppCard));
@@ -196,7 +211,7 @@ void main() {
     await tester.tap(find.text('Info Aplikasi'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsOneWidget);
-    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.6.0')), findsOneWidget);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.7.0')), findsOneWidget);
     await tester.tap(find.text('Tutup'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsNothing, reason: 'Popup harus tertutup');
@@ -205,7 +220,7 @@ void main() {
   testWidgets('Audit: data CRUD tetap ada sesudah aplikasi dibuka ulang', (tester) async {
     await pumpWide(tester);
     await kePengaturan(tester);
-    await tester.tap(find.text('Kelola Menu'));
+    await tapKelola(tester, 'Kelola Menu');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tambah Menu'));
     await tester.pumpAndSettle();

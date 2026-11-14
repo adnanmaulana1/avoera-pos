@@ -8,7 +8,7 @@ import 'package:avoera_pos/main.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   // Penyimpanan lokal perlu contoh kosong supaya muat data tidak menggantung.
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() => SharedPreferences.setMockInitialValues({'avoera.settings.v1': '{"onboarded":true}'}));
 
   testWidgets('App kasir tampil dengan layar kasir', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1280, 900);

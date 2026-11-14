@@ -131,3 +131,22 @@ Teks tidak pernah lebih kecil dari 11.
 - Hampir semua permukaan DATAR (tanpa bayangan). Bayangan hanya boleh
   muncul dari bawaan Material pada sheet bawah dan dialog — tidak ada
   BoxShadow dekoratif di kartu, termasuk kartu terpilih (cukup tepi accent).
+
+## Keputusan v0.7.0 (fondasi produk asli)
+
+- **Navigasi:** 8 layar. Bar bawah HP = Beranda, Kasir, Produk,
+  Dapur, Lainnya — Produk masuk bar (permintaan Adnan, meniru
+  Bisakasir); Meja pindah ke drawer di HP (di tablet tetap di
+  sidebar penuh). Meja mati → hilang dari semua navigasi.
+- **Beranda** meniru pola Bisakasir dengan angka ASLI: grafik
+  "Penjualan 8 Hari Terakhir" (Mingguan) / 4 minggu (Bulanan),
+  Transaksi Terbaru (kosong → ajakan Buka Kasir), lonceng
+  pemberitahuan dengan lencana jumlah stok bermasalah.
+- **Onboarding:** 3 halaman SVG beranimasi (melayang halus) +
+  wizard cabang pertama. SVG TIDAK memakai elemen teks (rusak di
+  flutter_svg) — hanya bentuk.
+- **Laporan = hub jujur:** yang datanya ada bisa dibuka
+  (Transaksi, Bulanan, Pajak, Piutang); sisanya berchip 'Segera'
+  + keterangan data yang dibutuhkan. Angka contoh DIHAPUS.
+- Transaksi kini mencatat rincian subtotal/biaya/pajak + cabang —
+  fondasi Laporan Pajak, Laba Rugi, dan multi-cabang.

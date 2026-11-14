@@ -6,6 +6,11 @@ import 'store.dart';
 import 'theme.dart';
 import 'screens/beranda_screen.dart';
 import 'screens/kasir_screen.dart';
+import 'screens/produk_screen.dart';
+import 'screens/riwayat_screen.dart';
+import 'screens/notifikasi_screen.dart';
+import 'screens/laporan_detail_screens.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/meja_screen.dart';
 import 'screens/dapur_screen.dart';
 import 'screens/laporan_screen.dart';
@@ -57,10 +62,11 @@ class _NavItem {
 const _navItems = <_NavItem>[
   _NavItem('Beranda', Icons.home_outlined, Icons.home),
   _NavItem('Kasir', Icons.point_of_sale_outlined, Icons.point_of_sale),
+  _NavItem('Produk', Icons.inventory_2_outlined, Icons.inventory_2),
   _NavItem('Meja', Icons.table_restaurant_outlined, Icons.table_restaurant),
   _NavItem('Dapur', Icons.soup_kitchen_outlined, Icons.soup_kitchen),
   _NavItem('Laporan', Icons.bar_chart_outlined, Icons.bar_chart),
-  _NavItem('Stok Bahan', Icons.inventory_2_outlined, Icons.inventory_2),
+  _NavItem('Stok Bahan', Icons.inventory_outlined, Icons.inventory),
   _NavItem('Pengaturan', Icons.settings_outlined, Icons.settings),
 ];
 
@@ -187,6 +193,43 @@ class _HomeShellState extends State<HomeShell> {
         ),
       );
 
+  // ---------- Laporan & pemberitahuan ----------
+  void _openRiwayat() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => RiwayatScreen(transactions: _transactions, branchId: _settings.activeBranchId)),
+      );
+
+  void _openBulanan() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LaporanBulananScreen(transactions: _transactions, branchId: _settings.activeBranchId)),
+      );
+
+  void _openPajak() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LaporanPajakScreen(transactions: _transactions, branchId: _settings.activeBranchId)),
+      );
+
+  void _openPiutang() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LaporanPiutangScreen(tables: _tables)),
+      );
+
+  /// Pemberitahuan dari keadaan nyata: stok habis & kritis.
+  List<AppNotice> get _notices => [
+        for (final i in _ingredients)
+          if (i.status == StockStatus.habis)
+            AppNotice(title: 'Stok habis: ${i.name}', body: 'Sisa ${stockText(i.stock)} ${i.unit} — segera pesan lagi supaya menu tetap bisa dijual.', danger: true)
+          else if (i.status == StockStatus.kritis)
+            AppNotice(title: 'Stok kritis: ${i.name}', body: 'Sisa ${stockText(i.stock)} ${i.unit}, di bawah batas minimum ${stockText(i.minStock)} ${i.unit}. Siapkan pesanan pembelian.', danger: false),
+      ];
+
+  void _openNotices() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => NotifikasiScreen(notices: _notices)),
+      );
+
+  void _switchBranch(Branch b) => _settingChanged(() => _settings.activeBranchId = b.id);
+
+  void _finishOnboarding(AppSettings s) {
+    setState(() => _settings = s);
+    LocalStore.saveSettings(_settings);
+  }
+
   // ---------- Cart actions ----------
   void _addToCart(MenuItem menu, String variant, int unitPrice, String note) {
     setState(() {
@@ -214,7 +257,9 @@ class _HomeShellState extends State<HomeShell> {
     // Total dihitung SEBELUM keranjang dikosongkan, untuk catatan
     // tagihan berjalan di kartu meja.
     final subtotal = _cart.fold(0, (a, c) => a + c.total);
-    final grandTotal = subtotal + (subtotal * _settings.servicePercent / 100).round() + (subtotal * _settings.taxPercent / 100).round();
+    final serviceAmt = (subtotal * _settings.servicePercent / 100).round();
+    final taxAmt = (subtotal * _settings.taxPercent / 100).round();
+    final grandTotal = subtotal + serviceAmt + taxAmt;
     final orderId = 'A-${_orderCounter++}';
     final itemCount = _cart.fold(0, (a, c) => a + c.qty);
     setState(() {
@@ -242,8 +287,19 @@ class _HomeShellState extends State<HomeShell> {
         _selectedTable!.openAmount += grandTotal;
         _selectedTable!.since ??= _nowHHmm();
       }
-      // Catat transaksi ASLI untuk Beranda (penjualan hari ini dkk).
-      _transactions.add(TxRecord(id: orderId, total: grandTotal, method: paymentMethod, at: DateTime.now(), items: itemCount));
+      // Catat transaksi ASLI untuk Beranda & laporan (penjualan
+      // hari ini, pajak terkumpul, per cabang).
+      _transactions.add(TxRecord(
+        id: orderId,
+        total: grandTotal,
+        method: paymentMethod,
+        at: DateTime.now(),
+        items: itemCount,
+        subtotal: subtotal,
+        service: serviceAmt,
+        tax: taxAmt,
+        branchId: _settings.activeBranchId,
+      ));
       _cart.clear();
     });
     LocalStore.saveTables(_tables);
@@ -276,19 +332,28 @@ class _HomeShellState extends State<HomeShell> {
     if (!_ready) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+    // Pemasangan pertama: onboarding + wizard cabang pertama dulu.
+    if (!_settings.onboarded) {
+      return OnboardingFlow(initial: _settings, onDone: _finishOnboarding);
+    }
     final screens = <Widget>[
       BerandaScreen(
         businessName: _settings.businessName,
+        branch: _settings.activeBranch,
+        branches: _settings.branches,
         transactions: _transactions,
         kitchenActive: _kitchen.length,
         tablesEnabled: _settings.tablesEnabled,
         tablesOccupied: _tables.where((t) => t.status != TableStatus.kosong).length,
         tablesTotal: _tables.length,
+        noticeCount: _notices.length,
         onOpenKasir: () => setState(() => _index = 1),
         onNavigate: (i) => setState(() => _index = i),
-        onManageMenus: _openKelolaMenu,
         onManageTables: _openKelolaMeja,
         onManageIngredients: _openKelolaStok,
+        onSwitchBranch: _switchBranch,
+        onOpenNotices: _openNotices,
+        onOpenRiwayat: _openRiwayat,
       ),
       KasirScreen(
         cart: _cart,
@@ -306,6 +371,7 @@ class _HomeShellState extends State<HomeShell> {
         onRemove: _remove,
         onCheckout: _checkout,
       ),
+      ProdukScreen(menus: _menus, onAdd: _addMenu, onChanged: _menuChanged, onDelete: _deleteMenu),
       MejaScreen(
         tables: _tables,
         selectedTable: _selectedTable,
@@ -314,7 +380,15 @@ class _HomeShellState extends State<HomeShell> {
         onGoKasir: () => setState(() => _index = 1),
       ),
       DapurScreen(orders: _kitchen, onAdvance: _advanceKitchen),
-      LaporanScreen(ingredients: _ingredients),
+      LaporanScreen(
+        transactions: _transactions,
+        branchId: _settings.activeBranchId,
+        tables: _tables,
+        onOpenRiwayat: _openRiwayat,
+        onOpenBulanan: _openBulanan,
+        onOpenPajak: _openPajak,
+        onOpenPiutang: _openPiutang,
+      ),
       StokScreen(ingredients: _ingredients),
       PengaturanScreen(
         businessName: _settings.businessName,
@@ -337,24 +411,36 @@ class _HomeShellState extends State<HomeShell> {
             // Meja mati: lepas meja terpilih & jangan tinggal di
             // layar Meja yang sudah tidak ada di navigasi.
             _selectedTable = null;
-            if (_index == 2) _index = 0;
+            if (_index == 3) _index = 0;
           }
         }),
         onManageMenus: _openKelolaMenu,
         onManageTables: _openKelolaMeja,
         onManageIngredients: _openKelolaStok,
+        branches: _settings.branches,
+        activeBranchId: _settings.activeBranchId,
+        pinSet: _settings.pinHash.isNotEmpty,
+        onSwitchBranch: _switchBranch,
+        onAddBranch: (name) => _settingChanged(() {
+          final id = 'c${DateTime.now().millisecondsSinceEpoch}';
+          _settings.branches = [..._settings.branches, Branch(id: id, name: name)];
+        }),
+        onPinHashChanged: (hash) => _settingChanged(() => _settings.pinHash = hash),
       ),
     ];
 
-    // Indeks layar yang tampil di navigasi. Meja (indeks 2) hilang
+    // Indeks layar yang tampil di navigasi. Meja (indeks 3) hilang
     // dari SEMUA navigasi saat fiturnya dimatikan di Pengaturan.
     final visible = <int>[
       for (var i = 0; i < _navItems.length; i++)
-        if (i != 2 || _settings.tablesEnabled) i,
+        if (i != 3 || _settings.tablesEnabled) i,
     ];
-    // HP: 4 menu pertama di bar bawah, sisanya di sidebar geser.
-    final mainNav = visible.take(4).toList();
-    final drawerNav = visible.skip(4).toList();
+    // Bar bawah HP (urutan pilihan): Beranda, Kasir, Produk, Dapur —
+    // Produk masuk bar atas permintaan Adnan (meniru Bisakasir);
+    // Meja & sisanya di sidebar geser 'Lainnya'. Tablet: semua tampil.
+    const barOrder = [0, 1, 2, 4];
+    final mainNav = <int>[for (final i in barOrder) if (visible.contains(i)) i];
+    final drawerNav = <int>[for (final i in visible) if (!mainNav.contains(i)) i];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -411,7 +497,7 @@ class _HomeShellState extends State<HomeShell> {
                 for (final i in mainNav)
                   NavigationDestination(
                     icon: Badge(
-                      isLabelVisible: i == 3 && _kitchen.where((o) => o.status == KitchenStatus.baru).isNotEmpty,
+                      isLabelVisible: i == 4 && _kitchen.where((o) => o.status == KitchenStatus.baru).isNotEmpty,
                       label: Text('${_kitchen.where((o) => o.status == KitchenStatus.baru).length}'),
                       child: Icon(_navItems[i].icon),
                     ),
@@ -577,37 +663,46 @@ class _SideBar extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          for (final i in items)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-              child: Material(
-                color: index == i ? AppColors.accentSoft : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                child: ListTile(
-                  dense: true,
-                  minTileHeight: 44,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
-                  leading: Icon(
-                    index == i ? _navItems[i].selectedIcon : _navItems[i].icon,
-                    color: index == i ? AppColors.accentDark : AppColors.muted,
-                    size: 24,
-                  ),
-                  title: Text(
-                    _navItems[i].label,
-                    style: AppText.body.copyWith(
-                      fontWeight: index == i ? FontWeight.w700 : FontWeight.w500,
-                      color: index == i ? AppColors.accentDark : AppColors.ink,
+          // Daftar menu bisa digulir — 8 menu di layar pendek tidak
+          // boleh meluber (tes tablet 800px menangkap luber 5px).
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  for (final i in items)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                      child: Material(
+                        color: index == i ? AppColors.accentSoft : Colors.transparent,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        child: ListTile(
+                          dense: true,
+                          minTileHeight: 44,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+                          leading: Icon(
+                            index == i ? _navItems[i].selectedIcon : _navItems[i].icon,
+                            color: index == i ? AppColors.accentDark : AppColors.muted,
+                            size: 24,
+                          ),
+                          title: Text(
+                            _navItems[i].label,
+                            style: AppText.body.copyWith(
+                              fontWeight: index == i ? FontWeight.w700 : FontWeight.w500,
+                              color: index == i ? AppColors.accentDark : AppColors.ink,
+                            ),
+                          ),
+                          trailing: (i == 4 && kitchenCount > 0) ? StatusChip(label: '$kitchenCount baru', color: AppColors.danger) : null,
+                          onTap: () => onChanged(i),
+                        ),
+                      ),
                     ),
-                  ),
-                  trailing: (i == 3 && kitchenCount > 0) ? StatusChip(label: '$kitchenCount baru', color: AppColors.danger) : null,
-                  onTap: () => onChanged(i),
-                ),
+                ],
               ),
             ),
-          const Spacer(),
+          ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Text('Data tersimpan di perangkat ini.\nLaporan masih contoh.\n\n$appName v$appVersion · by $appStudio', style: AppText.caption.copyWith(color: AppColors.muted)),
+            child: Text('Data tersimpan di perangkat ini.\n\n$appName v$appVersion · by $appStudio', style: AppText.caption.copyWith(color: AppColors.muted)),
           ),
         ],
       ),

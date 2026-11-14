@@ -4,40 +4,54 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-/// Beranda: layar pembuka ala referensi yang dikirim Adnan
-/// (screenshot Bisakasir, 2026-11-14) tapi dengan bahasa desain
-/// Avoera sendiri — bersih, satu aksen emerald, tanpa gradasi.
-///
-/// Semua angka di sini ASLI: penjualan dihitung dari transaksi yang
-/// tercatat permanen tiap checkout (bukan angka contoh). Hari
-/// pertama memasang, angkanya memang Rp0 — sama seperti referensi.
-class BerandaScreen extends StatelessWidget {
+/// Beranda: layar pembuka ala referensi Bisakasir (permintaan Adnan
+/// 2026-11-14), diisi ANGKA ASLI dari transaksi yang tercatat.
+/// v0.7.0: + grafik penjualan (Mingguan/Bulanan), Transaksi Terbaru,
+/// pemilih cabang, dan lonceng pemberitahuan.
+class BerandaScreen extends StatefulWidget {
   const BerandaScreen({
     super.key,
     required this.businessName,
+    required this.branch,
+    required this.branches,
     required this.transactions,
     required this.kitchenActive,
     required this.tablesEnabled,
     required this.tablesOccupied,
     required this.tablesTotal,
+    required this.noticeCount,
     required this.onOpenKasir,
     required this.onNavigate,
-    required this.onManageMenus,
     required this.onManageTables,
     required this.onManageIngredients,
+    required this.onSwitchBranch,
+    required this.onOpenNotices,
+    required this.onOpenRiwayat,
   });
 
   final String businessName;
+  final Branch branch;
+  final List<Branch> branches;
   final List<TxRecord> transactions;
   final int kitchenActive;
   final bool tablesEnabled;
   final int tablesOccupied;
   final int tablesTotal;
+  final int noticeCount;
   final VoidCallback onOpenKasir;
   final ValueChanged<int> onNavigate;
-  final VoidCallback onManageMenus;
   final VoidCallback onManageTables;
   final VoidCallback onManageIngredients;
+  final ValueChanged<Branch> onSwitchBranch;
+  final VoidCallback onOpenNotices;
+  final VoidCallback onOpenRiwayat;
+
+  @override
+  State<BerandaScreen> createState() => _BerandaScreenState();
+}
+
+class _BerandaScreenState extends State<BerandaScreen> {
+  bool _bulanan = false;
 
   String _sapaan(DateTime now) {
     final h = now.hour;
@@ -48,63 +62,113 @@ class BerandaScreen extends StatelessWidget {
   }
 
   static const _hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+  static const _hariSingkat = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
   static const _bulan = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
   ];
 
   String _tanggal(DateTime d) => '${_hari[d.weekday - 1]}, ${d.day} ${_bulan[d.month - 1]} ${d.year}';
-
   bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+
+  /// Transaksi cabang aktif (transaksi lama tanpa cabang dianggap
+  /// milik cabang yang sedang aktif).
+  List<TxRecord> get _tx => widget.transactions.where((t) => t.branchId.isEmpty || t.branchId == widget.branch.id).toList();
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final todayTx = transactions.where((t) => _sameDay(t.at, now)).toList();
+    final tx = _tx;
+    final todayTx = tx.where((t) => _sameDay(t.at, now)).toList();
     final yesterday = now.subtract(const Duration(days: 1));
-    final yesterdayTotal = transactions.where((t) => _sameDay(t.at, yesterday)).fold(0, (a, t) => a + t.total);
+    final yesterdayTotal = tx.where((t) => _sameDay(t.at, yesterday)).fold(0, (a, t) => a + t.total);
     final totalToday = todayTx.fold(0, (a, t) => a + t.total);
     final countToday = todayTx.length;
-    final avgToday = countToday == 0 ? 0 : totalToday ~/ countToday;
-    final double? pct = yesterdayTotal > 0 ? (totalToday - yesterdayTotal) / yesterdayTotal * 100 : null;
+    final avgToday = countToday == 0 ? 0 : (totalToday / countToday).round();
     final jam = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    int? pct;
+    if (yesterdayTotal > 0 && totalToday > 0) {
+      pct = ((totalToday - yesterdayTotal) / yesterdayTotal * 100).round();
+    }
+    final latest = [...tx]..sort((a, b) => b.at.compareTo(a.at));
 
-    final tiles = <(String, IconData, VoidCallback)>[
-      // Tile Meja & Kelola Meja ikut hilang saat fitur meja mati.
-      if (tablesEnabled) ('Meja', Icons.table_restaurant_outlined, () => onNavigate(2)),
-      ('Dapur', Icons.soup_kitchen_outlined, () => onNavigate(3)),
-      ('Laporan', Icons.bar_chart_outlined, () => onNavigate(4)),
-      ('Stok Bahan', Icons.inventory_2_outlined, () => onNavigate(5)),
-      ('Pengaturan', Icons.settings_outlined, () => onNavigate(6)),
-      ('Atur Menu', Icons.restaurant_menu_outlined, onManageMenus),
-      if (tablesEnabled) ('Atur Meja', Icons.table_bar_outlined, onManageTables),
-      ('Atur Stok', Icons.inventory_outlined, onManageIngredients),
+    final tiles = <(IconData, String, VoidCallback)>[
+      if (widget.tablesEnabled) (Icons.table_restaurant_outlined, 'Meja', () => widget.onNavigate(3)),
+      (Icons.soup_kitchen_outlined, 'Dapur', () => widget.onNavigate(4)),
+      (Icons.inventory_2_outlined, 'Produk', () => widget.onNavigate(2)),
+      (Icons.bar_chart_outlined, 'Laporan', () => widget.onNavigate(5)),
+      (Icons.inventory_outlined, 'Stok Bahan', () => widget.onNavigate(6)),
+      (Icons.settings_outlined, 'Pengaturan', () => widget.onNavigate(7)),
+      if (widget.tablesEnabled) (Icons.table_bar_outlined, 'Atur Meja', widget.onManageTables),
+      (Icons.fact_check_outlined, 'Atur Stok', widget.onManageIngredients),
     ];
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.lg),
       children: [
-        Text(_sapaan(now), style: AppText.pageTitle),
-        const SizedBox(height: AppSpacing.xs),
-        Text(_tanggal(now), style: AppText.small.copyWith(color: AppColors.muted)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_sapaan(now), style: AppText.pageTitle),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(_tanggal(now), style: AppText.small.copyWith(color: AppColors.muted)),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Pemberitahuan',
+              onPressed: widget.onOpenNotices,
+              icon: Badge(
+                isLabelVisible: widget.noticeCount > 0,
+                label: Text('${widget.noticeCount}'),
+                backgroundColor: AppColors.danger,
+                child: const Icon(Icons.notifications_outlined),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: AppSpacing.md),
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-              decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(999)),
-              child: Text(businessName, style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
-            ),
+            // Chip cabang: ketuk untuk pindah cabang (bila > 1).
+            if (widget.branches.length > 1)
+              PopupMenuButton<Branch>(
+                onSelected: widget.onSwitchBranch,
+                itemBuilder: (_) => widget.branches
+                    .map((b) => PopupMenuItem<Branch>(value: b, child: Text(b.id == widget.branch.id ? '${b.name} ✓' : b.name)))
+                    .toList(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                  decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(widget.branch.name, style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+                      const Icon(Icons.expand_more, size: 16, color: AppColors.accentDark),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                child: Text(widget.branch.name, style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+              ),
             const SizedBox(width: AppSpacing.md),
             Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
-            const SizedBox(width: AppSpacing.xs),
+            const SizedBox(width: AppSpacing.sm),
             Text('Aktif', style: AppText.small.copyWith(color: AppColors.muted)),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
         // Kartu penjualan: emerald pekat satu warna (bukan gradasi),
         // satu-satunya elemen berbayangan di aplikasi + tekstur dua
-        // lingkaran sewarna — momen terpenting pemilik usaha.
+        // lingkaran sewarna.
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -149,27 +213,23 @@ class BerandaScreen extends StatelessWidget {
                       const SizedBox(height: AppSpacing.sm),
                       Text(rupiah(totalToday), style: AppText.display.copyWith(color: Colors.white)),
                       const SizedBox(height: AppSpacing.md),
-              if (pct != null)
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(AppRadius.sm)),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(pct >= 0 ? Icons.trending_up : Icons.trending_down, size: 14, color: Colors.white),
-                          const SizedBox(width: AppSpacing.xs),
-                          Text('${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1).replaceAll('.', ',')}%', style: AppText.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text('dibanding kemarin', style: AppText.small.copyWith(color: Colors.white70)),
-                  ],
-                )
-              else
-                Text('Penjualan tercatat otomatis setiap ada pembayaran di kasir.', style: AppText.small.copyWith(color: Colors.white70)),
+                      if (pct != null)
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(AppRadius.pill)),
+                              child: Text(
+                                pct >= 0 ? '+$pct%' : '$pct%',
+                                style: AppText.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text('dibanding kemarin', style: AppText.small.copyWith(color: Colors.white70)),
+                          ],
+                        )
+                      else
+                        Text('Penjualan tercatat otomatis setiap ada pembayaran di kasir.', style: AppText.small.copyWith(color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -184,82 +244,146 @@ class BerandaScreen extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
             Expanded(child: _StatCard(label: 'Rata-rata', value: rupiah(avgToday))),
             const SizedBox(width: AppSpacing.md),
-            Expanded(child: _StatCard(label: 'Di Dapur', value: '$kitchenActive')),
+            Expanded(child: _StatCard(label: 'Di Dapur', value: '${widget.kitchenActive}')),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
+        _ChartCard(tx: tx, bulanan: _bulanan, onToggle: (b) => setState(() => _bulanan = b), hariSingkat: _hariSingkat),
+        const SizedBox(height: AppSpacing.lg),
         AppCard(
-          margin: EdgeInsets.zero,
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                child: const Icon(Icons.point_of_sale, color: AppColors.accentDark),
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
+                child: const Icon(Icons.point_of_sale_outlined, color: AppColors.accentDark),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Kasir', style: AppText.body.copyWith(fontWeight: FontWeight.w700)),
+                    Text('Kasir', style: AppText.subtitle),
                     Text(
-                        tablesEnabled
-                            ? '$tablesOccupied dari $tablesTotal meja terisi · $kitchenActive pesanan di dapur'
-                            : '$kitchenActive pesanan di dapur',
-                        style: AppText.small.copyWith(color: AppColors.muted)),
+                      widget.tablesEnabled
+                          ? '${widget.tablesOccupied} dari ${widget.tablesTotal} meja terisi · ${widget.kitchenActive} pesanan di dapur'
+                          : '${widget.kitchenActive} pesanan di dapur',
+                      style: AppText.small.copyWith(color: AppColors.muted),
+                    ),
                   ],
                 ),
               ),
-              FilledButton(onPressed: onOpenKasir, child: const Text('Buka Kasir')),
+              FilledButton(onPressed: widget.onOpenKasir, child: const Text('Buka Kasir')),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        // Transaksi Terbaru (pola referensi): kosong → ajakan buka
+        // kasir; ada isi → 5 transaksi terakhir + Lihat Semua.
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('Transaksi Terbaru', style: AppText.subtitle),
+                  const Spacer(),
+                  TextButton(onPressed: widget.onOpenRiwayat, child: const Text('Lihat Semua')),
+                ],
+              ),
+              if (latest.isEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
+                        child: const Icon(Icons.receipt_long_outlined, color: AppColors.accentDark, size: 28),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text('Belum ada transaksi', style: AppText.subtitle),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text('Transaksi dari kasir akan muncul di sini.', style: AppText.small.copyWith(color: AppColors.muted)),
+                      const SizedBox(height: AppSpacing.md),
+                      FilledButton(onPressed: widget.onOpenKasir, child: const Text('Buka Kasir')),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ] else
+                for (final t in latest.take(5))
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.md),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                          child: Icon(t.method == 'QRIS' ? Icons.qr_code_2_outlined : Icons.payments_outlined, color: AppColors.accentDark, size: 20),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${t.id} · ${t.method}', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                              Text(
+                                '${t.at.hour.toString().padLeft(2, '0')}:${t.at.minute.toString().padLeft(2, '0')} · ${t.items} item',
+                                style: AppText.caption.copyWith(color: AppColors.muted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(rupiah(t.total), style: AppText.body.copyWith(fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                  ),
             ],
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
-        Text('Menu cepat', style: AppText.subtitle.copyWith(fontWeight: FontWeight.w800)),
+        Text('Menu cepat', style: AppText.title),
         const SizedBox(height: AppSpacing.md),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final cols = constraints.maxWidth >= 900 ? 8 : 4;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                crossAxisSpacing: AppSpacing.md,
-                mainAxisSpacing: AppSpacing.md,
-                mainAxisExtent: 96,
-              ),
-              itemCount: tiles.length,
-              itemBuilder: (_, i) {
-                final (label, icon, onTap) = tiles[i];
-                return Material(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: onTap,
-                    child: Container(
-                      decoration: cardDecoration(),
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                            child: Icon(icon, color: AppColors.accentDark, size: 22),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(fontWeight: FontWeight.w600)),
-                        ],
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: AppSpacing.md,
+            mainAxisSpacing: AppSpacing.md,
+            mainAxisExtent: 104,
+          ),
+          itemCount: tiles.length,
+          itemBuilder: (_, i) {
+            final (icon, label, action) = tiles[i];
+            return Material(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                onTap: action,
+                child: Container(
+                  decoration: cardDecoration(),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.xs),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
+                        child: Icon(icon, color: AppColors.accentDark, size: 22),
                       ),
-                    ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.small.copyWith(fontWeight: FontWeight.w600)),
+                    ],
                   ),
-                );
-              },
+                ),
+              ),
             );
           },
         ),
@@ -276,13 +400,128 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
           const SizedBox(height: AppSpacing.xs),
           Text(value, style: AppText.number),
+        ],
+      ),
+    );
+  }
+}
+
+/// Grafik batang penjualan: Mingguan = 8 hari terakhir (per hari),
+/// Bulanan = 4 minggu terakhir (per minggu). Angka ASLI dari
+/// transaksi tercatat; hari ini / minggu ini disorot aksen.
+class _ChartCard extends StatelessWidget {
+  const _ChartCard({required this.tx, required this.bulanan, required this.onToggle, required this.hariSingkat});
+  final List<TxRecord> tx;
+  final bool bulanan;
+  final ValueChanged<bool> onToggle;
+  final List<String> hariSingkat;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final values = <int>[];
+    final labels = <String>[];
+    if (!bulanan) {
+      for (var i = 7; i >= 0; i--) {
+        final d = today.subtract(Duration(days: i));
+        values.add(tx.where((t) => t.at.year == d.year && t.at.month == d.month && t.at.day == d.day).fold(0, (a, t) => a + t.total));
+        labels.add(hariSingkat[d.weekday - 1]);
+      }
+    } else {
+      for (var w = 3; w >= 0; w--) {
+        final start = today.subtract(Duration(days: w * 7 + 6));
+        final end = today.subtract(Duration(days: w * 7));
+        values.add(tx.where((t) {
+          final d = DateTime(t.at.year, t.at.month, t.at.day);
+          return !d.isBefore(start) && !d.isAfter(end);
+        }).fold(0, (a, t) => a + t.total));
+        labels.add('Mg ${4 - w}');
+      }
+    }
+    final maxV = values.fold(0, (a, b) => b > a ? b : a);
+    final scaleMax = maxV == 0 ? 100000 : maxV;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(bulanan ? 'Penjualan 4 Minggu Terakhir' : 'Penjualan 8 Hari Terakhir', style: AppText.subtitle),
+              ),
+              AppChip(label: 'Mingguan', selected: !bulanan, onSelected: (_) => onToggle(false)),
+              const SizedBox(width: AppSpacing.sm),
+              AppChip(label: 'Bulanan', selected: bulanan, onSelected: (_) => onToggle(true)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            height: 150,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Sumbu nilai: 4 tingkat.
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var f = 4; f >= 0; f--)
+                      Text(ringkas((scaleMax * f / 4).round()), style: AppText.caption.copyWith(color: AppColors.muted)),
+                  ],
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      for (var i = 0; i < values.length; i++)
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(ringkas(values[i]), style: AppText.caption.copyWith(color: AppColors.muted)),
+                                const SizedBox(height: AppSpacing.xs),
+                                Container(
+                                  height: values[i] == 0 ? 3 : 8 + 92 * values[i] / scaleMax,
+                                  decoration: BoxDecoration(
+                                    color: i == values.length - 1 ? AppColors.chartBarActive : AppColors.chartBar,
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xs)),
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  labels[i],
+                                  style: AppText.caption.copyWith(
+                                    color: i == values.length - 1 ? AppColors.accentDark : AppColors.muted,
+                                    fontWeight: i == values.length - 1 ? FontWeight.w700 : FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (maxV == 0)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
+              child: Text('Belum ada penjualan pada periode ini.', style: AppText.caption.copyWith(color: AppColors.muted)),
+            ),
         ],
       ),
     );

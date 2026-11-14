@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.6.0';
+const appVersion = '0.7.0';
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -15,7 +15,11 @@ class AppSettings {
     this.servicePercent = 5,
     this.taxPercent = 10,
     this.tablesEnabled = true,
-  });
+    List<Branch>? branches,
+    this.activeBranchId = 'c1',
+    this.pinHash = '',
+    this.onboarded = false,
+  }) : branches = branches ?? [Branch(id: 'c1', name: 'Cabang Utama')];
   String businessName;
   String businessAddress;
   String businessPhone;
@@ -27,6 +31,16 @@ class AppSettings {
   /// navigasi dan kasir tidak lagi menawarkan pilihan meja.
   bool tablesEnabled;
 
+  /// Multi-cabang + wizard pertama (2026-11-14): daftar cabang,
+  /// cabang yang sedang aktif, hash PIN kasir (bukan PIN mentah),
+  /// dan penanda wizard pembuka sudah selesai.
+  List<Branch> branches;
+  String activeBranchId;
+  String pinHash;
+  bool onboarded;
+
+  Branch get activeBranch => branches.firstWhere((b) => b.id == activeBranchId, orElse: () => branches.first);
+
   Map<String, dynamic> toJson() => {
         'businessName': businessName,
         'businessAddress': businessAddress,
@@ -34,6 +48,10 @@ class AppSettings {
         'servicePercent': servicePercent,
         'taxPercent': taxPercent,
         'tablesEnabled': tablesEnabled,
+        'branches': branches.map((b) => b.toJson()).toList(),
+        'activeBranchId': activeBranchId,
+        'pinHash': pinHash,
+        'onboarded': onboarded,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -44,6 +62,10 @@ class AppSettings {
         taxPercent: (j['taxPercent'] as num?)?.toInt() ?? 10,
         // Data lama belum punya kunci ini → meja tetap aktif.
         tablesEnabled: j['tablesEnabled'] as bool? ?? true,
+        branches: (j['branches'] as List?)?.map((e) => Branch.fromJson(e as Map<String, dynamic>)).toList(),
+        activeBranchId: j['activeBranchId'] as String? ?? 'c1',
+        pinHash: j['pinHash'] as String? ?? '',
+        onboarded: j['onboarded'] as bool? ?? false,
       );
 }
 
@@ -55,6 +77,18 @@ String rupiah(int value) {
     buf.write(s[i]);
   }
   return buf.toString();
+}
+
+/// Format ringkas untuk sumbu grafik: 1500000 → '1,5 jt',
+/// 250000 → '250 rb', 0 → '0'. (Gaya Bisakasir di referensi Adnan.)
+String ringkas(int v) {
+  if (v >= 1000000) {
+    final jt = v / 1000000;
+    final t = jt == jt.roundToDouble() ? '${jt.round()}' : jt.toStringAsFixed(1).replaceAll('.', ',');
+    return '$t jt';
+  }
+  if (v >= 1000) return '${(v / 1000).round()} rb';
+  return '$v';
 }
 
 // ---------- Menu ----------
@@ -347,50 +381,36 @@ List<Ingredient> seedIngredients() => <Ingredient>[
   Ingredient(name: 'Gelas Cup 12oz', stock: 68, unit: 'pcs', minStock: 100, maxStock: 500),
 ];
 
-// ---------- Laporan (contoh) ----------
-class DaySales {
-  const DaySales(this.day, this.amount);
-  final String day;
-  final int amount;
-}
-
-const weeklySales = <DaySales>[
-  DaySales('Sen', 1850000),
-  DaySales('Sel', 2100000),
-  DaySales('Rab', 1975000),
-  DaySales('Kam', 2650000),
-  DaySales('Jum', 3420000),
-  DaySales('Sab', 4180000),
-  DaySales('Min', 3890000),
-];
-
-class TopMenu {
-  const TopMenu(this.name, this.sold, this.revenue);
-  final String name;
-  final int sold;
-  final int revenue;
-}
-
-const topMenus = <TopMenu>[
-  TopMenu('Kopi Susu Gula Aren', 86, 1548000),
-  TopMenu('Nasi Ayam Geprek', 54, 1350000),
-  TopMenu('Caffe Latte', 47, 1034000),
-  TopMenu('Matcha Latte', 39, 858000),
-  TopMenu('Kentang Goreng', 36, 540000),
-];
-
 // ---------- Transaksi ----------
 
 /// Satu pembayaran yang selesai di kasir. Dicatat permanen supaya
-/// Beranda menampilkan penjualan ASLI hasil jualan — bukan angka
-/// contoh. (Laporan masih contoh karena butuh rentang tanggal dsb.)
+/// Beranda & Laporan menampilkan penjualan ASLI hasil jualan —
+/// bukan angka contoh.
 class TxRecord {
-  TxRecord({required this.id, required this.total, required this.method, required this.at, required this.items});
+  TxRecord({
+    required this.id,
+    required this.total,
+    required this.method,
+    required this.at,
+    required this.items,
+    this.subtotal = 0,
+    this.service = 0,
+    this.tax = 0,
+    this.branchId = '',
+  });
   final String id;
   final int total;
   final String method; // 'Tunai' | 'QRIS'
   final DateTime at;
   final int items; // jumlah barang pada transaksi ini
+
+  /// Rincian uang (untuk Laporan Pajak & Laba Rugi kelak) + cabang
+  /// asal transaksi (multi-cabang). Transaksi lama (v0.5–v0.6) belum
+  /// punya rincian ini → fromJson memberi nilai aman.
+  final int subtotal;
+  final int service;
+  final int tax;
+  final String branchId;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -398,6 +418,10 @@ class TxRecord {
         'method': method,
         'at': at.toIso8601String(),
         'items': items,
+        'subtotal': subtotal,
+        'service': service,
+        'tax': tax,
+        'branchId': branchId,
       };
 
   factory TxRecord.fromJson(Map<String, dynamic> j) => TxRecord(
@@ -406,5 +430,22 @@ class TxRecord {
         method: j['method'] as String? ?? 'Tunai',
         at: DateTime.tryParse(j['at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
         items: (j['items'] as num?)?.toInt() ?? 0,
+        subtotal: (j['subtotal'] as num?)?.toInt() ?? (j['total'] as num).toInt(),
+        service: (j['service'] as num?)?.toInt() ?? 0,
+        tax: (j['tax'] as num?)?.toInt() ?? 0,
+        branchId: j['branchId'] as String? ?? '',
       );
+}
+
+// ---------- Cabang ----------
+
+/// Satu cabang usaha. Multi-cabang: menu/stok masih bersama
+/// (menu pusat), transaksi tercatat per cabang.
+class Branch {
+  Branch({required this.id, required this.name});
+  final String id;
+  String name;
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+  factory Branch.fromJson(Map<String, dynamic> j) => Branch(id: j['id'] as String, name: j['name'] as String? ?? 'Cabang');
 }

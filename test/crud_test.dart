@@ -1,5 +1,6 @@
 import 'package:avoera_pos/main.dart';
 import 'package:avoera_pos/screens/kelola_menu_screen.dart';
+import 'package:avoera_pos/screens/pengaturan_screen.dart';
 import 'package:avoera_pos/store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // (3) tampil di grid kasir dan bisa dijual.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() => SharedPreferences.setMockInitialValues({'avoera.settings.v1': '{"onboarded":true}'}));
 
   testWidgets('Tambah menu → tersimpan → tampil di kasir', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
@@ -21,6 +22,12 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Pengaturan').last);
+    await tester.pumpAndSettle();
+    // Daftar Pengaturan makin panjang — gulir ke baris Kelola Menu.
+    await tester.scrollUntilVisible(find.text('Kelola Menu'), 120,
+        scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byType(Scrollable)));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Kelola Menu'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Kelola Menu'));
     await tester.pumpAndSettle();

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'onboarding_screen.dart' show hashPin;
 
 /// Layar Pengaturan: profil usaha, biaya transaksi (langsung berlaku
 /// di kasir), dan Tentang aplikasi. Semua nilai tinggal di HomeShell —
@@ -29,6 +30,12 @@ class PengaturanScreen extends StatelessWidget {
     required this.onManageMenus,
     required this.onManageTables,
     required this.onManageIngredients,
+    required this.branches,
+    required this.activeBranchId,
+    required this.pinSet,
+    required this.onSwitchBranch,
+    required this.onAddBranch,
+    required this.onPinHashChanged,
   });
 
   final String businessName;
@@ -53,6 +60,14 @@ class PengaturanScreen extends StatelessWidget {
   final VoidCallback onManageMenus;
   final VoidCallback onManageTables;
   final VoidCallback onManageIngredients;
+
+  /// Multi-cabang & PIN kasir (v0.7.0).
+  final List<Branch> branches;
+  final String activeBranchId;
+  final bool pinSet;
+  final ValueChanged<Branch> onSwitchBranch;
+  final ValueChanged<String> onAddBranch;
+  final ValueChanged<String> onPinHashChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +122,46 @@ class PengaturanScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        const SectionTitle('Cabang'),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+            children: [
+              for (final b in branches)
+                ListTile(
+                  leading: const Icon(Icons.storefront_outlined, color: AppColors.accentDark),
+                  title: Text(b.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                  subtitle: Text(b.id == activeBranchId ? 'Cabang aktif — penjualan tercatat di sini' : 'Ketuk untuk pindah ke cabang ini', style: AppText.small.copyWith(color: AppColors.muted)),
+                  trailing: b.id == activeBranchId ? const StatusChip(label: 'Aktif', color: AppColors.accent) : null,
+                  onTap: b.id == activeBranchId ? null : () => onSwitchBranch(b),
+                ),
+              const Divider(height: 1),
+              _SettingRow(
+                icon: Icons.add_business_outlined,
+                label: 'Tambah Cabang',
+                value: 'Baru',
+                onTap: () => _editText(context, title: 'Tambah Cabang', initial: '', onSave: onAddBranch),
+              ),
+            ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        const SectionTitle('Keamanan'),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: _SettingRow(
+            icon: Icons.pin_outlined,
+            label: 'PIN Kasir',
+            value: pinSet ? 'Sudah diatur' : 'Belum diatur',
+            onTap: () => _promptPin(context),
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -246,6 +301,71 @@ class PengaturanScreen extends StatelessWidget {
       if (value.isNotEmpty) onSave(value);
     }
     disposeControllersLater([controller]);
+  }
+
+  /// Ganti PIN kasir: dua kolom (baru + ulangi), disimpan sebagai
+  /// hash — PIN mentah tidak pernah disimpan/diingat.
+  Future<void> _promptPin(BuildContext context) async {
+    final pinCtrl = TextEditingController();
+    final pin2Ctrl = TextEditingController();
+    String? error;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          title: const Text('Atur PIN Kasir'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: pinCtrl,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 6,
+                decoration: const InputDecoration(labelText: 'PIN baru (4–6 angka)'),
+              ),
+              TextField(
+                controller: pin2Ctrl,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 6,
+                decoration: const InputDecoration(labelText: 'Ulangi PIN'),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(error!, style: AppText.small.copyWith(color: AppColors.danger)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
+            FilledButton(
+              onPressed: () {
+                final pin = pinCtrl.text.trim();
+                if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) {
+                  setDialog(() => error = 'PIN harus 4–6 angka.');
+                  return;
+                }
+                if (pin != pin2Ctrl.text.trim()) {
+                  setDialog(() => error = 'Ulangi PIN tidak sama.');
+                  return;
+                }
+                Navigator.of(ctx).pop(true);
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved == true) {
+      onPinHashChanged(hashPin(pinCtrl.text.trim()));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN kasir disimpan.')));
+      }
+    }
+    disposeControllersLater([pinCtrl, pin2Ctrl]);
   }
 
   Future<void> _editPercent(
