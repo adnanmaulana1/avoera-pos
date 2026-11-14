@@ -49,3 +49,7 @@ app.*.map.json
 
 # Sesi compiler Kotlin lokal (sampah build di mesin ini)
 .kotlin/
+
+# Hasil render & kegagalan golden test (lokal saja)
+test/shots/
+test/failures/
