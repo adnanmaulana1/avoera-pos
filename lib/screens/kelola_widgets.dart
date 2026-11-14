@@ -39,14 +39,20 @@ class FormSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.md,
-        AppSpacing.xl,
-        AppSpacing.lg + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: SingleChildScrollView(
+    // WAJIB dibatasi tingginya: tanpa ini, formulir yang lebih
+    // tinggi dari layar (mis. editor menu + foto) membuat tombol
+    // bawah jatuh DI LUAR layar dan tidak bisa diketuk — isi harus
+    // bergulir di dalam sheet.
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.92),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.md,
+          AppSpacing.xl,
+          AppSpacing.lg + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,6 +80,7 @@ class FormSheet extends StatelessWidget {
                 ),
               ),
           ],
+          ),
         ),
       ),
     );

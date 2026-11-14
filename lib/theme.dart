@@ -8,21 +8,27 @@ import 'package:flutter/material.dart';
 // ============================================================
 
 class AppColors {
+  /// Mode gelap aktif? Diatur KasirFnbApp dari pilihan tema
+  /// (Terang / Gelap / Ikuti Sistem). Warna permukaan & teks di
+  /// bawah membaca nilai ini; warna aksen tetap sama di dua mode.
+  static bool gelap = false;
+
   static const accent = Color(0xFF059669); // emerald, satu aksen hemat
   static const accentDark = Color(0xFF047857);
-  static const accentSoft = Color(0xFFECFDF5); // latar keadaan terpilih
-  static const ink = Color(0xFF111827);
-  static const muted = Color(0xFF6B7280);
-  static const bg = Color(0xFFF7F7F5);
-  static const card = Colors.white;
-  static const border = Color(0xFFE5E7EB);
   static const warning = Color(0xFFD97706);
-  static const warningSoft = Color(0xFFFFFBEB);
-  static const warningBorder = Color(0xFFFDE68A);
   static const danger = Color(0xFFDC2626);
-  static const track = Color(0xFFF3F4F6); // rel bar stok
-  static const chartBar = Color(0xFFA7F3D0); // batang grafik tidak aktif
   static const chartBarActive = accent; // batang grafik hari sorotan
+
+  static Color get accentSoft => gelap ? const Color(0xFF0C2B21) : const Color(0xFFECFDF5); // latar keadaan terpilih
+  static Color get ink => gelap ? const Color(0xFFF3F5F4) : const Color(0xFF111827);
+  static Color get muted => gelap ? const Color(0xFF9BA6A0) : const Color(0xFF6B7280);
+  static Color get bg => gelap ? const Color(0xFF121614) : const Color(0xFFF7F7F5);
+  static Color get card => gelap ? const Color(0xFF1C211E) : Colors.white;
+  static Color get border => gelap ? const Color(0xFF2D3531) : const Color(0xFFE5E7EB);
+  static Color get warningSoft => gelap ? const Color(0xFF2E230B) : const Color(0xFFFFFBEB);
+  static Color get warningBorder => gelap ? const Color(0xFF6B5518) : const Color(0xFFFDE68A);
+  static Color get track => gelap ? const Color(0xFF242B27) : const Color(0xFFF3F4F6); // rel bar stok
+  static Color get chartBar => gelap ? const Color(0xFF134E3A) : const Color(0xFFA7F3D0); // batang grafik tidak aktif
 }
 
 /// Skala jarak — kelipatan 4. Lihat DESIGN.md.
@@ -76,11 +82,13 @@ class AppShadows {
 ThemeData buildTheme() {
   final base = ThemeData(
     useMaterial3: true,
+    brightness: AppColors.gelap ? Brightness.dark : Brightness.light,
     scaffoldBackgroundColor: AppColors.bg,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.accent,
       primary: AppColors.accent,
       surface: AppColors.card,
+      brightness: AppColors.gelap ? Brightness.dark : Brightness.light,
     ),
     // Roboto = font sistem Android (tetap aman offline), dipatok supaya
     // tampilan teks konsisten di semua merek HP/tablet — font bawaan
@@ -88,7 +96,7 @@ ThemeData buildTheme() {
     fontFamily: 'Roboto',
   );
 
-  const chipBorder = BorderSide(color: AppColors.border);
+  final chipBorder = BorderSide(color: AppColors.border);
   final inputBorder = OutlineInputBorder(
     borderRadius: BorderRadius.circular(AppRadius.md),
     borderSide: chipBorder,
@@ -96,7 +104,7 @@ ThemeData buildTheme() {
 
   return base.copyWith(
     textTheme: base.textTheme.apply(bodyColor: AppColors.ink, displayColor: AppColors.ink),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: AppColors.bg,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
@@ -138,7 +146,7 @@ ThemeData buildTheme() {
         minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
         textStyle: WidgetStatePropertyAll(AppText.small.copyWith(fontWeight: FontWeight.w600)),
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md))),
-        side: const WidgetStatePropertyAll(chipBorder),
+        side: WidgetStatePropertyAll(chipBorder),
         backgroundColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected) ? AppColors.accentSoft : AppColors.card,
         ),
@@ -178,7 +186,7 @@ ThemeData buildTheme() {
       titleTextStyle: AppText.title.copyWith(color: AppColors.ink),
       contentTextStyle: AppText.body.copyWith(color: AppColors.ink),
     ),
-    bottomSheetTheme: const BottomSheetThemeData(
+    bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: AppColors.card,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
@@ -236,14 +244,14 @@ class StatusChip extends StatelessWidget {
 }
 
 BoxDecoration cardDecoration({
-  Color color = AppColors.card,
-  Color borderColor = AppColors.border,
+  Color? color,
+  Color? borderColor,
   double radius = AppRadius.md,
 }) {
   return BoxDecoration(
-    color: color,
+    color: color ?? AppColors.card,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: borderColor),
+    border: Border.all(color: borderColor ?? AppColors.border),
   );
 }
 

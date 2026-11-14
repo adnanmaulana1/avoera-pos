@@ -36,6 +36,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
   final _pinCtrl = TextEditingController();
   final _pin2Ctrl = TextEditingController();
   bool _tables = true;
+  bool _kitchen = true;
   String? _error;
 
   static const _pages = <(String, String, String)>[
@@ -51,6 +52,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
     _usahaCtrl.text = widget.initial.businessName;
     _cabangCtrl.text = widget.initial.activeBranch.name;
     _tables = widget.initial.tablesEnabled;
+    _kitchen = widget.initial.kitchenEnabled;
   }
 
   @override
@@ -77,6 +79,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
     s.branches = [Branch(id: s.activeBranchId, name: cabang)];
     s.pinHash = hashPin(pin);
     s.tablesEnabled = _tables;
+    s.kitchenEnabled = _kitchen;
     s.onboarded = true;
     widget.onDone(s);
   }
@@ -212,11 +215,22 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
           clipBehavior: Clip.antiAlias,
           child: Material(
             type: MaterialType.transparency,
-            child: SwitchListTile(
-              title: Text('Memakai meja', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
-              subtitle: Text('Matikan bila kedai tanpa meja (hanya pesan & bayar).', style: AppText.small.copyWith(color: AppColors.muted)),
-              value: _tables,
-              onChanged: (v) => setState(() => _tables = v),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: Text('Memakai meja', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                  subtitle: Text('Matikan bila kedai tanpa meja (hanya pesan & bayar).', style: AppText.small.copyWith(color: AppColors.muted)),
+                  value: _tables,
+                  onChanged: (v) => setState(() => _tables = v),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  title: Text('Memakai layar dapur', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                  subtitle: Text('Matikan bila pesanan tidak perlu antre di dapur.', style: AppText.small.copyWith(color: AppColors.muted)),
+                  value: _kitchen,
+                  onChanged: (v) => setState(() => _kitchen = v),
+                ),
+              ],
             ),
           ),
         ),
@@ -227,6 +241,102 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
         const SizedBox(height: AppSpacing.xl),
         PrimaryButton(label: 'Mulai Berjualan', icon: Icons.rocket_launch_outlined, onPressed: _finish),
       ],
+    );
+  }
+}
+
+/// Animasi layar penuh sesudah penyiapan selesai (permintaan Adnan
+/// 2026-11-14): bundaran emerald MELEBAR menutupi layar (zoom in)
+/// dengan centang + tulisan, lalu MENYUSUT lagi (zoom out) membuka
+/// layar di belakangnya. Dipakai sesudah wizard pertama & wizard
+/// tambah cabang.
+class SetupCelebration extends StatefulWidget {
+  const SetupCelebration({super.key, required this.judul, required this.subjudul, required this.onSelesai});
+  final String judul;
+  final String subjudul;
+  final VoidCallback onSelesai;
+
+  @override
+  State<SetupCelebration> createState() => _SetupCelebrationState();
+}
+
+class _SetupCelebrationState extends State<SetupCelebration> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  bool _dilaporkan = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2300))..forward();
+    _ctrl.addStatusListener((st) {
+      if (st == AnimationStatus.completed && !_dilaporkan) {
+        _dilaporkan = true;
+        widget.onSelesai();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final maks = size.longestSide * 2.4;
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, _) {
+        final t = _ctrl.value;
+        // Fase 1 (0–0,35): bundaran melebar. Fase 3 (0,72–1):
+        // bundaran menyusut sampai hilang.
+        final double d;
+        if (t < 0.35) {
+          d = maks * Curves.easeOutCubic.transform(t / 0.35);
+        } else if (t < 0.72) {
+          d = maks;
+        } else {
+          d = maks * (1 - Curves.easeInCubic.transform((t - 0.72) / 0.28));
+        }
+        final kontenMasuk = t < 0.3 ? 0.0 : ((t - 0.3) / 0.15).clamp(0.0, 1.0);
+        final kontenKeluar = t < 0.7 ? 1.0 : (1 - (t - 0.7) / 0.12).clamp(0.0, 1.0);
+        final opasitas = (kontenMasuk * kontenKeluar).clamp(0.0, 1.0);
+        return SizedBox.expand(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: d,
+                height: d,
+                decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+              ),
+              Opacity(
+                opacity: opasitas,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.card, width: 3),
+                      ),
+                      child: Icon(Icons.check, color: AppColors.card, size: 44),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    Text(widget.judul, textAlign: TextAlign.center, style: AppText.hero.copyWith(color: AppColors.card)),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(widget.subjudul, textAlign: TextAlign.center, style: AppText.body.copyWith(color: AppColors.card.withValues(alpha: 0.85))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -1,43 +1,398 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data.dart';
+import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'kelola_menu_screen.dart';
+import 'kelola_menu_screen.dart' show MenuThumb, menuPalette, showMenuEditor;
 
-/// Layar Produk (menu jualan) — menu utama di navbar atas permintaan
-/// Adnan (meniru Bisakasir yang punya tombol Produk sendiri).
-/// Isinya daftar kelola menu yang sama dengan Pengaturan > Kelola
-/// Menu: tambah, ubah, hapus — langsung tersimpan & tampil di kasir.
-class ProdukScreen extends StatelessWidget {
-  const ProdukScreen({super.key, required this.menus, required this.onAdd, required this.onChanged, required this.onDelete});
+/// Layar Produk ala referensi Kasaba (permintaan Adnan 2026-11-14):
+/// daftar produk dengan foto, nama, kategori + SKU, harga di kanan;
+/// menu ⋯ berisi aksi massal. Yang sudah jalan penuh: Edit Harga
+/// Massal, Tampilkan Bahan Baku, Pilih Produk (hapus massal),
+/// Ekspor & Impor Data. Resep, Bundle, Harga Ojol, Cetak Label
+/// Harga ditampilkan sebagai 'Segera' — menunggu giliran dibangun.
+class ProdukScreen extends StatefulWidget {
+  const ProdukScreen({
+    super.key,
+    required this.menus,
+    required this.onAdd,
+    required this.onChanged,
+    required this.onDelete,
+    required this.branchName,
+    required this.ingredients,
+    required this.onBulkPrice,
+    required this.onImport,
+  });
 
   final List<MenuItem> menus;
   final ValueChanged<MenuItem> onAdd;
   final VoidCallback onChanged;
   final ValueChanged<MenuItem> onDelete;
+  final String branchName;
+  final List<Ingredient> ingredients;
+
+  /// Naik/turunkan semua harga sebesar persen (bertanda).
+  final ValueChanged<int> onBulkPrice;
+  final ValueChanged<List<MenuItem>> onImport;
+
+  @override
+  State<ProdukScreen> createState() => _ProdukScreenState();
+}
+
+class _ProdukScreenState extends State<ProdukScreen> {
+  String _kategori = 'Semua';
+  String _query = '';
+  bool _tampilBahan = false;
+  bool _modePilih = false;
+  final Set<String> _terpilih = {};
+
+  List<MenuItem> get _list => widget.menus.where((m) {
+        final cocokKategori = _kategori == 'Semua' || m.category == _kategori;
+        return cocokKategori && m.name.toLowerCase().contains(_query.toLowerCase());
+      }).toList();
+
+  void _keluarModePilih() => setState(() {
+        _modePilih = false;
+        _terpilih.clear();
+      });
+
+  Future<void> _hapusTerpilih() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Hapus ${_terpilih.length} Produk'),
+        content: const Text('Produk terpilih akan dihapus dari daftar dan tidak bisa lagi dijual di kasir.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), style: FilledButton.styleFrom(backgroundColor: AppColors.danger), child: const Text('Hapus')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      for (final m in widget.menus.where((m) => _terpilih.contains(m.id)).toList()) {
+        widget.onDelete(m);
+      }
+      _keluarModePilih();
+    }
+  }
+
+  Future<void> _editHargaMassal() async {
+    final ctrl = TextEditingController(text: '10');
+    var naik = true;
+    final contoh = widget.menus.isEmpty ? 20000 : widget.menus.first.price;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) {
+          final persen = (int.tryParse(ctrl.text.trim()) ?? 0).clamp(0, 500);
+          final bertanda = naik ? persen : -persen;
+          final contohBaru = (((contoh * (100 + bertanda) / 100).round() + 50) ~/ 100) * 100;
+          return AlertDialog(
+            title: const Text('Edit Harga Massal'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    AppChip(label: 'Naik', selected: naik, onSelected: (_) => setDialog(() => naik = true)),
+                    const SizedBox(width: AppSpacing.sm),
+                    AppChip(label: 'Turun', selected: !naik, onSelected: (_) => setDialog(() => naik = false)),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: TextField(
+                        controller: ctrl,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: const InputDecoration(suffixText: '%', isDense: true),
+                        onChanged: (_) => setDialog(() {}),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text('Simulasi', style: AppText.small.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Semua harga ${naik ? 'naik' : 'turun'} $persen%, dibulatkan ke ratusan.\nContoh: ${rupiah(contoh)} → ${rupiah(contohBaru.clamp(100, 100000000))}',
+                  style: AppText.small.copyWith(color: AppColors.muted),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
+              FilledButton(
+                onPressed: () {
+                  widget.onBulkPrice(bertanda);
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Harga ${widget.menus.length} produk diperbarui.')));
+                },
+                child: const Text('Terapkan'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    disposeControllersLater([ctrl]);
+  }
+
+  Future<void> _imporData() async {
+    final ctrl = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Impor Data Produk'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Satu produk per baris, format:\nNama;Kategori;Harga', style: AppText.small.copyWith(color: AppColors.muted)),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: ctrl,
+              maxLines: 8,
+              decoration: const InputDecoration(hintText: 'Es Teh Manis;Non Kopi;8000\nRoti Bakar;Makanan;15000'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () {
+              final hasil = <MenuItem>[];
+              var dilewati = 0;
+              final baris = ctrl.text.split('\n').where((b) => b.trim().isNotEmpty);
+              var i = 0;
+              for (final b in baris) {
+                final kolom = b.split(';').map((s) => s.trim()).toList();
+                final harga = kolom.length == 3 ? int.tryParse(kolom[2].replaceAll(RegExp(r'[^0-9]'), '')) : null;
+                if (kolom.length != 3 || kolom[0].isEmpty || harga == null || harga <= 0) {
+                  dilewati++;
+                  continue;
+                }
+                hasil.add(MenuItem(
+                  id: 'm${DateTime.now().millisecondsSinceEpoch}-$i',
+                  name: kolom[0],
+                  category: categories.contains(kolom[1]) ? kolom[1] : 'Makanan',
+                  price: harga,
+                  color: menuPalette[i % menuPalette.length],
+                  icon: menuIconChoices[i % menuIconChoices.length],
+                  isDrink: false,
+                ));
+                i++;
+              }
+              Navigator.of(ctx).pop();
+              if (hasil.isNotEmpty) widget.onImport(hasil);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${hasil.length} produk diimpor${dilewati > 0 ? ', $dilewati baris dilewati (format salah)' : ''}.')),
+              );
+            },
+            child: const Text('Impor'),
+          ),
+        ],
+      ),
+    );
+    disposeControllersLater([ctrl]);
+  }
+
+  Future<void> _eksporData() {
+    final semua = widget.menus;
+    final ringkasan = StringBuffer('Daftar Produk — ${widget.branchName} (${semua.length} produk)\n');
+    for (final m in semua) {
+      ringkasan.writeln('• ${m.name} (${m.category}) — ${rupiah(m.price)}');
+    }
+    return tampilkanMenuEkspor(
+      context,
+      judul: 'Daftar Produk',
+      ringkasan: ringkasan.toString().trim(),
+      kepala: const ['Produk', 'Kategori', 'SKU', 'Harga'],
+      baris: [for (final m in semua) [m.name, m.category, skuOf(m), '${m.price}']],
+    );
+  }
+
+  Future<void> _bukaEditor(MenuItem? m) async {
+    await showMenuEditor(context, initial: m, onAdd: widget.onAdd, onChanged: widget.onChanged, onDelete: widget.onDelete);
+    if (mounted) setState(() {});
+  }
+
+  void _aksiMenu(String aksi) {
+    switch (aksi) {
+      case 'massal':
+        _editHargaMassal();
+      case 'bahan':
+        setState(() => _tampilBahan = !_tampilBahan);
+      case 'pilih':
+        setState(() => _modePilih = true);
+      case 'ekspor':
+        _eksporData();
+      case 'impor':
+        _imporData();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final list = _list;
+    return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
-          child: PageHeader(
-            title: 'Produk',
-            subtitle: '${menus.length} menu jualan. Tambah, ubah, hapus — langsung tampil di kasir.',
-          ),
+        ListView(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
+          children: [
+            PageHeader(
+              title: 'Produk',
+              subtitle: '${widget.menus.length} produk · ${widget.branchName}',
+              trailing: PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                tooltip: 'Pilihan produk',
+                onSelected: _aksiMenu,
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'massal', child: Text('Edit Harga Massal')),
+                  PopupMenuItem(
+                    value: 'bahan',
+                    child: Row(
+                      children: [
+                        const Expanded(child: Text('Tampilkan Bahan Baku')),
+                        if (_tampilBahan) const Icon(Icons.check, size: 18, color: AppColors.accentDark),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(value: 'pilih', child: Text('Pilih Produk')),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(value: 'ekspor', child: Text('Ekspor Data')),
+                  const PopupMenuItem(value: 'impor', child: Text('Impor Data')),
+                  const PopupMenuDivider(),
+                  // Tahap berikutnya — ditampilkan jujur sebagai Segera.
+                  const PopupMenuItem(enabled: false, child: Text('Resep — Segera')),
+                  const PopupMenuItem(enabled: false, child: Text('Bundle — Segera')),
+                  const PopupMenuItem(enabled: false, child: Text('Harga Ojol — Segera')),
+                  const PopupMenuItem(enabled: false, child: Text('Cetak Label Harga — Segera')),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari produk…'),
+              onChanged: (v) => setState(() => _query = v),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            FilterChipRow(
+              children: [
+                for (final c in categories)
+                  AppChip(label: c, selected: _kategori == c, onSelected: (_) => setState(() => _kategori = c)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (list.isEmpty)
+              const EmptyState(message: 'Tidak ada produk yang cocok.\nCoba kata cari atau kategori lain.', icon: Icons.restaurant_menu_outlined),
+            for (final m in list)
+              AppCard(
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                onTap: () {
+                  if (_modePilih) {
+                    setState(() => _terpilih.contains(m.id) ? _terpilih.remove(m.id) : _terpilih.add(m.id));
+                  } else {
+                    _bukaEditor(m);
+                  }
+                },
+                child: Row(
+                  children: [
+                    if (_modePilih) ...[
+                      Checkbox(
+                        value: _terpilih.contains(m.id),
+                        onChanged: (v) => setState(() => v == true ? _terpilih.add(m.id) : _terpilih.remove(m.id)),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                    ],
+                    MenuThumb(menu: m, size: 52),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(m.name, style: AppText.body.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: AppSpacing.xs),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                                decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                                child: Text(m.category, style: AppText.caption.copyWith(color: AppColors.muted, fontWeight: FontWeight.w600)),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(skuOf(m), style: AppText.caption.copyWith(color: AppColors.muted)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(rupiah(m.price), style: AppText.body.copyWith(fontWeight: FontWeight.w800, color: AppColors.accentDark)),
+                  ],
+                ),
+              ),
+            if (_tampilBahan) ...[
+              const SizedBox(height: AppSpacing.lg),
+              const SectionTitle('Bahan Baku'),
+              const SizedBox(height: AppSpacing.sm),
+              Text('Daftar bahan dari Stok Bahan (atur di layar Stok Bahan).', style: AppText.caption.copyWith(color: AppColors.muted)),
+              const SizedBox(height: AppSpacing.md),
+              for (final ing in widget.ingredients)
+                AppCard(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                        child: Icon(Icons.inventory_2_outlined, color: AppColors.muted, size: 22),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(child: Text(ing.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600))),
+                      Text('${stockText(ing.stock)} ${ing.unit}', style: AppText.small.copyWith(color: AppColors.muted)),
+                    ],
+                  ),
+                ),
+            ],
+            if (_modePilih) const SizedBox(height: 64),
+          ],
         ),
-        Expanded(
-          child: KelolaMenuScreen(
-            menus: menus,
-            onAdd: onAdd,
-            onChanged: onChanged,
-            onDelete: onDelete,
-            embedded: true,
+        if (_modePilih)
+          Positioned(
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            bottom: AppSpacing.lg,
+            child: AppCard(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Expanded(child: Text('${_terpilih.length} dipilih', style: AppText.body.copyWith(fontWeight: FontWeight.w700))),
+                  TextButton(onPressed: _keluarModePilih, child: const Text('Batal')),
+                  FilledButton(
+                    onPressed: _terpilih.isEmpty ? null : _hapusTerpilih,
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+                    child: const Text('Hapus Terpilih'),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          Positioned(
+            right: AppSpacing.lg,
+            bottom: AppSpacing.lg,
+            child: FloatingActionButton(
+              heroTag: 'tambahProduk',
+              onPressed: () => _bukaEditor(null),
+              tooltip: 'Tambah Produk',
+              child: const Icon(Icons.add),
+            ),
           ),
-        ),
       ],
     );
   }

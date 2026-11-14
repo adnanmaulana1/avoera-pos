@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data.dart';
+import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -37,8 +38,29 @@ class LaporanBulananScreen extends StatelessWidget {
     }
     final bestDay = perDay.entries.fold<(int, int)>((0, 0), (best, e) => e.value > best.$2 ? (e.key, e.value) : best);
 
+    Future<void> ekspor() {
+      final ringkasan = StringBuffer('Laporan Bulanan\n');
+      for (final (label, total, count) in rows) {
+        ringkasan.writeln('• $label: ${rupiah(total)} ($count transaksi)');
+      }
+      if (bestDay.$2 > 0) ringkasan.writeln('Hari terbaik bulan ini: tanggal ${bestDay.$1} — ${rupiah(bestDay.$2)}');
+      return tampilkanMenuEkspor(
+        context,
+        judul: 'Laporan Bulanan',
+        ringkasan: ringkasan.toString().trim(),
+        kepala: const ['Bulan', 'Transaksi', 'Rata-rata', 'Total'],
+        baris: [
+          for (final (label, total, count) in rows)
+            [label, '$count', count == 0 ? '0' : '${(total / count).round()}', '$total'],
+        ],
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Laporan Bulanan')),
+      appBar: AppBar(
+        title: const Text('Laporan Bulanan'),
+        actions: [TombolEkspor(onPressed: ekspor)],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
@@ -122,15 +144,40 @@ class _LaporanPajakScreenState extends State<LaporanPajakScreen> {
           ),
         );
 
+    Future<void> ekspor() {
+      final judulPeriode = '${_bulanPanjang[target.month - 1]} ${target.year}';
+      final ringkasan = 'Laporan Pajak — $judulPeriode (${tx.length} transaksi)\n'
+          'Penjualan (sebelum biaya & pajak): ${rupiah(subtotal)}\n'
+          'Biaya layanan terkumpul: ${rupiah(service)}\n'
+          'Pajak terkumpul: ${rupiah(tax)}\n'
+          'Total diterima: ${rupiah(total)} (Tunai ${rupiah(tunai)} · QRIS ${rupiah(qris)})';
+      return tampilkanMenuEkspor(
+        context,
+        judul: 'Laporan Pajak',
+        ringkasan: ringkasan,
+        kepala: const ['Periode', 'Rincian', 'Jumlah'],
+        baris: [
+          [judulPeriode, 'Penjualan (sebelum biaya & pajak)', '$subtotal'],
+          [judulPeriode, 'Biaya layanan terkumpul', '$service'],
+          [judulPeriode, 'Pajak terkumpul', '$tax'],
+          [judulPeriode, 'Total diterima', '$total'],
+          [judulPeriode, 'Tunai', '$tunai'],
+          [judulPeriode, 'QRIS', '$qris'],
+        ],
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Laporan Pajak')),
+      appBar: AppBar(
+        title: const Text('Laporan Pajak'),
+        actions: [TombolEkspor(onPressed: ekspor)],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          Row(
+          FilterChipRow(
             children: [
               AppChip(label: 'Bulan Ini', selected: !_bulanLalu, onSelected: (_) => setState(() => _bulanLalu = false)),
-              const SizedBox(width: AppSpacing.sm),
               AppChip(label: 'Bulan Lalu', selected: _bulanLalu, onSelected: (_) => setState(() => _bulanLalu = true)),
             ],
           ),
@@ -183,8 +230,28 @@ class LaporanPiutangScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final utang = tables.where((t) => t.openAmount > 0).toList()..sort((a, b) => b.openAmount.compareTo(a.openAmount));
     final total = utang.fold(0, (a, t) => a + t.openAmount);
+    Future<void> ekspor() {
+      final ringkasan = StringBuffer('Laporan Piutang — total ${rupiah(total)}\n');
+      for (final t in utang) {
+        ringkasan.writeln('• Meja ${t.number} · ${t.guestName ?? 'Tamu'}: ${rupiah(t.openAmount)}');
+      }
+      return tampilkanMenuEkspor(
+        context,
+        judul: 'Laporan Piutang',
+        ringkasan: ringkasan.toString().trim(),
+        kepala: const ['Meja', 'Tamu', 'Sejak', 'Tagihan'],
+        baris: [
+          for (final t in utang) ['${t.number}', t.guestName ?? 'Tamu', t.since ?? '-', '${t.openAmount}'],
+        ],
+        catatan: 'Total belum dibayar: ${rupiah(total)}',
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Laporan Piutang')),
+      appBar: AppBar(
+        title: const Text('Laporan Piutang'),
+        actions: [if (utang.isNotEmpty) TombolEkspor(onPressed: ekspor)],
+      ),
       body: utang.isEmpty
           ? const EmptyState(message: 'Tidak ada piutang.\nSemua tagihan meja sudah lunas.', icon: Icons.check_circle_outline)
           : ListView(
@@ -199,7 +266,7 @@ class LaporanPiutangScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('Total belum dibayar', style: AppText.small.copyWith(color: AppColors.muted)),
-                            Text(rupiah(total), style: AppText.number),
+                            FitNumber(rupiah(total)),
                           ],
                         ),
                       ),

@@ -74,7 +74,8 @@ void main() {
         reason: 'Meja kini tinggal di drawer');
     await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Pengaturan')));
     await tester.pumpAndSettle();
-    expect(find.text('Nama Usaha'), findsOneWidget, reason: 'Pengaturan harus terbuka dari drawer');
+    // v0.8.0: Usaha jadi kartu profil — nama usaha tampil di kartu itu.
+    expect(find.text('Avoera Cafe & Resto'), findsOneWidget, reason: 'Pengaturan harus terbuka dari drawer (kartu profil usaha)');
     // Selama di menu drawer, sorotan bar bawah jatuh ke 'Lainnya'.
     expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex, 4);
   });
@@ -133,9 +134,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Pengaturan')));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Manajemen Meja'), 120, scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byType(Scrollable)));
+    await tester.scrollUntilVisible(find.text('Manajemen Meja'), 120, scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
     expect((await LocalStore.load()).settings.tablesEnabled, isFalse, reason: 'Saklar harus tersimpan');
 
@@ -156,9 +157,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Pengaturan')));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Manajemen Meja'), 120, scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byType(Scrollable)));
+    await tester.scrollUntilVisible(find.text('Manajemen Meja'), 120, scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
     expect((await LocalStore.load()).settings.tablesEnabled, isTrue);
     await tester.tap(inBar(find.text('Lainnya')));

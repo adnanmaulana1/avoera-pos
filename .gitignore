@@ -53,3 +53,4 @@ app.*.map.json
 # Hasil render & kegagalan golden test (lokal saja)
 test/shots/
 test/failures/
+.config/

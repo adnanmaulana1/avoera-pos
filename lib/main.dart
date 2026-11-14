@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
 import 'store.dart';
+import 'sync.dart';
 import 'theme.dart';
+import 'widgets.dart';
 import 'screens/beranda_screen.dart';
 import 'screens/kasir_screen.dart';
 import 'screens/produk_screen.dart';
@@ -19,6 +23,9 @@ import 'screens/pengaturan_screen.dart';
 import 'screens/kelola_menu_screen.dart';
 import 'screens/kelola_meja_screen.dart';
 import 'screens/kelola_stok_screen.dart';
+import 'screens/pin_screen.dart';
+import 'screens/branch_wizard_screen.dart';
+import 'screens/profil_usaha_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,16 +45,76 @@ void main() {
   runApp(const KasirFnbApp());
 }
 
-class KasirFnbApp extends StatelessWidget {
+class KasirFnbApp extends StatefulWidget {
   const KasirFnbApp({super.key});
 
   @override
+  State<KasirFnbApp> createState() => _KasirFnbAppState();
+}
+
+class _KasirFnbAppState extends State<KasirFnbApp> {
+  /// Pilihan tema dari Pengaturan: 'terang' | 'gelap' | 'sistem'.
+  String _modeTema = 'sistem';
+
+  /// Mode yang sedang dianimasikan menuju ke sana (animasi telur
+  /// dadar); tema dibalik di tengah animasi.
+  String? _temaAnimasi;
+
+  bool _gelapEfektif(String mode, Brightness platform) => switch (mode) {
+        'gelap' => true,
+        'terang' => false,
+        _ => platform == Brightness.dark,
+      };
+
+  /// Dipanggil HomeShell: sesudah data dimuat (terapkan tanpa
+  /// animasi) dan tiap pemilik mengganti pilihan tema (animasi).
+  void _temaBerubah(String mode, {required bool animasi, required Brightness platform}) {
+    if (mode == _modeTema) return;
+    if (animasi && _gelapEfektif(mode, platform) != _gelapEfektif(_modeTema, platform)) {
+      setState(() => _temaAnimasi = mode);
+    } else {
+      setState(() => _modeTema = mode);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final platform = MediaQuery.platformBrightnessOf(context);
+    final gelap = _gelapEfektif(_modeTema, platform);
+    AppColors.gelap = gelap;
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: gelap ? Brightness.light : Brightness.dark,
+        statusBarBrightness: gelap ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: gelap ? Brightness.light : Brightness.dark,
+      ),
+    );
     return MaterialApp(
       title: 'Avoera POS',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      home: const HomeShell(),
+      themeMode: switch (_modeTema) {
+        'gelap' => ThemeMode.dark,
+        'terang' => ThemeMode.light,
+        _ => ThemeMode.system,
+      },
+      home: Stack(
+        children: [
+          HomeShell(
+            onModeTema: (mode, animasi) => _temaBerubah(mode, animasi: animasi, platform: platform),
+          ),
+          if (_temaAnimasi != null)
+            Positioned.fill(
+              child: AnimasiTelurDadar(
+                keGelap: _gelapEfektif(_temaAnimasi!, platform),
+                onTengah: () => setState(() => _modeTema = _temaAnimasi!),
+                onSelesai: () => setState(() => _temaAnimasi = null),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -71,7 +138,11 @@ const _navItems = <_NavItem>[
 ];
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({super.key, required this.onModeTema});
+
+  /// Lapor perubahan pilihan tema ke KasirFnbApp (yang memegang
+  /// MaterialApp): (mode, pakaiAnimasiTelurDadar).
+  final void Function(String mode, bool animasi) onModeTema;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -83,6 +154,24 @@ class _HomeShellState extends State<HomeShell> {
   final List<KitchenOrder> _kitchen = seedKitchenOrders();
   CafeTable? _selectedTable;
   int _orderCounter = 1043;
+
+  /// Gerbang PIN kasir: terbuka sekali per sesi aplikasi.
+  bool _kasirUnlocked = false;
+
+  /// Animasi perayaan sesudah wizard pertama selesai.
+  bool _celebrate = false;
+
+  // ---------- Sinkronisasi awan (Supabase) ----------
+  StatusSinkron _syncStatus = StatusSinkron.belumDiatur;
+  bool _syncing = false;
+  Timer? _syncDebounce;
+  Timer? _syncPeriodik;
+
+  bool get _syncSiap => _settings.supabaseUrl.isNotEmpty && _settings.supabaseAnonKey.isNotEmpty && _settings.businessKey.isNotEmpty;
+
+  /// Tekan-kembali ganda untuk keluar (hanya di Beranda).
+  DateTime? _lastBackPress;
+  final _phoneScaffoldKey = GlobalKey<ScaffoldState>();
 
   // ---------- Data tersimpan (dimuat dari LocalStore) ----------
   bool _ready = false;
@@ -108,18 +197,60 @@ class _HomeShellState extends State<HomeShell> {
       _settings = data.settings;
       _transactions = data.transactions;
       _ready = true;
+      _syncStatus = _syncSiap ? StatusSinkron.tersinkron : StatusSinkron.belumDiatur;
     });
+    widget.onModeTema(_settings.modeTema, false);
+    _aturTimerSinkron();
+    if (_syncSiap) _syncNow(diam: true);
+  }
+
+  @override
+  void dispose() {
+    _syncDebounce?.cancel();
+    _syncPeriodik?.cancel();
+    super.dispose();
+  }
+
+  /// Timer tarik-berkala: selama aplikasi terbuka & sinkron
+  /// diatur, data dari perangkat lain ditarik tiap 45 detik.
+  void _aturTimerSinkron() {
+    _syncPeriodik?.cancel();
+    _syncPeriodik = null;
+    if (_syncSiap) {
+      _syncPeriodik = Timer.periodic(const Duration(seconds: 45), (_) => _syncNow(diam: true));
+    }
+    if (mounted) setState(() => _syncStatus = _syncSiap ? (_syncStatus == StatusSinkron.belumDiatur ? StatusSinkron.tersinkron : _syncStatus) : StatusSinkron.belumDiatur);
+  }
+
+  /// Jadwalkan sinkron otomatis sesudah data berubah (debounce
+  /// 2 detik supaya simpan beruntun tidak membanjiri server).
+  void _jadwalkanSinkron() {
+    if (!_syncSiap) return;
+    _syncDebounce?.cancel();
+    _syncDebounce = Timer(const Duration(seconds: 2), () => _syncNow(diam: true));
+  }
+
+  /// Ketuk ikon awan di Beranda: belum diatur → buka Pengaturan;
+  /// sudah diatur → sinkron sekarang.
+  void _syncTap() {
+    if (!_syncSiap) {
+      setState(() => _index = 7);
+    } else {
+      _syncNow();
+    }
   }
 
   // ---------- CRUD: Menu ----------
   void _addMenu(MenuItem m) {
     setState(() => _menus.add(m));
     LocalStore.saveMenus(_menus);
+    _jadwalkanSinkron();
   }
 
   void _menuChanged() {
     setState(() {});
     LocalStore.saveMenus(_menus);
+    _jadwalkanSinkron();
   }
 
   void _deleteMenu(MenuItem m) {
@@ -128,6 +259,7 @@ class _HomeShellState extends State<HomeShell> {
       _cart.removeWhere((c) => c.menu.id == m.id);
     });
     LocalStore.saveMenus(_menus);
+    _jadwalkanSinkron();
   }
 
   // ---------- CRUD: Meja ----------
@@ -137,11 +269,13 @@ class _HomeShellState extends State<HomeShell> {
       _tables.sort((a, b) => a.number.compareTo(b.number));
     });
     LocalStore.saveTables(_tables);
+    _jadwalkanSinkron();
   }
 
   void _tableChanged() {
     setState(() => _tables.sort((a, b) => a.number.compareTo(b.number)));
     LocalStore.saveTables(_tables);
+    _jadwalkanSinkron();
   }
 
   void _deleteTable(CafeTable t) {
@@ -150,28 +284,34 @@ class _HomeShellState extends State<HomeShell> {
       if (_selectedTable == t) _selectedTable = null;
     });
     LocalStore.saveTables(_tables);
+    _jadwalkanSinkron();
   }
 
   // ---------- CRUD: Stok bahan ----------
   void _addIngredient(Ingredient i) {
     setState(() => _ingredients.add(i));
     LocalStore.saveIngredients(_ingredients);
+    _jadwalkanSinkron();
   }
 
   void _ingredientChanged() {
     setState(() {});
     LocalStore.saveIngredients(_ingredients);
+    _jadwalkanSinkron();
   }
 
   void _deleteIngredient(Ingredient i) {
     setState(() => _ingredients.remove(i));
     LocalStore.saveIngredients(_ingredients);
+    _jadwalkanSinkron();
   }
 
   // ---------- Pengaturan ----------
   void _settingChanged(void Function() apply) {
     setState(apply);
     LocalStore.saveSettings(_settings);
+    _aturTimerSinkron();
+    _jadwalkanSinkron();
   }
 
   // ---------- Buka layar kelola ----------
@@ -226,8 +366,118 @@ class _HomeShellState extends State<HomeShell> {
   void _switchBranch(Branch b) => _settingChanged(() => _settings.activeBranchId = b.id);
 
   void _finishOnboarding(AppSettings s) {
-    setState(() => _settings = s);
+    setState(() {
+      _settings = s;
+      _celebrate = true;
+    });
     LocalStore.saveSettings(_settings);
+  }
+
+  // ---------- Halaman pengaturan lanjutan ----------
+  void _openProfile() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ProfilUsahaScreen(
+            nama: _settings.businessName,
+            alamat: _settings.businessAddress,
+            telepon: _settings.businessPhone,
+            onSave: (n, a, t) => _settingChanged(() {
+              _settings.businessName = n;
+              _settings.businessAddress = a;
+              _settings.businessPhone = t;
+            }),
+          ),
+        ),
+      );
+
+  void _openPinSettings() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PinSettingsScreen(
+            currentHash: _settings.pinHash,
+            onSaveHash: (h) => _settingChanged(() => _settings.pinHash = h),
+          ),
+        ),
+      );
+
+  void _openBranchWizard() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BranchWizardScreen(
+            onCreate: (b, aktif) => _settingChanged(() {
+              _settings.branches = [..._settings.branches, b];
+              if (aktif) _settings.activeBranchId = b.id;
+            }),
+          ),
+        ),
+      );
+
+  // ---------- Sinkronisasi Supabase ----------
+  Future<void> _syncNow({bool diam = false}) async {
+    if (_syncing || !_syncSiap) return;
+    _syncing = true;
+    if (mounted) setState(() => _syncStatus = StatusSinkron.menyinkron);
+    final messenger = ScaffoldMessenger.of(context);
+    if (!diam) messenger.showSnackBar(const SnackBar(content: Text('Menyinkronkan…')));
+    try {
+      final hasil = await sinkronkanSupabase(
+        settings: _settings,
+        menus: _menus,
+        ingredients: _ingredients,
+        branches: _settings.branches,
+        transactions: _transactions,
+      );
+      if (!mounted) return;
+      setState(() {
+        _menus = hasil.menus;
+        _ingredients = hasil.ingredients;
+        _transactions = hasil.transactions;
+        _settings.branches = hasil.branches;
+        if (!_settings.branches.any((b) => b.id == _settings.activeBranchId)) {
+          _settings.activeBranchId = _settings.branches.first.id;
+        }
+        // Pengaturan usaha dari server diterapkan hanya untuk
+        // kolom usaha (bukan PIN/kredensial yang memang lokal).
+        final srv = hasil.pengaturanServer;
+        if (srv != null) {
+          _settings.businessName = srv['businessName'] as String? ?? _settings.businessName;
+          _settings.businessAddress = srv['businessAddress'] as String? ?? _settings.businessAddress;
+          _settings.businessPhone = srv['businessPhone'] as String? ?? _settings.businessPhone;
+          _settings.servicePercent = (srv['servicePercent'] as num?)?.toInt() ?? _settings.servicePercent;
+          _settings.taxPercent = (srv['taxPercent'] as num?)?.toInt() ?? _settings.taxPercent;
+        }
+        final n = DateTime.now();
+        _settings.lastSyncLabel =
+            '${n.day}/${n.month}/${n.year} ${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
+      });
+      LocalStore.saveMenus(_menus);
+      LocalStore.saveIngredients(_ingredients);
+      LocalStore.saveTransactions(_transactions);
+      LocalStore.saveSettings(_settings);
+      _syncing = false;
+      if (mounted) setState(() => _syncStatus = StatusSinkron.tersinkron);
+      if (!diam) messenger.showSnackBar(SnackBar(content: Text(hasil.ringkasan)));
+    } catch (e) {
+      debugPrint('Sinkron gagal: $e');
+      _syncing = false;
+      if (mounted) setState(() => _syncStatus = StatusSinkron.gagal);
+      if (!diam) messenger.showSnackBar(const SnackBar(content: Text('Sinkron gagal — periksa URL, kunci anon, dan koneksi internet.')));
+    }
+  }
+
+  // ---------- Harga massal & impor produk ----------
+  void _applyBulkPrice(int percent) {
+    setState(() {
+      for (final m in _menus) {
+        final mentah = (m.price * (100 + percent) / 100).round();
+        m.price = (((mentah + 50) ~/ 100) * 100).clamp(100, 100000000);
+      }
+    });
+    LocalStore.saveMenus(_menus);
+    _jadwalkanSinkron();
+  }
+
+  void _importMenus(List<MenuItem> items) {
+    setState(() => _menus.addAll(items));
+    LocalStore.saveMenus(_menus);
+    _jadwalkanSinkron();
   }
 
   // ---------- Cart actions ----------
@@ -263,20 +513,23 @@ class _HomeShellState extends State<HomeShell> {
     final orderId = 'A-${_orderCounter++}';
     final itemCount = _cart.fold(0, (a, c) => a + c.qty);
     setState(() {
-      final lines = _cart
-          .map((c) => KitchenOrderLine(c.menu.name, c.qty, [c.variant, c.note].where((s) => s.isNotEmpty).join(' · ')))
-          .toList();
-      _kitchen.insert(
-        0,
-        KitchenOrder(
-          id: orderId,
-          tableLabel: tableLabel,
-          orderType: orderType,
-          lines: lines,
-          status: KitchenStatus.baru,
-          time: 'Baru saja',
-        ),
-      );
+      // Tiket dapur hanya dibuat bila fitur dapur menyala.
+      if (_settings.kitchenEnabled) {
+        final lines = _cart
+            .map((c) => KitchenOrderLine(c.menu.name, c.qty, [c.variant, c.note].where((s) => s.isNotEmpty).join(' · ')))
+            .toList();
+        _kitchen.insert(
+          0,
+          KitchenOrder(
+            id: orderId,
+            tableLabel: tableLabel,
+            orderType: orderType,
+            lines: lines,
+            status: KitchenStatus.baru,
+            time: 'Baru saja',
+          ),
+        );
+      }
       if (_selectedTable != null) {
         if (_selectedTable!.status == TableStatus.kosong) {
           _selectedTable!.status = TableStatus.terisi;
@@ -299,6 +552,7 @@ class _HomeShellState extends State<HomeShell> {
         service: serviceAmt,
         tax: taxAmt,
         branchId: _settings.activeBranchId,
+        uuid: 'u${DateTime.now().millisecondsSinceEpoch}-$_orderCounter',
       ));
       _cart.clear();
     });
@@ -342,7 +596,11 @@ class _HomeShellState extends State<HomeShell> {
         branch: _settings.activeBranch,
         branches: _settings.branches,
         transactions: _transactions,
+        syncStatus: _syncStatus,
+        onSyncTap: _syncTap,
         kitchenActive: _kitchen.length,
+        kitchenEnabled: _settings.kitchenEnabled,
+        menuCount: _menus.length,
         tablesEnabled: _settings.tablesEnabled,
         tablesOccupied: _tables.where((t) => t.status != TableStatus.kosong).length,
         tablesTotal: _tables.length,
@@ -355,9 +613,18 @@ class _HomeShellState extends State<HomeShell> {
         onOpenNotices: _openNotices,
         onOpenRiwayat: _openRiwayat,
       ),
-      KasirScreen(
-        cart: _cart,
-        menus: _menus,
+      // Gerbang PIN: kasir terkunci sampai PIN benar dimasukkan
+      // (hanya bila pemilik mengatur PIN; sekali per sesi).
+      if (_settings.pinHash.isNotEmpty && !_kasirUnlocked)
+        PinGateScreen(
+          pinHash: _settings.pinHash,
+          businessName: _settings.businessName,
+          onUnlock: () => setState(() => _kasirUnlocked = true),
+        )
+      else
+        KasirScreen(
+          cart: _cart,
+          menus: _menus,
         // Meja mati → kasir tidak membawa meja sama sekali.
         selectedTable: _settings.tablesEnabled ? _selectedTable : null,
         tables: _tables,
@@ -371,7 +638,16 @@ class _HomeShellState extends State<HomeShell> {
         onRemove: _remove,
         onCheckout: _checkout,
       ),
-      ProdukScreen(menus: _menus, onAdd: _addMenu, onChanged: _menuChanged, onDelete: _deleteMenu),
+      ProdukScreen(
+        menus: _menus,
+        onAdd: _addMenu,
+        onChanged: _menuChanged,
+        onDelete: _deleteMenu,
+        branchName: _settings.activeBranch.name,
+        ingredients: _ingredients,
+        onBulkPrice: _applyBulkPrice,
+        onImport: _importMenus,
+      ),
       MejaScreen(
         tables: _tables,
         selectedTable: _selectedTable,
@@ -389,7 +665,7 @@ class _HomeShellState extends State<HomeShell> {
         onOpenPajak: _openPajak,
         onOpenPiutang: _openPiutang,
       ),
-      StokScreen(ingredients: _ingredients),
+      StokScreen(ingredients: _ingredients, onAdd: _addIngredient, onChanged: _ingredientChanged, onDelete: _deleteIngredient),
       PengaturanScreen(
         businessName: _settings.businessName,
         businessAddress: _settings.businessAddress,
@@ -399,9 +675,6 @@ class _HomeShellState extends State<HomeShell> {
         menuCount: _menus.length,
         tableCount: _tables.length,
         ingredientCount: _ingredients.length,
-        onBusinessNameChanged: (v) => _settingChanged(() => _settings.businessName = v),
-        onBusinessAddressChanged: (v) => _settingChanged(() => _settings.businessAddress = v),
-        onBusinessPhoneChanged: (v) => _settingChanged(() => _settings.businessPhone = v),
         onServicePercentChanged: (v) => _settingChanged(() => _settings.servicePercent = v),
         onTaxPercentChanged: (v) => _settingChanged(() => _settings.taxPercent = v),
         tablesEnabled: _settings.tablesEnabled,
@@ -414,6 +687,11 @@ class _HomeShellState extends State<HomeShell> {
             if (_index == 3) _index = 0;
           }
         }),
+        kitchenEnabled: _settings.kitchenEnabled,
+        onKitchenEnabledChanged: (v) => _settingChanged(() {
+          _settings.kitchenEnabled = v;
+          if (!v && _index == 4) _index = 0;
+        }),
         onManageMenus: _openKelolaMenu,
         onManageTables: _openKelolaMeja,
         onManageIngredients: _openKelolaStok,
@@ -421,19 +699,33 @@ class _HomeShellState extends State<HomeShell> {
         activeBranchId: _settings.activeBranchId,
         pinSet: _settings.pinHash.isNotEmpty,
         onSwitchBranch: _switchBranch,
-        onAddBranch: (name) => _settingChanged(() {
-          final id = 'c${DateTime.now().millisecondsSinceEpoch}';
-          _settings.branches = [..._settings.branches, Branch(id: id, name: name)];
+        onOpenProfile: _openProfile,
+        onOpenPinSettings: _openPinSettings,
+        onOpenBranchWizard: _openBranchWizard,
+        supabaseUrl: _settings.supabaseUrl,
+        supabaseAnonKey: _settings.supabaseAnonKey,
+        businessKey: _settings.businessKey,
+        lastSyncLabel: _settings.lastSyncLabel,
+        onSupabaseChanged: (u, k, b) => _settingChanged(() {
+          _settings.supabaseUrl = u;
+          _settings.supabaseAnonKey = k;
+          _settings.businessKey = b;
         }),
-        onPinHashChanged: (hash) => _settingChanged(() => _settings.pinHash = hash),
+        onSyncNow: _syncNow,
+        modeTema: _settings.modeTema,
+        onModeTemaChanged: (v) {
+          _settingChanged(() => _settings.modeTema = v);
+          widget.onModeTema(v, true);
+        },
       ),
     ];
 
-    // Indeks layar yang tampil di navigasi. Meja (indeks 3) hilang
-    // dari SEMUA navigasi saat fiturnya dimatikan di Pengaturan.
+    // Indeks layar yang tampil di navigasi. Meja (indeks 3) dan
+    // Dapur (indeks 4) hilang dari SEMUA navigasi saat fiturnya
+    // dimatikan di Pengaturan/wizard.
     final visible = <int>[
       for (var i = 0; i < _navItems.length; i++)
-        if (i != 3 || _settings.tablesEnabled) i,
+        if ((i != 3 || _settings.tablesEnabled) && (i != 4 || _settings.kitchenEnabled)) i,
     ];
     // Bar bawah HP (urutan pilihan): Beranda, Kasir, Produk, Dapur —
     // Produk masuk bar atas permintaan Adnan (meniru Bisakasir);
@@ -442,7 +734,7 @@ class _HomeShellState extends State<HomeShell> {
     final mainNav = <int>[for (final i in barOrder) if (visible.contains(i)) i];
     final drawerNav = <int>[for (final i in visible) if (!mainNav.contains(i)) i];
 
-    return LayoutBuilder(
+    final shell = LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
         if (wide) {
@@ -463,6 +755,7 @@ class _HomeShellState extends State<HomeShell> {
           );
         }
         return Scaffold(
+          key: _phoneScaffoldKey,
           // Atas dilindungi SafeArea supaya judul tidak tertutup status bar.
           // Bawah tidak perlu: NavigationBar sudah menjaga jarak dari
           // tombol navigasi Android.
@@ -515,6 +808,50 @@ class _HomeShellState extends State<HomeShell> {
         );
       },
     );
+
+    // Perayaan sesudah wizard: bundaran melebar lalu menyusut
+    // membuka Beranda di belakangnya.
+    final denganPerayaan = _celebrate
+        ? Stack(
+            children: [
+              shell,
+              Positioned.fill(
+                child: SetupCelebration(
+                  judul: 'Toko Sudah Siap!',
+                  subjudul: '${_settings.businessName} · ${_settings.activeBranch.name}',
+                  onSelesai: () => setState(() => _celebrate = false),
+                ),
+              ),
+            ],
+          )
+        : shell;
+
+    // Tombol kembali Android (permintaan Adnan): di menu lain →
+    // pulang ke Beranda; di Beranda → tekan DUA kali untuk keluar.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || _celebrate) return;
+        if (_phoneScaffoldKey.currentState?.isDrawerOpen ?? false) {
+          _phoneScaffoldKey.currentState?.closeDrawer();
+          return;
+        }
+        if (_index != 0) {
+          setState(() => _index = 0);
+          return;
+        }
+        final kini = DateTime.now();
+        if (_lastBackPress != null && kini.difference(_lastBackPress!) < const Duration(seconds: 2)) {
+          SystemNavigator.pop();
+          return;
+        }
+        _lastBackPress = kini;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tekan sekali lagi untuk keluar'), duration: Duration(seconds: 2)),
+        );
+      },
+      child: denganPerayaan,
+    );
   }
 }
 
@@ -546,7 +883,7 @@ class _PhoneDrawer extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                    child: const Icon(Icons.local_cafe, color: AppColors.card, size: 20),
+                    child: Icon(Icons.local_cafe, color: AppColors.card, size: 20),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
@@ -620,7 +957,7 @@ class _SideBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 218,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.card,
         border: Border(right: BorderSide(color: AppColors.border)),
       ),
@@ -635,7 +972,7 @@ class _SideBar extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                  child: const Icon(Icons.local_cafe, color: AppColors.card, size: 20),
+                  child: Icon(Icons.local_cafe, color: AppColors.card, size: 20),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(

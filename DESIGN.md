@@ -150,3 +150,43 @@ Teks tidak pernah lebih kecil dari 11.
   + keterangan data yang dibutuhkan. Angka contoh DIHAPUS.
 - Transaksi kini mencatat rincian subtotal/biaya/pajak + cabang —
   fondasi Laporan Pajak, Laba Rugi, dan multi-cabang.
+
+## Keputusan v0.8.0 (permintaan besar Adnan 2026-11-14)
+
+- **Pill/filter SATU bentuk di semua layar:** FilterChipRow
+  (gulir mendatar, AppChip) — Kasir, Produk, Stok, Meja, Dapur
+  (HP), Riwayat, Pajak, Pengaturan tema. Tidak ada lagi Wrap /
+  Row / ListView chip versi masing-masing layar.
+- **Angka statistik selalu utuh:** FitNumber (FittedBox scaleDown)
+  di kartu Beranda, Laporan, Riwayat, Piutang — Rp1.000.000 dan
+  Rp123.456.789 tampil penuh, tidak dibulatkan, tidak kepotong.
+- **Harga selalu berformat titik:** ThousandsFormatter dipakai
+  formulir menu, dialog bayar, dan semua kolom harga baru.
+- **Formulir dijaga:** editor (menu/bahan/meja) + halaman formulir
+  (Profil Usaha, PIN, Wizard Cabang, dialog teks/persen) memakai
+  GuardBack — tombol kembali / ketuk luar saat isi berubah →
+  peringatan "Perubahan belum disimpan" dulu. FormSheet dibatasi
+  92% tinggi layar & bergulir (tombol bawah tidak boleh jatuh di
+  luar layar).
+- **Ekspor di mana-mana:** TombolEkspor (ikon bagikan) membuka
+  menu yang sama: ringkasan teks (WhatsApp), CSV, PDF —
+  Riwayat, Bulanan, Pajak, Piutang, Stok, Produk.
+- **PIN kasir:** halaman pengaturan sendiri; gerbang PIN (papan
+  angka sendiri) mengunci Kasir bila PIN diatur, sekali per sesi.
+- **Animasi yang hidup tapi hemat:** denyut cepat tombol + dan
+  total keranjang bergerak (AnimatedRupiah) di kasir; bundaran
+  perayaan sesudah wizard; telur dadar saat ganti tema. Semua
+  ±300–2300 mdtk, tanpa dekorasi lain.
+- **Mode gelap:** warna permukaan/teks jadi getter sadar mode di
+  AppColors (aksen tetap); palet gelap = arang kehijauan
+  (#121614 latar, #1C211E kartu). Pilihan Terang/Gelap/Ikuti
+  Sistem di Pengaturan → Tampilan, bawaan Ikuti Sistem.
+- **Sinkron awan (Supabase):** data lokal tetap utama; sinkron
+  otomatis (sesudah data berubah + tiap 45 detik + saat buka)
+  dan manual. Indikator = ikon awan di Beranda (abu = belum
+  diatur, berputar = menyinkron, centang = tersinkron, merah =
+  gagal). Skema & panduan di folder supabase/.
+- **Produk ala Kasaba:** baris foto + nama + chip kategori + SKU
+  + harga kanan; menu ⋯ = Harga Massal, Tampilkan Bahan Baku,
+  Pilih Produk, Ekspor/Impor — sisanya (Resep, Bundle, Harga
+  Ojol, Cetak Label) ditandai 'Segera' dengan jujur.

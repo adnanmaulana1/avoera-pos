@@ -3,7 +3,7 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-class MejaScreen extends StatelessWidget {
+class MejaScreen extends StatefulWidget {
   const MejaScreen({super.key, required this.tables, required this.selectedTable, required this.onSelect, required this.onGoKasir});
 
   final List<CafeTable> tables;
@@ -12,16 +12,42 @@ class MejaScreen extends StatelessWidget {
   final VoidCallback onGoKasir;
 
   @override
+  State<MejaScreen> createState() => _MejaScreenState();
+}
+
+class _MejaScreenState extends State<MejaScreen> {
+  String _filter = 'Semua';
+
+  @override
   Widget build(BuildContext context) {
+    final tables = widget.tables;
+    final selectedTable = widget.selectedTable;
+    final onSelect = widget.onSelect;
+    final onGoKasir = widget.onGoKasir;
     final kosong = tables.where((t) => t.status == TableStatus.kosong).length;
     final terisi = tables.where((t) => t.status == TableStatus.terisi).length;
     final belum = tables.where((t) => t.status == TableStatus.belumBayar).length;
+    final tampil = tables.where((t) {
+      return switch (_filter) {
+        'Kosong' => t.status == TableStatus.kosong,
+        'Terisi' => t.status == TableStatus.terisi,
+        'Belum Bayar' => t.status == TableStatus.belumBayar,
+        _ => true,
+      };
+    }).toList();
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         const PageHeader(
           title: 'Meja',
           subtitle: 'Ketuk meja untuk menjadikannya meja aktif di kasir.',
+        ),
+        const SizedBox(height: AppSpacing.md),
+        FilterChipRow(
+          children: [
+            for (final f in ['Semua', 'Kosong', 'Terisi', 'Belum Bayar'])
+              AppChip(label: f, selected: _filter == f, onSelected: (_) => setState(() => _filter = f)),
+          ],
         ),
         const SizedBox(height: AppSpacing.md),
         Wrap(
@@ -31,10 +57,12 @@ class MejaScreen extends StatelessWidget {
             StatusChip(label: 'Kosong: $kosong', color: TableStatus.kosong.color),
             StatusChip(label: 'Terisi: $terisi', color: TableStatus.terisi.color),
             StatusChip(label: 'Belum Bayar: $belum', color: TableStatus.belumBayar.color),
-            if (selectedTable != null) StatusChip(label: 'Aktif: Meja ${selectedTable!.number}', color: AppColors.accentDark),
+            if (selectedTable != null) StatusChip(label: 'Aktif: Meja ${selectedTable.number}', color: AppColors.accentDark),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
+        if (tampil.isEmpty)
+          const EmptyState(message: 'Tidak ada meja pada filter ini.', icon: Icons.table_restaurant_outlined),
         LayoutBuilder(
           builder: (context, constraints) {
             final cross = constraints.maxWidth >= 900 ? 6 : (constraints.maxWidth >= 560 ? 4 : 3);
@@ -50,9 +78,9 @@ class MejaScreen extends StatelessWidget {
                 // di bawah itu Column meluber (tes tablet yang menangkap).
                 mainAxisExtent: 180,
               ),
-              itemCount: tables.length,
+              itemCount: tampil.length,
               itemBuilder: (_, i) {
-                final t = tables[i];
+                final t = tampil[i];
                 final selected = selectedTable?.number == t.number;
                 return Material(
                   color: AppColors.card,
@@ -101,7 +129,7 @@ class MejaScreen extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: PrimaryButton(
-              label: 'Pakai Meja ${selectedTable!.number} & Buka Kasir',
+              label: 'Pakai Meja ${selectedTable.number} & Buka Kasir',
               icon: Icons.point_of_sale,
               onPressed: onGoKasir,
             ),

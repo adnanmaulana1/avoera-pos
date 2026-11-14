@@ -86,12 +86,16 @@ class _KelolaMejaScreenState extends State<KelolaMejaScreen> {
     final capacityCtrl = TextEditingController(text: '${table?.capacity ?? 4}');
     String? error;
 
+    final awal = '${numberCtrl.text}|${capacityCtrl.text}';
     await showAppSheet<void>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) {
-          return FormSheet(
+          return GuardBack(
+            dirty: () => '${numberCtrl.text}|${capacityCtrl.text}' != awal,
+            child: FormSheet(
             title: table == null ? 'Tambah Meja' : 'Ubah Meja ${table.number}',
             saveLabel: table == null ? 'Simpan Meja' : 'Simpan Perubahan',
             errorText: error,
@@ -154,6 +158,7 @@ class _KelolaMejaScreenState extends State<KelolaMejaScreen> {
                 decoration: const InputDecoration(hintText: 'Contoh: 4'),
               ),
             ],
+            ),
           );
         },
       ),

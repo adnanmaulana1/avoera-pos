@@ -25,7 +25,7 @@ void main() {
     await tester.pumpAndSettle();
     // Daftar Pengaturan makin panjang — gulir ke baris Kelola Menu.
     await tester.scrollUntilVisible(find.text('Kelola Menu'), 120,
-        scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byType(Scrollable)));
+        scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Kelola Menu'));
     await tester.pumpAndSettle();
@@ -37,6 +37,8 @@ void main() {
     final fields = find.byType(TextField);
     await tester.enterText(fields.first, 'Es Kopi Uji');
     await tester.enterText(fields.at(1), '21000');
+    await tester.ensureVisible(find.text('Simpan Menu'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Simpan Menu'));
     await tester.pumpAndSettle();
     // Menu baru ada di urutan terakhir — gulir daftar kelola sampai terlihat.

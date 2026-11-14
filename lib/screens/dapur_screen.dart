@@ -3,23 +3,46 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-class DapurScreen extends StatelessWidget {
+class DapurScreen extends StatefulWidget {
   const DapurScreen({super.key, required this.orders, required this.onAdvance});
 
   final List<KitchenOrder> orders;
   final ValueChanged<KitchenOrder> onAdvance;
 
   @override
+  State<DapurScreen> createState() => _DapurScreenState();
+}
+
+class _DapurScreenState extends State<DapurScreen> {
+  String _filter = 'Semua';
+
+  @override
   Widget build(BuildContext context) {
+    final orders = widget.orders;
+    final onAdvance = widget.onAdvance;
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final columns = <(KitchenStatus, List<KitchenOrder>)>[
       for (final s in KitchenStatus.values) (s, orders.where((o) => o.status == s).toList()),
     ];
-    const header = Padding(
-      padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
-      child: PageHeader(
-        title: 'Dapur',
-        subtitle: 'Tekan tombol di tiap pesanan untuk memajukan statusnya.',
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const PageHeader(
+            title: 'Dapur',
+            subtitle: 'Tekan tombol di tiap pesanan untuk memajukan statusnya.',
+          ),
+          if (!wide) ...[
+            const SizedBox(height: AppSpacing.md),
+            FilterChipRow(
+              children: [
+                for (final f in ['Semua', 'Baru', 'Dimasak', 'Selesai'])
+                  AppChip(label: f, selected: _filter == f, onSelected: (_) => setState(() => _filter = f)),
+              ],
+            ),
+          ],
+        ],
       ),
     );
     if (wide) {
@@ -44,10 +67,13 @@ class DapurScreen extends StatelessWidget {
         ],
       );
     }
+    final tampil = _filter == 'Semua'
+        ? columns
+        : columns.where((c) => c.$1.label == _filter).toList();
     return ListView(
       children: [
         header,
-        for (final (status, list) in columns) _Column(status: status, orders: list, onAdvance: onAdvance, shrinkWrap: true),
+        for (final (status, list) in tampil) _Column(status: status, orders: list, onAdvance: onAdvance, shrinkWrap: true),
       ],
     );
   }

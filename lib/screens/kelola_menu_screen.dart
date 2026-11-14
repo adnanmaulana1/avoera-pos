@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../data.dart';
+import '../media_store.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart';
@@ -55,75 +59,146 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
 
   Widget _body() {
     return Column(
-        children: [
-          Expanded(
-            child: widget.menus.isEmpty
-                ? const EmptyState(message: 'Belum ada menu.\nKetuk Tambah Menu untuk membuat yang pertama.', icon: Icons.restaurant_menu_outlined)
-                : ListView.builder(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    itemCount: widget.menus.length,
-                    itemBuilder: (_, i) {
-                      final m = widget.menus[i];
-                      return AppCard(
-                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(color: m.color, borderRadius: BorderRadius.circular(AppRadius.md)),
-                              child: Icon(m.icon, color: AppColors.card, size: 24),
+      children: [
+        Expanded(
+          child: widget.menus.isEmpty
+              ? const EmptyState(message: 'Belum ada menu.\nKetuk Tambah Menu untuk membuat yang pertama.', icon: Icons.restaurant_menu_outlined)
+              : ListView.builder(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  itemCount: widget.menus.length,
+                  itemBuilder: (_, i) {
+                    final m = widget.menus[i];
+                    return AppCard(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: Row(
+                        children: [
+                          MenuThumb(menu: m, size: 48),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(m.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                                Text('${m.category} · ${rupiah(m.price)}', style: AppText.small.copyWith(color: AppColors.muted)),
+                              ],
                             ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(m.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
-                                  Text('${m.category} · ${rupiah(m.price)}', style: AppText.small.copyWith(color: AppColors.muted)),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
-                              color: AppColors.accentDark,
-                              onPressed: () => _openEditor(m),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: SizedBox(
-                width: double.infinity,
-                child: PrimaryButton(label: 'Tambah Menu', icon: Icons.add, onPressed: () => _openEditor(null)),
-              ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            color: AppColors.accentDark,
+                            onPressed: () => _openEditor(m),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: SizedBox(
+              width: double.infinity,
+              child: PrimaryButton(label: 'Tambah Menu', icon: Icons.add, onPressed: () => _openEditor(null)),
             ),
           ),
-        ],
+        ),
+      ],
     );
   }
 
   Future<void> _openEditor(MenuItem? item) async {
-    final nameCtrl = TextEditingController(text: item?.name ?? '');
-    final priceCtrl = TextEditingController(text: item == null ? '' : '${item.price}');
-    var category = item?.category ?? 'Kopi';
-    var color = item?.color ?? menuPalette.first;
-    var icon = item?.icon ?? menuIconChoices.first;
-    var isDrink = item?.isDrink ?? false;
-    String? error;
+    await showMenuEditor(
+      context,
+      initial: item,
+      onAdd: widget.onAdd,
+      onChanged: widget.onChanged,
+      onDelete: widget.onDelete,
+    );
+    // Layar ini rute terdorong: induk tidak membangun ulang kita —
+    // segarkan sendiri sesudah editor selesai.
+    if (mounted) setState(() {});
+  }
+}
 
-    await showAppSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) {
-          return FormSheet(
+/// Kotak gambar menu resmi: foto produk bila ada (dan berkasnya
+/// masih ada), selain itu kotak warna + ikon menu. Satu komponen
+/// untuk kasir, produk, dan kelola supaya tidak ada tampilan
+/// gambar yang pecah di satu tempat saja.
+class MenuThumb extends StatelessWidget {
+  const MenuThumb({super.key, required this.menu, this.size = 48, this.radius = AppRadius.md});
+  final MenuItem menu;
+  final double size;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final path = menu.imagePath;
+    final fallback = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: menu.color, borderRadius: BorderRadius.circular(radius)),
+      child: Icon(menu.icon, color: AppColors.card, size: size * 0.5),
+    );
+    if (path == null || path.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Image.file(
+        File(path),
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
+}
+
+/// Formulir menu bersama (Kelola Menu & layar Produk). Termasuk
+/// foto produk: ambil dari kamera / galeri (permintaan Adnan
+/// 2026-11-14), harga berformat titik otomatis, dan penjaga tombol
+/// kembali (GuardBack) supaya isian tidak hilang tanpa peringatan.
+Future<void> showMenuEditor(
+  BuildContext context, {
+  MenuItem? initial,
+  required ValueChanged<MenuItem> onAdd,
+  required VoidCallback onChanged,
+  required ValueChanged<MenuItem> onDelete,
+}) async {
+  final item = initial;
+  final menuId = item?.id ?? 'm${DateTime.now().millisecondsSinceEpoch}';
+  final nameCtrl = TextEditingController(text: item?.name ?? '');
+  final priceCtrl = TextEditingController(text: item == null ? '' : ThousandsFormatter.format(item.price));
+  var category = item?.category ?? 'Kopi';
+  var color = item?.color ?? menuPalette.first;
+  var icon = item?.icon ?? menuIconChoices.first;
+  var isDrink = item?.isDrink ?? false;
+  String? imagePath = item?.imagePath;
+  String? error;
+  String snapshot() => [nameCtrl.text, priceCtrl.text, category, '${color.toARGB32()}', '${icon.codePoint}', '$isDrink', imagePath ?? ''].join('|');
+  final awal = snapshot();
+
+  await showAppSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    isDismissible: false,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setSheet) {
+        Future<void> pilihFoto(ImageSource sumber) async {
+          try {
+            final x = await ImagePicker().pickImage(source: sumber, maxWidth: 900, imageQuality: 82);
+            if (x == null) return;
+            final permanen = await simpanFotoMenu(x.path, menuId);
+            setSheet(() => imagePath = permanen);
+          } catch (_) {
+            setSheet(() => error = 'Tidak bisa membuka ${sumber == ImageSource.camera ? 'kamera' : 'galeri'} di perangkat ini.');
+          }
+        }
+
+        return GuardBack(
+          dirty: () => snapshot() != awal,
+          child: FormSheet(
             title: item == null ? 'Tambah Menu' : 'Ubah Menu',
             saveLabel: item == null ? 'Simpan Menu' : 'Simpan Perubahan',
             errorText: error,
@@ -136,8 +211,7 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
                       message: 'Menu "${item.name}" akan dihapus dari daftar dan tidak bisa lagi dijual di kasir.',
                     );
                     if (ok) {
-                      widget.onDelete(item);
-                      setState(() {});
+                      onDelete(item);
                       if (ctx.mounted) Navigator.of(ctx).pop();
                     }
                   },
@@ -153,14 +227,15 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
                 return;
               }
               if (item == null) {
-                widget.onAdd(MenuItem(
-                  id: 'm${DateTime.now().millisecondsSinceEpoch}',
+                onAdd(MenuItem(
+                  id: menuId,
                   name: name,
                   category: category,
                   price: price,
                   color: color,
                   icon: icon,
                   isDrink: isDrink,
+                  imagePath: imagePath,
                 ));
               } else {
                 item.name = name;
@@ -169,12 +244,42 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
                 item.color = color;
                 item.icon = icon;
                 item.isDrink = isDrink;
-                widget.onChanged();
+                item.imagePath = imagePath;
+                onChanged();
               }
-              setState(() {});
               Navigator.of(ctx).pop();
             },
             children: [
+              const FormLabel('Foto Produk (boleh kosong)'),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PratinjauFoto(imagePath: imagePath, color: color, icon: icon),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          children: [
+                            OutlinedButton.icon(onPressed: () => pilihFoto(ImageSource.camera), icon: const Icon(Icons.photo_camera_outlined, size: 18), label: const Text('Kamera')),
+                            OutlinedButton.icon(onPressed: () => pilihFoto(ImageSource.gallery), icon: const Icon(Icons.photo_library_outlined, size: 18), label: const Text('Galeri')),
+                          ],
+                        ),
+                        if (imagePath != null)
+                          TextButton(
+                            onPressed: () => setSheet(() => imagePath = null),
+                            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                            child: const Text('Hapus Foto'),
+                          ),
+                        Text('Foto tampil di kartu kasir & daftar produk.', style: AppText.caption.copyWith(color: AppColors.muted)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
               const FormLabel('Nama Menu'),
               TextField(controller: nameCtrl, decoration: const InputDecoration(hintText: 'Contoh: Kopi Susu Gula Aren')),
               const SizedBox(height: AppSpacing.lg),
@@ -192,8 +297,8 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
               TextField(
                 controller: priceCtrl,
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(prefixText: 'Rp ', hintText: '18000'),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, const ThousandsFormatter()],
+                decoration: const InputDecoration(prefixText: 'Rp ', hintText: '18.000'),
               ),
               const SizedBox(height: AppSpacing.lg),
               const FormLabel('Warna Kartu'),
@@ -250,10 +355,38 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
                 ],
               ),
             ],
-          );
-        },
+          ),
+        );
+      },
+    ),
+  );
+  disposeControllersLater([nameCtrl, priceCtrl]);
+}
+
+class _PratinjauFoto extends StatelessWidget {
+  const _PratinjauFoto({required this.imagePath, required this.color, required this.icon});
+  final String? imagePath;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final kosong = Container(
+      width: 84,
+      height: 84,
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.md)),
+      child: Icon(icon, color: AppColors.card, size: 36),
+    );
+    if (imagePath == null) return kosong;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Image.file(
+        File(imagePath!),
+        width: 84,
+        height: 84,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => kosong,
       ),
     );
-    disposeControllersLater([nameCtrl, priceCtrl]);
   }
 }

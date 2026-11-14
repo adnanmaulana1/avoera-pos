@@ -54,7 +54,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text(label),
       120,
-      scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byType(Scrollable)),
+      scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)),
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text(label));
@@ -112,6 +112,8 @@ void main() {
     await tester.tap(tombolUbah13());
     await tester.pumpAndSettle();
     await tester.enterText(inSheet(find.byType(TextField)).at(1), '6');
+    await tester.ensureVisible(inSheet(find.text('Simpan Perubahan')));
+    await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Simpan Perubahan')));
     await tester.pumpAndSettle();
     expect(find.descendant(of: baris13(), matching: find.text('6 kursi')), findsOneWidget, reason: 'Kapasitas harus berubah jadi 6');
@@ -122,6 +124,8 @@ void main() {
     await tester.ensureVisible(tombolUbah13());
     await tester.pumpAndSettle();
     await tester.tap(tombolUbah13());
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(inSheet(find.text('Hapus')));
     await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Hapus')));
     await tester.pumpAndSettle();
@@ -147,6 +151,8 @@ void main() {
     await tester.enterText(kolom.at(2), 'kg');
     await tester.enterText(kolom.at(3), '5');
     await tester.enterText(kolom.at(4), '50');
+    await tester.ensureVisible(inSheet(find.text('Simpan Bahan')));
+    await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Simpan Bahan')));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Es Batu Kristal'), 100, scrollable: find.byType(Scrollable).first);
@@ -162,7 +168,7 @@ void main() {
     // Scrollable dibatasi ke layar Stok — sidebar kini juga punya
     // gulirannya sendiri, .first bisa salah sasaran.
     await tester.scrollUntilVisible(find.text('Es Batu Kristal'), 120,
-        scrollable: find.descendant(of: find.byType(StokScreen), matching: find.byType(Scrollable)));
+        scrollable: find.descendant(of: find.byType(StokScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)));
     expect(find.text('Es Batu Kristal'), findsOneWidget, reason: 'Bahan baru harus tampil di layar Stok');
   });
 
@@ -177,6 +183,8 @@ void main() {
     await tester.tap(find.descendant(of: barisMenu('Kopi Tubruk'), matching: find.byIcon(Icons.edit_outlined)));
     await tester.pumpAndSettle();
     await tester.enterText(inSheet(find.byType(TextField)).at(1), '13500');
+    await tester.ensureVisible(inSheet(find.text('Simpan Perubahan')));
+    await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Simpan Perubahan')));
     await tester.pumpAndSettle();
     expect(find.textContaining('Rp13.500'), findsOneWidget, reason: 'Harga baru harus tampil di daftar');
@@ -186,6 +194,8 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('Paket Berdua'), 100, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.descendant(of: barisMenu('Paket Berdua'), matching: find.byIcon(Icons.edit_outlined)));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(inSheet(find.text('Hapus')));
     await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Hapus')));
     await tester.pumpAndSettle();
@@ -205,13 +215,13 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Info Aplikasi'),
       100,
-      scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byType(Scrollable)),
+      scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down)),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Info Aplikasi'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsOneWidget);
-    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.7.0')), findsOneWidget);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.8.0')), findsOneWidget);
     await tester.tap(find.text('Tutup'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsNothing, reason: 'Popup harus tertutup');
@@ -227,6 +237,8 @@ void main() {
     final kolom = inSheet(find.byType(TextField));
     await tester.enterText(kolom.at(0), 'Menu Persist Uji');
     await tester.enterText(kolom.at(1), '9000');
+    await tester.ensureVisible(inSheet(find.text('Simpan Menu')));
+    await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Simpan Menu')));
     await tester.pumpAndSettle();
 

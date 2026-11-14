@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.7.0';
+const appVersion = '0.8.0';
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -15,10 +15,16 @@ class AppSettings {
     this.servicePercent = 5,
     this.taxPercent = 10,
     this.tablesEnabled = true,
+    this.kitchenEnabled = true,
     List<Branch>? branches,
     this.activeBranchId = 'c1',
     this.pinHash = '',
     this.onboarded = false,
+    this.supabaseUrl = '',
+    this.supabaseAnonKey = '',
+    this.businessKey = '',
+    this.lastSyncLabel = '',
+    this.modeTema = 'sistem',
   }) : branches = branches ?? [Branch(id: 'c1', name: 'Cabang Utama')];
   String businessName;
   String businessAddress;
@@ -31,6 +37,11 @@ class AppSettings {
   /// navigasi dan kasir tidak lagi menawarkan pilihan meja.
   bool tablesEnabled;
 
+  /// Dapur juga fitur opsional (permintaan Adnan 2026-11-14):
+  /// kedai yang masakannya tidak lewat layar dapur bisa mematikannya
+  /// — menu Dapur hilang & pembayaran tidak membuat tiket dapur.
+  bool kitchenEnabled;
+
   /// Multi-cabang + wizard pertama (2026-11-14): daftar cabang,
   /// cabang yang sedang aktif, hash PIN kasir (bukan PIN mentah),
   /// dan penanda wizard pembuka sudah selesai.
@@ -38,6 +49,17 @@ class AppSettings {
   String activeBranchId;
   String pinHash;
   bool onboarded;
+
+  /// Sinkronisasi Supabase (permintaan Adnan 2026-11-14 — backend
+  /// gratis): alamat proyek + kunci anon + kode usaha bersama.
+  /// Kosong = aplikasi murni lokal seperti sebelumnya.
+  String supabaseUrl;
+  String supabaseAnonKey;
+  String businessKey;
+  String lastSyncLabel;
+
+  /// Pilihan tema tampilan: 'terang' | 'gelap' | 'sistem'.
+  String modeTema;
 
   Branch get activeBranch => branches.firstWhere((b) => b.id == activeBranchId, orElse: () => branches.first);
 
@@ -48,10 +70,16 @@ class AppSettings {
         'servicePercent': servicePercent,
         'taxPercent': taxPercent,
         'tablesEnabled': tablesEnabled,
+        'kitchenEnabled': kitchenEnabled,
         'branches': branches.map((b) => b.toJson()).toList(),
         'activeBranchId': activeBranchId,
         'pinHash': pinHash,
         'onboarded': onboarded,
+        'supabaseUrl': supabaseUrl,
+        'supabaseAnonKey': supabaseAnonKey,
+        'businessKey': businessKey,
+        'lastSyncLabel': lastSyncLabel,
+        'modeTema': modeTema,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -62,10 +90,17 @@ class AppSettings {
         taxPercent: (j['taxPercent'] as num?)?.toInt() ?? 10,
         // Data lama belum punya kunci ini → meja tetap aktif.
         tablesEnabled: j['tablesEnabled'] as bool? ?? true,
+        // Data lama belum punya kunci ini → dapur tetap aktif.
+        kitchenEnabled: j['kitchenEnabled'] as bool? ?? true,
         branches: (j['branches'] as List?)?.map((e) => Branch.fromJson(e as Map<String, dynamic>)).toList(),
         activeBranchId: j['activeBranchId'] as String? ?? 'c1',
         pinHash: j['pinHash'] as String? ?? '',
         onboarded: j['onboarded'] as bool? ?? false,
+        supabaseUrl: j['supabaseUrl'] as String? ?? '',
+        supabaseAnonKey: j['supabaseAnonKey'] as String? ?? '',
+        businessKey: j['businessKey'] as String? ?? '',
+        lastSyncLabel: j['lastSyncLabel'] as String? ?? '',
+        modeTema: j['modeTema'] as String? ?? 'sistem',
       );
 }
 
@@ -139,6 +174,7 @@ class MenuItem {
     required this.color,
     required IconData icon,
     this.isDrink = false,
+    this.imagePath,
   }) : iconIndex = _iconIndexOf(icon);
   final String id;
   String name;
@@ -147,6 +183,12 @@ class MenuItem {
   Color color;
   int iconIndex;
   bool isDrink;
+
+  /// Foto produk (permintaan Adnan 2026-11-14): berkas lokal di
+  /// folder dokumen aplikasi. Null = tampilkan ikon & warna seperti
+  /// biasa. Berkas bisa hilang (mis. data dibersihkan) — semua
+  /// tampilan gambar WAJIB punya jalan kembali ke ikon.
+  String? imagePath;
 
   IconData get icon => menuIconChoices[iconIndex.clamp(0, menuIconChoices.length - 1)];
   set icon(IconData v) => iconIndex = _iconIndexOf(v);
@@ -160,6 +202,7 @@ class MenuItem {
         'icon': icon.codePoint,
         'iconIndex': iconIndex,
         'isDrink': isDrink,
+        'imagePath': imagePath,
       };
 
   factory MenuItem.fromJson(Map<String, dynamic> j) {
@@ -174,9 +217,14 @@ class MenuItem {
       color: Color((j['color'] as num).toInt()),
       icon: menuIconChoices[idx.clamp(0, menuIconChoices.length - 1)],
       isDrink: j['isDrink'] as bool? ?? false,
+      imagePath: j['imagePath'] as String?,
     );
   }
 }
+
+/// Kode produk tampilan (gaya PRD-001 di referensi Kasaba) — diturunkan
+/// dari id menu supaya stabil walau urutan daftar berubah.
+String skuOf(MenuItem m) => 'PRD-${(m.id.hashCode.abs() % 900) + 100}';
 
 const categories = ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Camilan', 'Paket'];
 
@@ -334,8 +382,16 @@ List<KitchenOrder> seedKitchenOrders() => [
 // ---------- Stok bahan ----------
 enum StockStatus { aman, kritis, habis }
 
+/// Status sinkronisasi awan (Supabase) untuk ikon indikator di
+/// Beranda: belum diatur / sedang menyinkron / tersinkron / gagal.
+enum StatusSinkron { belumDiatur, menyinkron, tersinkron, gagal }
+
 class Ingredient {
-  Ingredient({required this.name, required this.stock, required this.unit, required this.minStock, required this.maxStock});
+  Ingredient({String? id, required this.name, required this.stock, required this.unit, required this.minStock, required this.maxStock})
+      : id = id ?? 'b${name.hashCode.abs()}';
+
+  /// Id stabil untuk sinkronisasi (data lama diturunkan dari nama).
+  final String id;
   String name;
   double stock;
   String unit;
@@ -343,6 +399,7 @@ class Ingredient {
   double maxStock;
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'name': name,
         'stock': stock,
         'unit': unit,
@@ -351,6 +408,7 @@ class Ingredient {
       };
 
   factory Ingredient.fromJson(Map<String, dynamic> j) => Ingredient(
+        id: j['id'] as String?,
         name: j['name'] as String,
         stock: (j['stock'] as num).toDouble(),
         unit: j['unit'] as String,
@@ -397,8 +455,13 @@ class TxRecord {
     this.service = 0,
     this.tax = 0,
     this.branchId = '',
+    this.uuid = '',
   });
   final String id;
+
+  /// Id unik lintas perangkat untuk sinkronisasi (id tampilan
+  /// 'A-1043' bisa sama di dua HP berbeda). Data lama memakai id.
+  final String uuid;
   final int total;
   final String method; // 'Tunai' | 'QRIS'
   final DateTime at;
@@ -422,6 +485,7 @@ class TxRecord {
         'service': service,
         'tax': tax,
         'branchId': branchId,
+        'uuid': uuid.isEmpty ? id : uuid,
       };
 
   factory TxRecord.fromJson(Map<String, dynamic> j) => TxRecord(
@@ -434,6 +498,7 @@ class TxRecord {
         service: (j['service'] as num?)?.toInt() ?? 0,
         tax: (j['tax'] as num?)?.toInt() ?? 0,
         branchId: j['branchId'] as String? ?? '',
+        uuid: j['uuid'] as String? ?? (j['id'] as String? ?? ''),
       );
 }
 
@@ -442,10 +507,19 @@ class TxRecord {
 /// Satu cabang usaha. Multi-cabang: menu/stok masih bersama
 /// (menu pusat), transaksi tercatat per cabang.
 class Branch {
-  Branch({required this.id, required this.name});
+  Branch({required this.id, required this.name, this.address = '', this.phone = ''});
   final String id;
   String name;
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name};
-  factory Branch.fromJson(Map<String, dynamic> j) => Branch(id: j['id'] as String, name: j['name'] as String? ?? 'Cabang');
+  /// Alamat & telepon cabang (diisi lewat wizard tambah cabang).
+  String address;
+  String phone;
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'address': address, 'phone': phone};
+  factory Branch.fromJson(Map<String, dynamic> j) => Branch(
+        id: j['id'] as String,
+        name: j['name'] as String? ?? 'Cabang',
+        address: j['address'] as String? ?? '',
+        phone: j['phone'] as String? ?? '',
+      );
 }

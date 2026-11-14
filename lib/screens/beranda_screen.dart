@@ -16,6 +16,10 @@ class BerandaScreen extends StatefulWidget {
     required this.branches,
     required this.transactions,
     required this.kitchenActive,
+    required this.kitchenEnabled,
+    required this.menuCount,
+    required this.syncStatus,
+    required this.onSyncTap,
     required this.tablesEnabled,
     required this.tablesOccupied,
     required this.tablesTotal,
@@ -34,6 +38,13 @@ class BerandaScreen extends StatefulWidget {
   final List<Branch> branches;
   final List<TxRecord> transactions;
   final int kitchenActive;
+  final bool kitchenEnabled;
+  final int menuCount;
+
+  /// Indikator awan: status sinkron Supabase + aksi ketuknya
+  /// (sinkron sekarang / buka pengaturan sinkron).
+  final StatusSinkron syncStatus;
+  final VoidCallback onSyncTap;
   final bool tablesEnabled;
   final int tablesOccupied;
   final int tablesTotal;
@@ -94,7 +105,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
 
     final tiles = <(IconData, String, VoidCallback)>[
       if (widget.tablesEnabled) (Icons.table_restaurant_outlined, 'Meja', () => widget.onNavigate(3)),
-      (Icons.soup_kitchen_outlined, 'Dapur', () => widget.onNavigate(4)),
+      if (widget.kitchenEnabled) (Icons.soup_kitchen_outlined, 'Dapur', () => widget.onNavigate(4)),
       (Icons.inventory_2_outlined, 'Produk', () => widget.onNavigate(2)),
       (Icons.bar_chart_outlined, 'Laporan', () => widget.onNavigate(5)),
       (Icons.inventory_outlined, 'Stok Bahan', () => widget.onNavigate(6)),
@@ -118,6 +129,26 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   Text(_tanggal(now), style: AppText.small.copyWith(color: AppColors.muted)),
                 ],
               ),
+            ),
+            // Ikon awan = indikator sinkron online (Supabase).
+            IconButton(
+              tooltip: switch (widget.syncStatus) {
+                StatusSinkron.belumDiatur => 'Sinkron awan belum diatur',
+                StatusSinkron.menyinkron => 'Sedang menyinkronkan…',
+                StatusSinkron.tersinkron => 'Data tersinkron ke awan',
+                StatusSinkron.gagal => 'Sinkron gagal — ketuk untuk coba lagi',
+              },
+              onPressed: widget.onSyncTap,
+              icon: switch (widget.syncStatus) {
+                StatusSinkron.belumDiatur => Icon(Icons.cloud_off_outlined, color: AppColors.muted),
+                StatusSinkron.menyinkron => const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.accent),
+                  ),
+                StatusSinkron.tersinkron => const Icon(Icons.cloud_done_outlined, color: AppColors.accentDark),
+                StatusSinkron.gagal => const Icon(Icons.cloud_off_outlined, color: AppColors.danger),
+              },
             ),
             IconButton(
               tooltip: 'Pemberitahuan',
@@ -211,7 +242,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      Text(rupiah(totalToday), style: AppText.display.copyWith(color: Colors.white)),
+                      FitNumber(rupiah(totalToday), style: AppText.display.copyWith(color: Colors.white)),
                       const SizedBox(height: AppSpacing.md),
                       if (pct != null)
                         Row(
@@ -244,7 +275,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
             const SizedBox(width: AppSpacing.md),
             Expanded(child: _StatCard(label: 'Rata-rata', value: rupiah(avgToday))),
             const SizedBox(width: AppSpacing.md),
-            Expanded(child: _StatCard(label: 'Di Dapur', value: '${widget.kitchenActive}')),
+            Expanded(
+              child: widget.kitchenEnabled
+                  ? _StatCard(label: 'Di Dapur', value: '${widget.kitchenActive}')
+                  : _StatCard(label: 'Menu Dijual', value: '${widget.menuCount}'),
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -266,9 +301,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
                   children: [
                     Text('Kasir', style: AppText.subtitle),
                     Text(
-                      widget.tablesEnabled
-                          ? '${widget.tablesOccupied} dari ${widget.tablesTotal} meja terisi · ${widget.kitchenActive} pesanan di dapur'
-                          : '${widget.kitchenActive} pesanan di dapur',
+                      [
+                        if (widget.tablesEnabled) '${widget.tablesOccupied} dari ${widget.tablesTotal} meja terisi',
+                        if (widget.kitchenEnabled) '${widget.kitchenActive} pesanan di dapur',
+                        if (!widget.tablesEnabled && !widget.kitchenEnabled) 'Siap melayani pesanan',
+                      ].join(' · '),
                       style: AppText.small.copyWith(color: AppColors.muted),
                     ),
                   ],
@@ -406,7 +443,7 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
           const SizedBox(height: AppSpacing.xs),
-          Text(value, style: AppText.number),
+          FitNumber(value),
         ],
       ),
     );

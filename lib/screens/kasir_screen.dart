@@ -1,5 +1,6 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -82,7 +83,7 @@ class _KasirScreenState extends State<KasirScreen> {
         Expanded(child: menuArea),
         Container(
           width: 350,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.card,
             border: Border(left: BorderSide(color: AppColors.border)),
           ),
@@ -141,21 +142,15 @@ class _KasirScreenState extends State<KasirScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-              itemBuilder: (_, i) {
-                final c = categories[i];
-                return AppChip(
+          FilterChipRow(
+            children: [
+              for (final c in categories)
+                AppChip(
                   label: c,
                   selected: c == _category,
                   onSelected: (_) => setState(() => _category = c),
-                );
-              },
-            ),
+                ),
+            ],
           ),
           const SizedBox(height: AppSpacing.md),
           Expanded(
@@ -215,17 +210,20 @@ class _KasirScreenState extends State<KasirScreen> {
   Widget _buildMobileCartBar() {
     return Container(
       padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
-      decoration: const BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.border))),
+      decoration: BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.border))),
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('$_itemCount item', style: AppText.small.copyWith(color: AppColors.muted)),
-                Text(rupiah(_grandTotal), style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
-              ],
+            child: _Denyut(
+              pemicu: _itemCount,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('$_itemCount item', style: AppText.small.copyWith(color: AppColors.muted)),
+                  AnimatedRupiah(value: _grandTotal, style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
+                ],
+              ),
             ),
           ),
           PrimaryButton(
@@ -431,7 +429,7 @@ class _KasirScreenState extends State<KasirScreen> {
                           onSelected: amt >= _grandTotal
                               ? (_) => setDlg(() {
                                     paid = amt;
-                                    amountCtrl.text = _formatRibuan(amt);
+                                    amountCtrl.text = ThousandsFormatter.format(amt);
                                   })
                               : null,
                         ),
@@ -441,7 +439,7 @@ class _KasirScreenState extends State<KasirScreen> {
                   TextField(
                     controller: amountCtrl,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [_RibuanFormatter()],
+                    inputFormatters: const [ThousandsFormatter()],
                     decoration: const InputDecoration(prefixText: 'Rp ', hintText: 'atau ketik nominal sendiri'),
                     onChanged: (v) => setDlg(() => paid = int.tryParse(v.replaceAll('.', ''))),
                   ),
@@ -460,7 +458,7 @@ class _KasirScreenState extends State<KasirScreen> {
                     decoration: cardDecoration(),
                     child: Column(
                       children: [
-                        const Icon(Icons.qr_code_2, size: 64, color: AppColors.ink),
+                        Icon(Icons.qr_code_2, size: 64, color: AppColors.ink),
                         const SizedBox(height: AppSpacing.sm),
                         Text('Tampilkan QR ini ke pelanggan', style: AppText.small.copyWith(color: AppColors.muted)),
                       ],
@@ -500,16 +498,16 @@ class _KasirScreenState extends State<KasirScreen> {
           children: [
             Container(
               width: 64, height: 64,
-              decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
               child: const Icon(Icons.check, color: AppColors.accent, size: 36),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text('Pembayaran Berhasil', style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.sm),
             Text('Metode: $methodResult · ${rupiah(paidTotal)}',
-                style: const TextStyle(color: AppColors.muted)),
+                style: TextStyle(color: AppColors.muted)),
             const SizedBox(height: AppSpacing.xs),
-            const Text('Pesanan diteruskan ke dapur.', style: TextStyle(color: AppColors.muted)),
+            Text('Pesanan diteruskan ke dapur.', style: TextStyle(color: AppColors.muted)),
           ],
         ),
         actions: [
@@ -535,61 +533,96 @@ Widget _payRow(String label, int value) => Padding(
       ),
     );
 
-/// 50000 -> '50.000' (pemisah ribuan gaya Indonesia).
-String _formatRibuan(int n) {
-  final s = n.toString();
-  final buf = StringBuffer();
-  for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-    buf.write(s[i]);
-  }
-  return buf.toString();
-}
+/// Denyut cepat (permintaan Adnan 2026-11-14): elemen membesar
+/// sesaat lalu kembali — dipakai tombol + di kartu menu dan bar
+/// keranjang saat item masuk, supaya terasa 'masuk keranjang'.
+class _Denyut extends StatefulWidget {
+  const _Denyut({required this.pemicu, required this.child});
 
-/// Mengetik nominal langsung tampil berformat titik: 50000 -> 50.000.
-class _RibuanFormatter extends TextInputFormatter {
+  /// Nilai yang kenaikannya memicu denyut (mis. jumlah item).
+  final int pemicu;
+  final Widget child;
+
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return const TextEditingValue(text: '');
-    final text = _formatRibuan(int.parse(digits));
-    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
+  State<_Denyut> createState() => _DenyutState();
+}
+
+class _DenyutState extends State<_Denyut> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
+
+  @override
+  void didUpdateWidget(_Denyut old) {
+    super.didUpdateWidget(old);
+    if (widget.pemicu > old.pemicu) _c.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (_, child) {
+        final t = _c.value;
+        final skala = 1 + 0.16 * (t == 0 || t == 1 ? 0 : (t < 0.5 ? t * 2 : (1 - t) * 2));
+        return Transform.scale(scale: skala, alignment: Alignment.centerLeft, child: child);
+      },
+    );
   }
 }
 
-class _MenuCard extends StatelessWidget {
+class _MenuCard extends StatefulWidget {
   const _MenuCard({required this.item, required this.onTap, required this.onQuickAdd});
   final MenuItem item;
   final VoidCallback onTap;
   final VoidCallback onQuickAdd;
 
   @override
+  State<_MenuCard> createState() => _MenuCardState();
+}
+
+class _MenuCardState extends State<_MenuCard> {
+  int _tekanan = 0;
+
+  @override
   Widget build(BuildContext context) {
-    // Desain v0.6.0: blok warna raksasa dihapus (terkesan kekanakan).
-    // Warna menu tetap jadi identitas produk, tapi cukup sebagai
-    // rona kotak ikon kecil — selebihnya kartu putih bersih ala POS
-    // profesional: ikon, nama, kategori, harga, tombol tambah.
+    final item = widget.item;
+    final adaFoto = item.imagePath != null && item.imagePath!.isNotEmpty;
+    // Desain v0.6.0 dipertahankan: kartu putih bersih, warna menu
+    // sebagai identitas. v0.8.0: menu dengan foto memakai foto
+    // sebagai kepala kartu; tombol + berdenyut saat ditekan dan
+    // total di bar keranjang ikut bergerak (animasi masuk
+    // keranjang yang diminta Adnan).
     return Material(
       color: AppColors.card,
       borderRadius: BorderRadius.circular(AppRadius.md),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         child: Container(
           decoration: cardDecoration(),
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: item.color.withValues(alpha: 0.14),
+              if (adaFoto)
+                ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Icon(item.icon, color: item.color, size: 22),
-              ),
+                  child: Image.file(
+                    File(item.imagePath!),
+                    width: double.infinity,
+                    height: 62,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => _kotakIkon(item),
+                  ),
+                )
+              else
+                _kotakIkon(item),
               const SizedBox(height: AppSpacing.sm),
               Expanded(
                 child: Column(
@@ -605,7 +638,17 @@ class _MenuCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(child: Text(rupiah(item.price), style: AppText.body.copyWith(fontWeight: FontWeight.w800))),
-                  QtyButton(icon: Icons.add, filled: true, onPressed: onQuickAdd),
+                  _Denyut(
+                    pemicu: _tekanan,
+                    child: QtyButton(
+                      icon: Icons.add,
+                      filled: true,
+                      onPressed: () {
+                        setState(() => _tekanan++);
+                        widget.onQuickAdd();
+                      },
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -614,6 +657,16 @@ class _MenuCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _kotakIkon(MenuItem item) => Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: item.color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        child: Icon(item.icon, color: item.color, size: 22),
+      );
 }
 
 class _CartPanel extends StatelessWidget {
@@ -703,7 +756,7 @@ class _CartPanel extends StatelessWidget {
         ),
         Container(
           padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
-          decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
           child: Column(
             children: [
               _row('Subtotal', subtotal),
@@ -714,7 +767,7 @@ class _CartPanel extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Total', style: AppText.subtitle.copyWith(fontWeight: FontWeight.w800)),
-                  Text(rupiah(grandTotal), style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
+                  AnimatedRupiah(value: grandTotal, style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),

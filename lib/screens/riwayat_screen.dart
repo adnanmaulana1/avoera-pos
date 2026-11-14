@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data.dart';
+import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -18,6 +19,7 @@ class RiwayatScreen extends StatefulWidget {
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
   int _filter = 0; // 0 semua, 1 hari ini, 2 minggu ini, 3 bulan ini
+  String _metode = 'Semua'; // Semua / Tunai / QRIS
 
   static const _bulanSingkat = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -33,22 +35,65 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     } else if (_filter == 3) {
       list = list.where((t) => t.at.year == now.year && t.at.month == now.month).toList();
     }
+    if (_metode != 'Semua') {
+      list = list.where((t) => t.method == _metode).toList();
+    }
     list.sort((a, b) => b.at.compareTo(a.at));
     final total = list.fold(0, (a, t) => a + t.total);
 
+    String dua(int n) => n.toString().padLeft(2, '0');
+    Future<void> ekspor() {
+      final ringkasan = StringBuffer('Riwayat Transaksi (${list.length} transaksi)\n');
+      for (final t in list) {
+        ringkasan.writeln('• ${t.at.day}/${t.at.month}/${t.at.year} ${dua(t.at.hour)}:${dua(t.at.minute)} · ${t.id} · ${t.method} — ${rupiah(t.total)}');
+      }
+      ringkasan.writeln('Total: ${rupiah(total)}');
+      return tampilkanMenuEkspor(
+        context,
+        judul: 'Riwayat Transaksi',
+        ringkasan: ringkasan.toString().trim(),
+        kepala: const ['Tanggal', 'Jam', 'ID', 'Metode', 'Item', 'Subtotal', 'Biaya Layanan', 'Pajak', 'Total'],
+        baris: [
+          for (final t in list)
+            [
+              '${t.at.day}/${t.at.month}/${t.at.year}',
+              '${dua(t.at.hour)}:${dua(t.at.minute)}',
+              t.id,
+              t.method,
+              '${t.items}',
+              '${t.subtotal}',
+              '${t.service}',
+              '${t.tax}',
+              '${t.total}',
+            ],
+        ],
+        catatan: 'Total periode: ${rupiah(total)}',
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Transaksi')),
+      appBar: AppBar(
+        title: const Text('Riwayat Transaksi'),
+        actions: [TombolEkspor(onPressed: ekspor)],
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
-            child: Row(
+            child: FilterChipRow(
               children: [
-                for (final (i, label) in [(0, 'Semua'), (1, 'Hari Ini'), (2, 'Minggu Ini'), (3, 'Bulan Ini')]) ...[
+                for (final (i, label) in [(0, 'Semua'), (1, 'Hari Ini'), (2, 'Minggu Ini'), (3, 'Bulan Ini')])
                   AppChip(label: label, selected: _filter == i, onSelected: (_) => setState(() => _filter = i)),
-                  const SizedBox(width: AppSpacing.sm),
-                ],
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+            child: FilterChipRow(
+              children: [
+                for (final m in ['Semua', 'Tunai', 'QRIS'])
+                  AppChip(label: m == 'Semua' ? 'Semua Metode' : m, selected: _metode == m, onSelected: (_) => setState(() => _metode = m)),
               ],
             ),
           ),
@@ -62,7 +107,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Total periode ini', style: AppText.small.copyWith(color: AppColors.muted)),
-                        Text(rupiah(total), style: AppText.number),
+                        FitNumber(rupiah(total)),
                       ],
                     ),
                   ),

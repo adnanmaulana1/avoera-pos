@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'onboarding_screen.dart' show hashPin;
 
 /// Layar Pengaturan: profil usaha, biaya transaksi (langsung berlaku
 /// di kasir), dan Tentang aplikasi. Semua nilai tinggal di HomeShell —
@@ -17,13 +16,12 @@ class PengaturanScreen extends StatelessWidget {
     required this.businessPhone,
     required this.servicePercent,
     required this.taxPercent,
-    required this.onBusinessNameChanged,
-    required this.onBusinessAddressChanged,
-    required this.onBusinessPhoneChanged,
     required this.onServicePercentChanged,
     required this.onTaxPercentChanged,
     required this.tablesEnabled,
     required this.onTablesEnabledChanged,
+    required this.kitchenEnabled,
+    required this.onKitchenEnabledChanged,
     required this.menuCount,
     required this.tableCount,
     required this.ingredientCount,
@@ -34,8 +32,17 @@ class PengaturanScreen extends StatelessWidget {
     required this.activeBranchId,
     required this.pinSet,
     required this.onSwitchBranch,
-    required this.onAddBranch,
-    required this.onPinHashChanged,
+    required this.onOpenProfile,
+    required this.onOpenPinSettings,
+    required this.onOpenBranchWizard,
+    required this.supabaseUrl,
+    required this.supabaseAnonKey,
+    required this.businessKey,
+    required this.lastSyncLabel,
+    required this.onSupabaseChanged,
+    required this.onSyncNow,
+    required this.modeTema,
+    required this.onModeTemaChanged,
   });
 
   final String businessName;
@@ -43,15 +50,16 @@ class PengaturanScreen extends StatelessWidget {
   final String businessPhone;
   final int servicePercent;
   final int taxPercent;
-  final ValueChanged<String> onBusinessNameChanged;
-  final ValueChanged<String> onBusinessAddressChanged;
-  final ValueChanged<String> onBusinessPhoneChanged;
   final ValueChanged<int> onServicePercentChanged;
   final ValueChanged<int> onTaxPercentChanged;
 
   /// Saklar fitur meja (tidak wajib — bisa dimatikan total).
   final bool tablesEnabled;
   final ValueChanged<bool> onTablesEnabledChanged;
+
+  /// Saklar fitur dapur (tidak wajib — bisa dimatikan total).
+  final bool kitchenEnabled;
+  final ValueChanged<bool> onKitchenEnabledChanged;
 
   /// Jumlah data saat ini + pintu ke layar kelola (CRUD).
   final int menuCount;
@@ -61,13 +69,28 @@ class PengaturanScreen extends StatelessWidget {
   final VoidCallback onManageTables;
   final VoidCallback onManageIngredients;
 
-  /// Multi-cabang & PIN kasir (v0.7.0).
+  /// Multi-cabang & PIN kasir (v0.7.0). Profil usaha, PIN, dan
+  /// tambah cabang kini punya halaman/wizard sendiri (v0.8.0).
   final List<Branch> branches;
   final String activeBranchId;
   final bool pinSet;
   final ValueChanged<Branch> onSwitchBranch;
-  final ValueChanged<String> onAddBranch;
-  final ValueChanged<String> onPinHashChanged;
+  final VoidCallback onOpenProfile;
+  final VoidCallback onOpenPinSettings;
+  final VoidCallback onOpenBranchWizard;
+
+  /// Sinkronisasi Supabase (v0.8.0): alamat proyek + kunci + kode
+  /// usaha, dan tombol sinkron manual.
+  final String supabaseUrl;
+  final String supabaseAnonKey;
+  final String businessKey;
+  final String lastSyncLabel;
+  final void Function(String url, String anonKey, String businessKey) onSupabaseChanged;
+  final Future<void> Function() onSyncNow;
+
+  /// Pilihan tema tampilan: 'terang' | 'gelap' | 'sistem'.
+  final String modeTema;
+  final ValueChanged<String> onModeTemaChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -83,45 +106,41 @@ class PengaturanScreen extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         AppCard(
           padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              _SettingRow(
-                icon: Icons.storefront_outlined,
-                label: 'Nama Usaha',
-                value: businessName,
-                onTap: () => _editText(
-                  context,
-                  title: 'Nama Usaha',
-                  initial: businessName,
-                  onSave: onBusinessNameChanged,
-                ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            onTap: onOpenProfile,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.md)),
+                    child: Icon(Icons.storefront, color: AppColors.card, size: 26),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(businessName, style: AppText.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        if ([businessAddress, businessPhone].any((s) => s.isNotEmpty)) ...[
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            [businessAddress, businessPhone].where((s) => s.isNotEmpty).join(' · '),
+                            style: AppText.caption.copyWith(color: AppColors.muted),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: AppColors.muted, size: 20),
+                ],
               ),
-              const Divider(height: 1, indent: 68),
-              _SettingRow(
-                icon: Icons.location_on_outlined,
-                label: 'Alamat',
-                value: businessAddress,
-                onTap: () => _editText(
-                  context,
-                  title: 'Alamat Usaha',
-                  initial: businessAddress,
-                  onSave: onBusinessAddressChanged,
-                ),
-              ),
-              const Divider(height: 1, indent: 68),
-              _SettingRow(
-                icon: Icons.call_outlined,
-                label: 'Telepon / WhatsApp',
-                value: businessPhone,
-                onTap: () => _editText(
-                  context,
-                  title: 'Telepon / WhatsApp',
-                  initial: businessPhone,
-                  keyboard: TextInputType.phone,
-                  onSave: onBusinessPhoneChanged,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -145,8 +164,8 @@ class PengaturanScreen extends StatelessWidget {
               _SettingRow(
                 icon: Icons.add_business_outlined,
                 label: 'Tambah Cabang',
-                value: 'Baru',
-                onTap: () => _editText(context, title: 'Tambah Cabang', initial: '', onSave: onAddBranch),
+                value: 'Wizard',
+                onTap: onOpenBranchWizard,
               ),
             ],
             ),
@@ -161,7 +180,7 @@ class PengaturanScreen extends StatelessWidget {
             icon: Icons.pin_outlined,
             label: 'PIN Kasir',
             value: pinSet ? 'Sudah diatur' : 'Belum diatur',
-            onTap: () => _promptPin(context),
+            onTap: onOpenPinSettings,
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -207,14 +226,28 @@ class PengaturanScreen extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         AppCard(
           padding: EdgeInsets.zero,
-          child: _SettingSwitchRow(
-            icon: Icons.table_restaurant_outlined,
-            label: 'Manajemen Meja',
-            subtitle: tablesEnabled
-                ? 'Aktif — ada menu Meja dan pilihan meja di kasir.'
-                : 'Mati — menu Meja disembunyikan, kasir tanpa meja.',
-            value: tablesEnabled,
-            onChanged: onTablesEnabledChanged,
+          child: Column(
+            children: [
+              _SettingSwitchRow(
+                icon: Icons.table_restaurant_outlined,
+                label: 'Manajemen Meja',
+                subtitle: tablesEnabled
+                    ? 'Aktif — ada menu Meja dan pilihan meja di kasir.'
+                    : 'Mati — menu Meja disembunyikan, kasir tanpa meja.',
+                value: tablesEnabled,
+                onChanged: onTablesEnabledChanged,
+              ),
+              const Divider(height: 1, indent: 68),
+              _SettingSwitchRow(
+                icon: Icons.soup_kitchen_outlined,
+                label: 'Layar Dapur',
+                subtitle: kitchenEnabled
+                    ? 'Aktif — pembayaran membuat tiket antrean dapur.'
+                    : 'Mati — menu Dapur disembunyikan, tanpa tiket dapur.',
+                value: kitchenEnabled,
+                onChanged: onKitchenEnabledChanged,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -256,6 +289,82 @@ class PengaturanScreen extends StatelessWidget {
           style: AppText.caption.copyWith(color: AppColors.muted),
         ),
         const SizedBox(height: AppSpacing.xl),
+        const SectionTitle('Sinkronisasi Online'),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              _SettingRow(
+                icon: Icons.cloud_outlined,
+                label: 'URL Proyek Supabase',
+                value: supabaseUrl.isEmpty ? 'Belum diisi' : 'Sudah diisi',
+                onTap: () => _editText(context, title: 'URL Proyek Supabase', initial: supabaseUrl, hint: 'https://xxxx.supabase.co', onSave: (v) => onSupabaseChanged(v, supabaseAnonKey, businessKey), allowEmpty: true),
+              ),
+              const Divider(height: 1, indent: 68),
+              _SettingRow(
+                icon: Icons.key_outlined,
+                label: 'Kunci Anon Supabase',
+                value: supabaseAnonKey.isEmpty ? 'Belum diisi' : 'Sudah diisi',
+                onTap: () => _editText(context, title: 'Kunci Anon Supabase', initial: supabaseAnonKey, hint: 'eyJhbGciOi...', onSave: (v) => onSupabaseChanged(supabaseUrl, v, businessKey), allowEmpty: true),
+              ),
+              const Divider(height: 1, indent: 68),
+              _SettingRow(
+                icon: Icons.qr_code_2_outlined,
+                label: 'Kode Usaha',
+                value: businessKey.isEmpty ? 'Belum ada' : businessKey,
+                onTap: () => _editText(context, title: 'Kode Usaha', initial: businessKey, hint: 'cth. kopisenja-2026', onSave: (v) => onSupabaseChanged(supabaseUrl, supabaseAnonKey, v), allowEmpty: true),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          lastSyncLabel.isEmpty ? 'Kode Usaha yang sama di semua perangkat = data menyatu. Panduan: berkas supabase/README.md di repo.' : 'Terakhir sinkron: $lastSyncLabel',
+          style: AppText.caption.copyWith(color: AppColors.muted),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SizedBox(
+          width: double.infinity,
+          child: PrimaryButton(
+            label: 'Sinkronkan Sekarang',
+            icon: Icons.sync,
+            onPressed: (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty || businessKey.isEmpty) ? null : onSyncNow,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        const SectionTitle('Tampilan'),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.brightness_6_outlined, color: AppColors.accentDark, size: 22),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text('Mode Terang / Gelap', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FilterChipRow(
+                children: [
+                  AppChip(label: 'Terang', selected: modeTema == 'terang', onSelected: (_) => onModeTemaChanged('terang')),
+                  AppChip(label: 'Gelap', selected: modeTema == 'gelap', onSelected: (_) => onModeTemaChanged('gelap')),
+                  AppChip(label: 'Ikuti Sistem', selected: modeTema == 'sistem', onSelected: (_) => onModeTemaChanged('sistem')),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Ikuti Sistem = ikut pengaturan gelap/terang HP. Ganti mode ditemani animasi telur dadar.',
+                style: AppText.caption.copyWith(color: AppColors.muted),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
         const SectionTitle('Tentang'),
         const SizedBox(height: AppSpacing.sm),
         AppCard(
@@ -277,97 +386,40 @@ class PengaturanScreen extends StatelessWidget {
     required String initial,
     required ValueChanged<String> onSave,
     TextInputType keyboard = TextInputType.text,
+    String? hint,
+    bool allowEmpty = false,
   }) async {
     final controller = TextEditingController(text: initial);
     final saved = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: keyboard,
-          decoration: InputDecoration(hintText: title),
-          onSubmitted: (_) => Navigator.of(ctx).pop(true),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Simpan')),
-        ],
-      ),
-    );
-    if (saved == true) {
-      final value = controller.text.trim();
-      if (value.isNotEmpty) onSave(value);
-    }
-    disposeControllersLater([controller]);
-  }
-
-  /// Ganti PIN kasir: dua kolom (baru + ulangi), disimpan sebagai
-  /// hash — PIN mentah tidak pernah disimpan/diingat.
-  Future<void> _promptPin(BuildContext context) async {
-    final pinCtrl = TextEditingController();
-    final pin2Ctrl = TextEditingController();
-    String? error;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Atur PIN Kasir'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: pinCtrl,
-                autofocus: true,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 6,
-                decoration: const InputDecoration(labelText: 'PIN baru (4–6 angka)'),
-              ),
-              TextField(
-                controller: pin2Ctrl,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 6,
-                decoration: const InputDecoration(labelText: 'Ulangi PIN'),
-              ),
-              if (error != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Text(error!, style: AppText.small.copyWith(color: AppColors.danger)),
-              ],
-            ],
+      builder: (ctx) => GuardBack(
+        dirty: () => controller.text != initial,
+        child: AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: keyboard,
+            decoration: InputDecoration(hintText: hint ?? title),
+            onSubmitted: (_) => Navigator.of(ctx).pop(true),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
-            FilledButton(
-              onPressed: () {
-                final pin = pinCtrl.text.trim();
-                if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) {
-                  setDialog(() => error = 'PIN harus 4–6 angka.');
-                  return;
-                }
-                if (pin != pin2Ctrl.text.trim()) {
-                  setDialog(() => error = 'Ulangi PIN tidak sama.');
-                  return;
-                }
-                Navigator.of(ctx).pop(true);
-              },
-              child: const Text('Simpan'),
-            ),
+            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Simpan')),
           ],
         ),
       ),
     );
     if (saved == true) {
-      onPinHashChanged(hashPin(pinCtrl.text.trim()));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN kasir disimpan.')));
-      }
+      final value = controller.text.trim();
+      if (value.isNotEmpty || allowEmpty) onSave(value);
     }
-    disposeControllersLater([pinCtrl, pin2Ctrl]);
+    disposeControllersLater([controller]);
   }
 
+  /// Dialog persen DENGAN teks simulasi langsung (permintaan
+  /// Adnan 2026-11-14): saat angka diubah, contoh hitungan di kasir
+  /// ikut berubah di tempat — pemilik langsung paham dampaknya.
   Future<void> _editPercent(
     BuildContext context, {
     required String title,
@@ -377,20 +429,58 @@ class PengaturanScreen extends StatelessWidget {
     final controller = TextEditingController(text: '$initial');
     final saved = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(suffixText: '%', hintText: '0'),
-          onSubmitted: (_) => Navigator.of(ctx).pop(true),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Simpan')),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) {
+          final typed = (int.tryParse(controller.text.trim()) ?? initial).clamp(0, 100);
+          final isTax = title == 'Pajak';
+          final svc = isTax ? servicePercent : typed;
+          final tax = isTax ? typed : taxPercent;
+          const contoh = 100000;
+          final svcRp = (contoh * svc / 100).round();
+          final taxRp = (contoh * tax / 100).round();
+          Widget barisSim(String label, String nilai, {bool tebal = false}) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(label, style: AppText.small.copyWith(fontWeight: tebal ? FontWeight.w800 : FontWeight.w400))),
+                    Text(nilai, style: AppText.small.copyWith(fontWeight: tebal ? FontWeight.w800 : FontWeight.w600)),
+                  ],
+                ),
+              );
+          return GuardBack(
+            dirty: () => controller.text != '$initial',
+            child: AlertDialog(
+              title: Text(title),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(suffixText: '%', hintText: '0'),
+                    onChanged: (_) => setDialog(() {}),
+                    onSubmitted: (_) => Navigator.of(ctx).pop(true),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text('Simulasi di kasir', style: AppText.small.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: AppSpacing.xs),
+                  barisSim('Pesanan contoh', rupiah(contoh)),
+                  barisSim('Biaya layanan ($svc%)', rupiah(svcRp)),
+                  barisSim('Pajak ($tax%)', rupiah(taxRp)),
+                  const Divider(height: AppSpacing.md),
+                  barisSim('Pembeli membayar', rupiah(contoh + svcRp + taxRp), tebal: true),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
+                FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Simpan')),
+              ],
+            ),
+          );
+        },
       ),
     );
     if (saved == true) {
@@ -489,7 +579,7 @@ class _SettingRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
-            const Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
+            Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
           ],
         ),
       ),
@@ -511,7 +601,7 @@ void showAppInfoDialog(BuildContext context) {
               width: 64,
               height: 64,
               decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.lg)),
-              child: const Icon(Icons.local_cafe, color: AppColors.card, size: 32),
+              child: Icon(Icons.local_cafe, color: AppColors.card, size: 32),
             ),
             const SizedBox(height: AppSpacing.lg),
             const Text(appName, style: AppText.pageTitle),

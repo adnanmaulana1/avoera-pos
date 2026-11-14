@@ -108,9 +108,9 @@ class LaporanScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   if (action != null)
-                    const Icon(Icons.chevron_right, color: AppColors.muted)
+                    Icon(Icons.chevron_right, color: AppColors.muted)
                   else
-                    const StatusChip(label: 'Segera', color: AppColors.muted),
+                    StatusChip(label: 'Segera', color: AppColors.muted),
                 ],
               ),
             ),
@@ -135,7 +135,7 @@ class _Stat extends StatelessWidget {
         children: [
           Icon(icon, color: AppColors.accentDark, size: 22),
           const SizedBox(height: AppSpacing.sm),
-          Text(value, style: AppText.number, maxLines: 1, overflow: TextOverflow.ellipsis),
+          FitNumber(value),
           Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
         ],
       ),

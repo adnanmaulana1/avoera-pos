@@ -90,19 +90,48 @@ class _KelolaStokScreenState extends State<KelolaStokScreen> {
   }
 
   Future<void> _openEditor(Ingredient? ing) async {
-    final nameCtrl = TextEditingController(text: ing?.name ?? '');
-    final stockCtrl = TextEditingController(text: ing == null ? '' : _qtyText(ing.stock));
-    final unitCtrl = TextEditingController(text: ing?.unit ?? 'kg');
-    final minCtrl = TextEditingController(text: ing == null ? '' : _qtyText(ing.minStock));
-    final maxCtrl = TextEditingController(text: ing == null ? '' : _qtyText(ing.maxStock));
-    String? error;
+    await showIngredientEditor(
+      context,
+      initial: ing,
+      onAdd: widget.onAdd,
+      onChanged: widget.onChanged,
+      onDelete: widget.onDelete,
+    );
+    if (mounted) setState(() {});
+  }
+}
 
-    await showAppSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) {
-          return FormSheet(
+/// Formulir bahan bersama — dipakai Kelola Stok DAN layar Stok
+/// Bahan langsung (CRUD di tempat, permintaan Adnan 2026-11-14).
+/// Formulir dijaga GuardBack: tombol kembali saat ada perubahan
+/// memunculkan peringatan dulu, dan sheet tidak tertutup dari
+/// ketukan di luar.
+Future<void> showIngredientEditor(
+  BuildContext context, {
+  Ingredient? initial,
+  required ValueChanged<Ingredient> onAdd,
+  required VoidCallback onChanged,
+  required ValueChanged<Ingredient> onDelete,
+}) async {
+  final ing = initial;
+  final nameCtrl = TextEditingController(text: ing?.name ?? '');
+  final stockCtrl = TextEditingController(text: ing == null ? '' : _qtyText(ing.stock));
+  final unitCtrl = TextEditingController(text: ing?.unit ?? 'kg');
+  final minCtrl = TextEditingController(text: ing == null ? '' : _qtyText(ing.minStock));
+  final maxCtrl = TextEditingController(text: ing == null ? '' : _qtyText(ing.maxStock));
+  String? error;
+  String snapshot() => [nameCtrl.text, stockCtrl.text, unitCtrl.text, minCtrl.text, maxCtrl.text].join('|');
+  final awal = snapshot();
+
+  await showAppSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    isDismissible: false,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setSheet) {
+        return GuardBack(
+          dirty: () => snapshot() != awal,
+          child: FormSheet(
             title: ing == null ? 'Tambah Bahan' : 'Ubah Bahan',
             saveLabel: ing == null ? 'Simpan Bahan' : 'Simpan Perubahan',
             errorText: error,
@@ -115,8 +144,7 @@ class _KelolaStokScreenState extends State<KelolaStokScreen> {
                       message: 'Bahan "${ing.name}" akan dihapus dari daftar stok.',
                     );
                     if (ok) {
-                      widget.onDelete(ing);
-                      setState(() {});
+                      onDelete(ing);
                       if (ctx.mounted) Navigator.of(ctx).pop();
                     }
                   },
@@ -139,16 +167,15 @@ class _KelolaStokScreenState extends State<KelolaStokScreen> {
                 return;
               }
               if (ing == null) {
-                widget.onAdd(Ingredient(name: name, stock: stock, unit: unit, minStock: min, maxStock: max));
+                onAdd(Ingredient(name: name, stock: stock, unit: unit, minStock: min, maxStock: max));
               } else {
                 ing.name = name;
                 ing.stock = stock;
                 ing.unit = unit;
                 ing.minStock = min;
                 ing.maxStock = max;
-                widget.onChanged();
+                onChanged();
               }
-              setState(() {});
               Navigator.of(ctx).pop();
             },
             children: [
@@ -225,10 +252,10 @@ class _KelolaStokScreenState extends State<KelolaStokScreen> {
                 style: AppText.caption.copyWith(color: AppColors.muted),
               ),
             ],
-          );
-        },
-      ),
-    );
-    disposeControllersLater([nameCtrl, stockCtrl, unitCtrl, minCtrl, maxCtrl]);
-  }
+          ),
+        );
+      },
+    ),
+  );
+  disposeControllersLater([nameCtrl, stockCtrl, unitCtrl, minCtrl, maxCtrl]);
 }
