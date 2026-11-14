@@ -308,37 +308,55 @@ class _SetupCelebrationState extends State<SetupCelebration> with SingleTickerPr
         final kontenMasuk = t < 0.3 ? 0.0 : ((t - 0.3) / 0.15).clamp(0.0, 1.0);
         final kontenKeluar = t < 0.7 ? 1.0 : (1 - (t - 0.7) / 0.12).clamp(0.0, 1.0);
         final opasitas = (kontenMasuk * kontenKeluar).clamp(0.0, 1.0);
-        return SizedBox.expand(
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: d,
-                height: d,
-                decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
-              ),
-              Opacity(
-                opacity: opasitas,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.card, width: 3),
-                      ),
-                      child: Icon(Icons.check, color: AppColors.card, size: 44),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    Text(widget.judul, textAlign: TextAlign.center, style: AppText.hero.copyWith(color: AppColors.card)),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(widget.subjudul, textAlign: TextAlign.center, style: AppText.body.copyWith(color: AppColors.card.withValues(alpha: 0.85))),
-                  ],
+        final skalaKonten = 0.92 + 0.08 * Curves.easeOutCubic.transform(kontenMasuk);
+        // Material transparan WAJIB ada: tanpa leluhur Material,
+        // teks dirender dengan garis bawah kuning bawaan Flutter.
+        return Material(
+          type: MaterialType.transparency,
+          child: SizedBox.expand(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Bundaran diposisikan EKSPLISIT (bisa lebih besar
+                // dari layar, terpotong tepian layar). Cara lama —
+                // Container bebas di dalam Stack — ukurannya DIJEPIT
+                // selebar layar, jadi bundaran tidak pernah menutupi
+                // layar penuh (cacat dari screenshot Adnan 22:34).
+                Positioned(
+                  left: (size.width - d) / 2,
+                  top: (size.height - d) / 2,
+                  width: d,
+                  height: d,
+                  child: Container(
+                    decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+                  ),
                 ),
-              ),
-            ],
+                Opacity(
+                  opacity: opasitas,
+                  child: Transform.scale(
+                    scale: skalaKonten,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 84,
+                          height: 84,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.card, width: 3),
+                          ),
+                          child: Icon(Icons.check, color: AppColors.card, size: 44),
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        Text(widget.judul, textAlign: TextAlign.center, style: AppText.hero.copyWith(color: AppColors.card)),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(widget.subjudul, textAlign: TextAlign.center, style: AppText.body.copyWith(color: AppColors.card.withValues(alpha: 0.85))),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
