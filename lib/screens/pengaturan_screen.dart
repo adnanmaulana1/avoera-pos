@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'kelola_widgets.dart';
 
 /// Layar Pengaturan: profil usaha, biaya transaksi (langsung berlaku
 /// di kasir), dan Tentang aplikasi. Semua nilai tinggal di HomeShell —

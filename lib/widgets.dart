@@ -225,3 +225,16 @@ Future<T?> showAppSheet<T>({
     builder: (ctx) => SafeArea(child: builder(ctx)),
   );
 }
+
+/// Buang controller formulir dengan aman. Future sheet/dialog selesai
+/// saat animasi tutup BARU mulai — membuang controller seketika itu
+/// juga bikin TextField yang masih terpasang memakai controller mati
+/// (pernah kejadian: crash "used after being disposed"). Tunda sampai
+/// animasi tutup beres.
+void disposeControllersLater(List<TextEditingController> controllers) {
+  Future.delayed(const Duration(milliseconds: 500), () {
+    for (final c in controllers) {
+      c.dispose();
+    }
+  });
+}

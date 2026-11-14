@@ -80,19 +80,6 @@ class FormSheet extends StatelessWidget {
   }
 }
 
-/// Buang controller formulir dengan aman. Future sheet/dialog selesai
-/// saat animasi tutup BARU mulai — membuang controller seketika itu
-/// juga bikin TextField yang masih terpasang memakai controller mati
-/// (pernah kejadian: crash "used after being disposed"). Tunda sampai
-/// animasi tutup beres.
-void disposeControllersLater(List<TextEditingController> controllers) {
-  Future.delayed(const Duration(milliseconds: 500), () {
-    for (final c in controllers) {
-      c.dispose();
-    }
-  });
-}
-
 /// Konfirmasi hapus yang sama di semua layar kelola.
 /// Mengembalikan true bila pengguna benar-benar memilih Hapus.
 Future<bool> showConfirmDelete(BuildContext context, {required String title, required String message}) async {

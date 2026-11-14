@@ -234,35 +234,42 @@ class _KasirScreenState extends State<KasirScreen> {
     showAppSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => SizedBox(
-        height: MediaQuery.sizeOf(context).height * 0.78,
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(top: AppSpacing.md),
-              child: SheetHandle(),
-            ),
-            Expanded(
-              child: _CartPanel(
-                cart: widget.cart,
-                selectedTable: widget.selectedTable,
-                orderType: _orderType,
-                subtotal: _subtotal,
-                service: _service,
-                tax: _tax,
-                servicePercent: widget.servicePercent,
-                taxPercent: widget.taxPercent,
-                grandTotal: _grandTotal,
-                onInc: (c) { widget.onInc(c); setState(() {}); },
-                onDec: (c) { widget.onDec(c); setState(() {}); },
-                onRemove: (c) { widget.onRemove(c); setState(() {}); },
-                onPay: () {
-                  Navigator.pop(context);
-                  _openPayment(context);
-                },
+      // WAJIB StatefulBuilder: sheet adalah rute terpisah — tanpa ini
+      // isi sheet digambar sekali saat dibuka dan tidak pernah segar
+      // lagi, jadi tombol +/−/Hapus mengubah data tapi tampilan diam
+      // (bug yang dilaporkan dari HP: keranjang "tidak berfungsi").
+      // Angka total juga dihitung ulang di dalam builder ini.
+      builder: (_) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) => SizedBox(
+          height: MediaQuery.sizeOf(sheetCtx).height * 0.78,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: AppSpacing.md),
+                child: SheetHandle(),
               ),
-            ),
-          ],
+              Expanded(
+                child: _CartPanel(
+                  cart: widget.cart,
+                  selectedTable: widget.selectedTable,
+                  orderType: _orderType,
+                  subtotal: _subtotal,
+                  service: _service,
+                  tax: _tax,
+                  servicePercent: widget.servicePercent,
+                  taxPercent: widget.taxPercent,
+                  grandTotal: _grandTotal,
+                  onInc: (c) { widget.onInc(c); setSheet(() {}); },
+                  onDec: (c) { widget.onDec(c); setSheet(() {}); },
+                  onRemove: (c) { widget.onRemove(c); setSheet(() {}); },
+                  onPay: () {
+                    Navigator.pop(sheetCtx);
+                    _openPayment(context);
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -357,7 +364,7 @@ class _KasirScreenState extends State<KasirScreen> {
         },
       ),
     );
-    noteCtrl.dispose();
+    disposeControllersLater([noteCtrl]);
   }
 
   Future<void> _openPayment(BuildContext context) async {
