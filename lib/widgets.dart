@@ -88,6 +88,52 @@ class AppCard extends StatelessWidget {
   }
 }
 
+/// Toast kaya (permintaan Adnan 2026-11-15, desain ulang toast):
+/// pil melayang berisi ikon berwarna sesuai keadaan — hijau untuk
+/// berhasil, merah untuk gagal, kuning untuk peringatan. Dipakai
+/// untuk kejadian penting (sinkron, simpan besar); pesan kecil
+/// biasa tetap SnackBar standar yang sudah dipercantik temanya.
+void tampilToast(
+  BuildContext context,
+  String pesan, {
+  IconData icon = Icons.check_circle_outline,
+  Color? warna,
+  Duration durasi = const Duration(seconds: 3),
+}) {
+  final c = warna ?? AppColors.accent;
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.hideCurrentSnackBar();
+  messenger.showSnackBar(
+    SnackBar(
+      duration: durasi,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      content: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.gelap ? const Color(0xFF2A332E) : const Color(0xFF14201A),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 16, offset: Offset(0, 6))],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(color: c.withValues(alpha: 0.18), shape: BoxShape.circle),
+              child: Icon(icon, color: c, size: 19),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(pesan, style: const TextStyle(color: Color(0xFFF3F5F4), fontSize: 14, fontWeight: FontWeight.w500)),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 /// Format angka ribuan OTOMATIS saat mengetik (permintaan Adnan
 /// 2026-11-14: "yang harga-harga gitu kasih titik sendiri"):
 /// 18888 langsung tampil 18.888 di semua kolom harga/uang.

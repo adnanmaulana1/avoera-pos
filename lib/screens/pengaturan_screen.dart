@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -35,12 +37,11 @@ class PengaturanScreen extends StatelessWidget {
     required this.onOpenProfile,
     required this.onOpenPinSettings,
     required this.onOpenBranchWizard,
-    required this.supabaseUrl,
-    required this.supabaseAnonKey,
-    required this.businessKey,
-    required this.lastSyncLabel,
-    required this.onSupabaseChanged,
-    required this.onSyncNow,
+    required this.businessPhotoPath,
+    required this.cloudSyncEnabled,
+    required this.onCloudSyncChanged,
+    required this.statusSinkronRingkasan,
+    required this.onOpenSyncStatus,
     required this.modeTema,
     required this.onModeTemaChanged,
   });
@@ -79,14 +80,18 @@ class PengaturanScreen extends StatelessWidget {
   final VoidCallback onOpenPinSettings;
   final VoidCallback onOpenBranchWizard;
 
-  /// Sinkronisasi Supabase (v0.8.0): alamat proyek + kunci + kode
-  /// usaha, dan tombol sinkron manual.
-  final String supabaseUrl;
-  final String supabaseAnonKey;
-  final String businessKey;
-  final String lastSyncLabel;
-  final void Function(String url, String anonKey, String businessKey) onSupabaseChanged;
-  final Future<void> Function() onSyncNow;
+  /// Foto usaha (berkas lokal) untuk kartu profil; null = ikon.
+  final String? businessPhotoPath;
+
+  /// Sinkronisasi Online versi ringkas (permintaan Adnan
+  /// 2026-11-15): di Pengaturan hanya DUA baris — saklar Cloud
+  /// Sync + pintu Status Sinkronisasi. Rincian (menunggu, gagal,
+  /// tombol sinkron, pengaturan Supabase) pindah ke halaman
+  /// Status Sinkronisasi sendiri.
+  final bool cloudSyncEnabled;
+  final ValueChanged<bool> onCloudSyncChanged;
+  final String statusSinkronRingkasan;
+  final VoidCallback onOpenSyncStatus;
 
   /// Pilihan tema tampilan: 'terang' | 'gelap' | 'sistem'.
   final String modeTema;
@@ -114,12 +119,7 @@ class PengaturanScreen extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Row(
                 children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.md)),
-                    child: Icon(Icons.storefront, color: AppColors.card, size: 26),
-                  ),
+                  _FotoProfilMini(path: businessPhotoPath),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
@@ -296,41 +296,23 @@ class PengaturanScreen extends StatelessWidget {
           padding: EdgeInsets.zero,
           child: Column(
             children: [
-              _SettingRow(
+              _SettingSwitchRow(
                 icon: Icons.cloud_outlined,
-                label: 'URL Proyek Supabase',
-                value: supabaseUrl.isEmpty ? 'Belum diisi' : 'Sudah diisi',
-                onTap: () => _editText(context, title: 'URL Proyek Supabase', initial: supabaseUrl, hint: 'https://xxxx.supabase.co', onSave: (v) => onSupabaseChanged(v, supabaseAnonKey, businessKey), allowEmpty: true),
+                label: 'Cloud Sync',
+                subtitle: cloudSyncEnabled
+                    ? 'Aktif — data tersinkron ke Supabase secara otomatis.'
+                    : 'Mati — aplikasi berjalan murni lokal di perangkat ini.',
+                value: cloudSyncEnabled,
+                onChanged: onCloudSyncChanged,
               ),
               const Divider(height: 1, indent: 68),
               _SettingRow(
-                icon: Icons.key_outlined,
-                label: 'Kunci Anon Supabase',
-                value: supabaseAnonKey.isEmpty ? 'Belum diisi' : 'Sudah diisi',
-                onTap: () => _editText(context, title: 'Kunci Anon Supabase', initial: supabaseAnonKey, hint: 'eyJhbGciOi...', onSave: (v) => onSupabaseChanged(supabaseUrl, v, businessKey), allowEmpty: true),
-              ),
-              const Divider(height: 1, indent: 68),
-              _SettingRow(
-                icon: Icons.qr_code_2_outlined,
-                label: 'Kode Usaha',
-                value: businessKey.isEmpty ? 'Belum ada' : businessKey,
-                onTap: () => _editText(context, title: 'Kode Usaha', initial: businessKey, hint: 'cth. kopisenja-2026', onSave: (v) => onSupabaseChanged(supabaseUrl, supabaseAnonKey, v), allowEmpty: true),
+                icon: Icons.cloud_sync_outlined,
+                label: 'Status Sinkronisasi',
+                value: statusSinkronRingkasan,
+                onTap: onOpenSyncStatus,
               ),
             ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          lastSyncLabel.isEmpty ? 'Kode Usaha yang sama di semua perangkat = data menyatu. Panduan: berkas supabase/README.md di repo.' : 'Terakhir sinkron: $lastSyncLabel',
-          style: AppText.caption.copyWith(color: AppColors.muted),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        SizedBox(
-          width: double.infinity,
-          child: PrimaryButton(
-            label: 'Sinkronkan Sekarang',
-            icon: Icons.sync,
-            onPressed: (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty || businessKey.isEmpty) ? null : onSyncNow,
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -384,43 +366,6 @@ class PengaturanScreen extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Future<void> _editText(
-    BuildContext context, {
-    required String title,
-    required String initial,
-    required ValueChanged<String> onSave,
-    TextInputType keyboard = TextInputType.text,
-    String? hint,
-    bool allowEmpty = false,
-  }) async {
-    final controller = TextEditingController(text: initial);
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => GuardBack(
-        dirty: () => controller.text != initial,
-        child: AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            keyboardType: keyboard,
-            decoration: InputDecoration(hintText: hint ?? title),
-            onSubmitted: (_) => Navigator.of(ctx).pop(true),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
-            PrimaryButton(label: 'Simpan', onPressed: () => Navigator.of(ctx).pop(true)),
-          ],
-        ),
-      ),
-    );
-    if (saved == true) {
-      final value = controller.text.trim();
-      if (value.isNotEmpty || allowEmpty) onSave(value);
-    }
-    disposeControllersLater([controller]);
   }
 
   /// Dialog persen DENGAN teks simulasi langsung (permintaan
@@ -636,4 +581,33 @@ void showAppInfoDialog(BuildContext context) {
       ),
     ),
   );
+}
+
+
+/// Kotak foto profil usaha 52px: foto lokal bila ada & berkasnya
+/// masih ada, selain itu kotak aksen + ikon toko seperti dulu.
+class _FotoProfilMini extends StatelessWidget {
+  const _FotoProfilMini({required this.path});
+  final String? path;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.md)),
+      child: Icon(Icons.storefront, color: AppColors.card, size: 26),
+    );
+    if (path == null || path!.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Image.file(
+        File(path!),
+        width: 52,
+        height: 52,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -29,6 +30,8 @@ import 'screens/kelola_stok_screen.dart';
 import 'screens/pin_screen.dart';
 import 'screens/branch_wizard_screen.dart';
 import 'screens/profil_usaha_screen.dart';
+import 'screens/splash_screen.dart';
+import 'screens/status_sinkron_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -236,6 +239,24 @@ class _HomeShellState extends State<HomeShell> {
 
   bool get _syncSiap => _settings.supabaseUrl.isNotEmpty && _settings.supabaseAnonKey.isNotEmpty && _settings.businessKey.isNotEmpty;
 
+  /// Laporan sinkron terakhir per tabel + jumlah perubahan yang
+  /// menunggu per tabel — bahan halaman Status Sinkronisasi.
+  List<StatusTabel> _laporanSinkron = [];
+  final Map<String, int> _kotor = {'menus': 0, 'ingredients': 0, 'branches': 0, 'transactions': 0, 'settings': 0};
+  final ValueNotifier<int> _penandaSinkron = ValueNotifier<int>(0);
+
+  /// Cloud Sync benar-benar jalan hanya bila diatur DAN saklarnya
+  /// menyala (permintaan Adnan 2026-11-15).
+  bool get _cloudAktif => _syncSiap && _settings.cloudSyncEnabled;
+
+  // ---------- Pemberitahuan (tersimpan) ----------
+  List<AppNotification> _notifications = [];
+  int get _belumDibaca => _notifications.where((n) => !n.dibaca).length;
+
+  /// Layar sambut brand: tampil selama data dimuat + sekejap
+  /// sesudahnya (500 mdtk) supaya logo sempat terlihat.
+  bool _splashSelesai = false;
+
   /// Tekan-kembali ganda untuk keluar (hanya di Beranda).
   DateTime? _lastBackPress;
   final _phoneScaffoldKey = GlobalKey<ScaffoldState>();
@@ -251,6 +272,9 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    Timer(const Duration(milliseconds: 500), () {
+      if (mounted) setState(() => _splashSelesai = true);
+    });
     _loadData();
   }
 
@@ -274,12 +298,29 @@ class _HomeShellState extends State<HomeShell> {
         LocalStore.saveSettings(_settings);
       }
       _transactions = data.transactions;
+      _notifications = data.notifications;
       _ready = true;
-      _syncStatus = _syncSiap ? StatusSinkron.tersinkron : StatusSinkron.belumDiatur;
+      _syncStatus = _cloudAktif ? StatusSinkron.tersinkron : StatusSinkron.belumDiatur;
     });
+    // Meta sinkron tersimpan (menunggu + laporan terakhir).
+    final meta = await LocalStore.loadSyncMeta();
+    if (mounted) {
+      final k = (meta['kotor'] as Map?)?.cast<String, dynamic>();
+      if (k != null) {
+        k.forEach((kunci, v) {
+          if (_kotor.containsKey(kunci)) _kotor[kunci] = (v as num?)?.toInt() ?? 0;
+        });
+      }
+      final lap = meta['laporan'] as List?;
+      if (lap != null) {
+        _laporanSinkron = lap.map((e) => StatusTabel.fromJson((e as Map).cast<String, dynamic>())).toList();
+      }
+      _penandaSinkron.value++;
+    }
     widget.onModeTema(_settings.modeTema, false);
     _aturTimerSinkron();
-    if (_syncSiap) _syncNow(diam: true);
+    _periksaStokNotifikasi();
+    if (_cloudAktif) _syncNow(diam: true);
   }
 
   @override
@@ -287,6 +328,7 @@ class _HomeShellState extends State<HomeShell> {
     _syncDebounce?.cancel();
     _syncPeriodik?.cancel();
     _syncTimeoutTimer?.cancel();
+    _penandaSinkron.dispose();
     super.dispose();
   }
 
@@ -295,16 +337,16 @@ class _HomeShellState extends State<HomeShell> {
   void _aturTimerSinkron() {
     _syncPeriodik?.cancel();
     _syncPeriodik = null;
-    if (_syncSiap) {
+    if (_cloudAktif) {
       _syncPeriodik = Timer.periodic(const Duration(seconds: 45), (_) => _syncNow(diam: true));
     }
-    if (mounted) setState(() => _syncStatus = _syncSiap ? (_syncStatus == StatusSinkron.belumDiatur ? StatusSinkron.tersinkron : _syncStatus) : StatusSinkron.belumDiatur);
+    if (mounted) setState(() => _syncStatus = _cloudAktif ? (_syncStatus == StatusSinkron.belumDiatur ? StatusSinkron.tersinkron : _syncStatus) : StatusSinkron.belumDiatur);
   }
 
   /// Jadwalkan sinkron otomatis sesudah data berubah (debounce
   /// 2 detik supaya simpan beruntun tidak membanjiri server).
   void _jadwalkanSinkron() {
-    if (!_syncSiap) return;
+    if (!_cloudAktif) return;
     _syncDebounce?.cancel();
     _syncDebounce = Timer(const Duration(seconds: 2), () => _syncNow(diam: true));
   }
@@ -314,21 +356,83 @@ class _HomeShellState extends State<HomeShell> {
   void _syncTap() {
     if (!_syncSiap) {
       setState(() => _index = 7);
+    } else if (!_settings.cloudSyncEnabled) {
+      _openSyncStatus();
     } else {
       _syncNow();
     }
   }
 
+  // ---------- Meta sinkron (menunggu & laporan) ----------
+  void _tandaiKotor(String kunci) {
+    _kotor[kunci] = (_kotor[kunci] ?? 0) + 1;
+    _penandaSinkron.value++;
+    _simpanMetaSinkron();
+  }
+
+  void _simpanMetaSinkron() {
+    LocalStore.saveSyncMeta({
+      'kotor': _kotor,
+      'laporan': _laporanSinkron.map((r) => r.toJson()).toList(),
+    });
+  }
+
+  /// Ringkasan satu baris untuk baris Status Sinkronisasi di
+  /// Pengaturan.
+  String get _ringkasanStatusSinkron {
+    if (!_syncSiap) return 'Belum diatur';
+    if (!_settings.cloudSyncEnabled) return 'Cloud Sync mati';
+    final gagal = _laporanSinkron.where((r) => !r.berhasil).length;
+    if (gagal > 0) return '$gagal bagian gagal';
+    final tunggu = _kotor.values.fold(0, (a, b) => a + b);
+    if (tunggu > 0) return '$tunggu menunggu';
+    return _settings.lastSyncLabel.isEmpty ? 'Siap sinkron' : 'Tersinkron';
+  }
+
+  void _openSyncStatus() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => StatusSinkronScreen(
+            penanda: _penandaSinkron,
+            ambilLaporan: () => _laporanSinkron,
+            ambilKotor: () => Map<String, int>.of(_kotor),
+            ambilSedang: () => _syncing,
+            ambilRingkasan: () {
+              if (!_syncSiap) return 'Isi pengaturan Supabase di bawah untuk mulai menyinkron.';
+              if (!_settings.cloudSyncEnabled) return 'Nyalakan Cloud Sync di Pengaturan untuk menyinkron.';
+              return _settings.lastSyncLabel.isEmpty ? 'Belum pernah sinkron.' : 'Terakhir sinkron: ${_settings.lastSyncLabel}';
+            },
+            cloudSyncEnabled: _settings.cloudSyncEnabled,
+            siap: _syncSiap,
+            supabaseUrl: _settings.supabaseUrl,
+            supabaseAnonKey: _settings.supabaseAnonKey,
+            businessKey: _settings.businessKey,
+            onSupabaseChanged: (u, k, b) => _settingChanged(() {
+              var url = u.trim();
+              while (url.endsWith('/')) {
+                url = url.substring(0, url.length - 1);
+              }
+              _settings.supabaseUrl = url;
+              _settings.supabaseAnonKey = k.trim();
+              _settings.businessKey = b.trim();
+            }),
+            onSinkron: () => _syncNow(),
+            onPerbaruiSemua: () => _syncNow(perbaruiSemua: true),
+          ),
+        ),
+      );
+
   // ---------- CRUD: Menu ----------
   void _addMenu(MenuItem m) {
     setState(() => _menus.add(m));
     LocalStore.saveMenus(_menus);
+    _tandaiKotor('menus');
     _jadwalkanSinkron();
   }
 
   void _menuChanged() {
     setState(() {});
     LocalStore.saveMenus(_menus);
+    _tandaiKotor('menus');
     _jadwalkanSinkron();
   }
 
@@ -338,6 +442,7 @@ class _HomeShellState extends State<HomeShell> {
       _cart.removeWhere((c) => c.menu.id == m.id);
     });
     LocalStore.saveMenus(_menus);
+    _tandaiKotor('menus');
     _jadwalkanSinkron();
   }
 
@@ -370,18 +475,23 @@ class _HomeShellState extends State<HomeShell> {
   void _addIngredient(Ingredient i) {
     setState(() => _ingredients.add(i));
     LocalStore.saveIngredients(_ingredients);
+    _tandaiKotor('ingredients');
     _jadwalkanSinkron();
+    _periksaStokNotifikasi();
   }
 
   void _ingredientChanged() {
     setState(() {});
     LocalStore.saveIngredients(_ingredients);
+    _tandaiKotor('ingredients');
     _jadwalkanSinkron();
+    _periksaStokNotifikasi();
   }
 
   void _deleteIngredient(Ingredient i) {
     setState(() => _ingredients.remove(i));
     LocalStore.saveIngredients(_ingredients);
+    _tandaiKotor('ingredients');
     _jadwalkanSinkron();
   }
 
@@ -389,6 +499,7 @@ class _HomeShellState extends State<HomeShell> {
   void _settingChanged(void Function() apply) {
     setState(apply);
     LocalStore.saveSettings(_settings);
+    _tandaiKotor('settings');
     _aturTimerSinkron();
     _jadwalkanSinkron();
   }
@@ -396,7 +507,7 @@ class _HomeShellState extends State<HomeShell> {
   // ---------- Buka layar kelola ----------
   void _openKelolaMenu() => Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => KelolaMenuScreen(menus: _menus, onAdd: _addMenu, onChanged: _menuChanged, onDelete: _deleteMenu),
+          builder: (_) => KelolaMenuScreen(menus: _menus, onAdd: _addMenu, onChanged: _menuChanged, onDelete: _deleteMenu, ingredients: _ingredients),
         ),
       );
 
@@ -429,18 +540,66 @@ class _HomeShellState extends State<HomeShell> {
         MaterialPageRoute(builder: (_) => LaporanPiutangScreen(tables: _tables)),
       );
 
-  /// Pemberitahuan dari keadaan nyata: stok habis & kritis.
-  List<AppNotice> get _notices => [
-        for (final i in _ingredients)
-          if (i.status == StockStatus.habis)
-            AppNotice(title: 'Stok habis: ${i.name}', body: 'Sisa ${stockText(i.stock)} ${i.unit} — segera pesan lagi supaya menu tetap bisa dijual.', danger: true)
-          else if (i.status == StockStatus.kritis)
-            AppNotice(title: 'Stok kritis: ${i.name}', body: 'Sisa ${stockText(i.stock)} ${i.unit}, di bawah batas minimum ${stockText(i.minStock)} ${i.unit}. Siapkan pesanan pembelian.', danger: false),
-      ];
+  /// Tambah pemberitahuan tersimpan. Kunci yang sama & belum
+  /// dibaca = tidak ditambah lagi (mencegah banjir duplikat untuk
+  /// keadaan yang sama, mis. stok yang memang sedang habis).
+  void _tambahNotifikasi({required String jenis, required String judul, required String isi, required String kunci}) {
+    if (_notifications.any((n) => n.kunci == kunci && !n.dibaca)) return;
+    _notifications.insert(
+      0,
+      AppNotification(
+        id: 'n${DateTime.now().millisecondsSinceEpoch}-$kunci',
+        judul: judul,
+        isi: isi,
+        waktu: DateTime.now(),
+        jenis: jenis,
+        kunci: kunci,
+      ),
+    );
+    if (_notifications.length > 60) _notifications.removeRange(60, _notifications.length);
+    LocalStore.saveNotifications(_notifications);
+    if (mounted) setState(() {});
+  }
 
-  void _openNotices() => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => NotifikasiScreen(notices: _notices)),
-      );
+  /// Periksa stok: bahan yang masuk keadaan kritis/habis
+  /// melahirkan pemberitahuan (dijaga kunci per bahan+keadaan).
+  void _periksaStokNotifikasi() {
+    for (final i in _ingredients) {
+      if (i.status == StockStatus.habis) {
+        _tambahNotifikasi(
+          jenis: 'stok',
+          judul: 'Stok habis: ${i.name}',
+          isi: 'Sisa ${stockText(i.stock)} ${i.unit} — segera pesan lagi supaya menu tetap bisa dijual.',
+          kunci: 'stok-${i.id}-habis',
+        );
+      } else if (i.status == StockStatus.kritis) {
+        _tambahNotifikasi(
+          jenis: 'stok',
+          judul: 'Stok kritis: ${i.name}',
+          isi: 'Sisa ${stockText(i.stock)} ${i.unit}, di bawah batas minimum ${stockText(i.minStock)} ${i.unit}. Siapkan pesanan pembelian.',
+          kunci: 'stok-${i.id}-kritis',
+        );
+      }
+    }
+  }
+
+  void _openNotices() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => NotifikasiScreen(notifications: _notifications)),
+    );
+    // Membuka pusat pemberitahuan = menandai semua sudah dibaca
+    // (sedikit ditunda supaya halaman yang terbuka masih sempat
+    // menampilkan penanda belum-dibacanya).
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (!mounted || _belumDibaca == 0) return;
+      setState(() {
+        for (final n in _notifications) {
+          n.dibaca = true;
+        }
+      });
+      LocalStore.saveNotifications(_notifications);
+    });
+  }
 
   void _switchBranch(Branch b) => _settingChanged(() => _settings.activeBranchId = b.id);
 
@@ -459,6 +618,8 @@ class _HomeShellState extends State<HomeShell> {
             nama: _settings.businessName,
             alamat: _settings.businessAddress,
             telepon: _settings.businessPhone,
+            fotoPath: _settings.businessPhotoPath,
+            onSaveFoto: (p) => _settingChanged(() => _settings.businessPhotoPath = p),
             onSave: (n, a, t) => _settingChanged(() {
               _settings.businessName = n;
               _settings.businessAddress = a;
@@ -480,10 +641,13 @@ class _HomeShellState extends State<HomeShell> {
   void _openBranchWizard() => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BranchWizardScreen(
-            onCreate: (b, aktif) => _settingChanged(() {
-              _settings.branches = [..._settings.branches, b];
-              if (aktif) _settings.activeBranchId = b.id;
-            }),
+            onCreate: (b, aktif) {
+              _tandaiKotor('branches');
+              _settingChanged(() {
+                _settings.branches = [..._settings.branches, b];
+                if (aktif) _settings.activeBranchId = b.id;
+              });
+            },
           ),
         ),
       );
@@ -494,7 +658,7 @@ class _HomeShellState extends State<HomeShell> {
   /// ikon jadi merah dan sinkron berikutnya mencoba lagi. Timer
   /// batasnya milik shell ini (dibatalkan di dispose), BUKAN
   /// Future.timeout yang timernya menggantung tanpa pemilik.
-  Future<HasilSinkron> _sinkronDenganBatasWaktu() {
+  Future<HasilSinkron> _sinkronDenganBatasWaktu({bool perbaruiSemua = false}) {
     final selesai = Completer<HasilSinkron>();
     _syncTimeoutTimer?.cancel();
     _syncTimeoutTimer = Timer(const Duration(seconds: 25), () {
@@ -508,6 +672,7 @@ class _HomeShellState extends State<HomeShell> {
       ingredients: _ingredients,
       branches: _settings.branches,
       transactions: _transactions,
+      perbaruiSemua: perbaruiSemua,
     ).then((h) {
       _syncTimeoutTimer?.cancel();
       if (!selesai.isCompleted) selesai.complete(h);
@@ -518,18 +683,26 @@ class _HomeShellState extends State<HomeShell> {
     return selesai.future;
   }
 
-  Future<void> _syncNow({bool diam = false}) async {
+  Future<void> _syncNow({bool diam = false, bool perbaruiSemua = false}) async {
     if (_syncing || !_syncSiap) return;
+    if (!_settings.cloudSyncEnabled) {
+      if (!diam && mounted) {
+        tampilToast(context, 'Cloud Sync sedang mati — nyalakan di Pengaturan.', icon: Icons.cloud_off_outlined, warna: AppColors.warning);
+      }
+      return;
+    }
     _syncing = true;
+    _penandaSinkron.value++;
     // Ikon berputar hanya untuk sinkron MANUAL (ketuk awan /
     // tombol Sinkronkan). Sinkron otomatis berjalan diam-diam —
     // ikon cukup berubah ke hasil akhir (centang / merah), tidak
     // berputar terus setiap ada perubahan data.
     if (!diam && mounted) setState(() => _syncStatus = StatusSinkron.menyinkron);
-    final messenger = ScaffoldMessenger.of(context);
-    if (!diam) messenger.showSnackBar(const SnackBar(content: Text('Menyinkronkan…')));
+    // TANPA toast 'Menyinkronkan…' (permintaan Adnan 2026-11-15):
+    // penanda prosesnya sudah cukup dari putaran ikon awan /
+    // indikator tarik-untuk-segar. Toast hanya untuk HASIL akhir.
     try {
-      final hasil = await _sinkronDenganBatasWaktu();
+      final hasil = await _sinkronDenganBatasWaktu(perbaruiSemua: perbaruiSemua);
       if (!mounted) return;
       setState(() {
         _menus = hasil.menus;
@@ -552,23 +725,61 @@ class _HomeShellState extends State<HomeShell> {
         final n = DateTime.now();
         _settings.lastSyncLabel =
             '${n.day}/${n.month}/${n.year} ${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
+        // Laporan per tabel + bersihkan penanda menunggu untuk
+        // tabel yang berhasil terkirim.
+        _laporanSinkron = hasil.rincian;
+        for (final r in hasil.rincian) {
+          if (r.berhasil) _kotor[r.kunci] = 0;
+        }
       });
       LocalStore.saveMenus(_menus);
       LocalStore.saveIngredients(_ingredients);
       LocalStore.saveTransactions(_transactions);
       LocalStore.saveSettings(_settings);
+      _simpanMetaSinkron();
       _syncing = false;
-      if (mounted) setState(() => _syncStatus = StatusSinkron.tersinkron);
-      if (!diam) messenger.showSnackBar(SnackBar(content: Text(hasil.ringkasan)));
+      _penandaSinkron.value++;
+      if (mounted) setState(() => _syncStatus = hasil.adaGagal ? StatusSinkron.gagal : StatusSinkron.tersinkron);
+      _periksaStokNotifikasi();
+      if (hasil.adaGagal) {
+        final pertama = hasil.rincian.firstWhere((r) => !r.berhasil);
+        _tambahNotifikasi(
+          jenis: 'sinkron',
+          judul: 'Sinkron belum tuntas',
+          isi: '${pertama.label} gagal terkirim: ${pertama.galat ?? 'sebab tidak diketahui'} — rincian di Status Sinkronisasi.',
+          kunci: 'sinkron-gagal',
+        );
+        if (!diam && mounted) {
+          tampilToast(context, hasil.ringkasan, icon: Icons.cloud_off_outlined, warna: AppColors.danger, durasi: const Duration(seconds: 5));
+        }
+      } else if (!diam && mounted) {
+        tampilToast(context, hasil.ringkasan, icon: Icons.cloud_done_outlined);
+      }
     } catch (e) {
       debugPrint('Sinkron gagal: $e');
       _syncing = false;
+      final ringkas = ringkasErrorSinkron(e);
+      _laporanSinkron = [
+        for (final (kunci, label) in [
+          ('branches', 'Cabang'),
+          ('menus', 'Menu'),
+          ('ingredients', 'Bahan'),
+          ('transactions', 'Transaksi'),
+          ('settings', 'Pengaturan'),
+        ])
+          StatusTabel(kunci: kunci, label: label, berhasil: false, jumlah: 0, galat: ringkas),
+      ];
+      _simpanMetaSinkron();
+      _penandaSinkron.value++;
       if (mounted) setState(() => _syncStatus = StatusSinkron.gagal);
-      if (!diam) {
-        messenger.showSnackBar(SnackBar(
-          content: Text('Sinkron gagal: ${ringkasErrorSinkron(e)}'),
-          duration: const Duration(seconds: 8),
-        ));
+      _tambahNotifikasi(
+        jenis: 'sinkron',
+        judul: 'Sinkron gagal',
+        isi: '$ringkas — data tetap aman di perangkat ini dan akan dicoba lagi otomatis.',
+        kunci: 'sinkron-gagal',
+      );
+      if (!diam && mounted) {
+        tampilToast(context, 'Sinkron gagal: $ringkas', icon: Icons.cloud_off_outlined, warna: AppColors.danger, durasi: const Duration(seconds: 6));
       }
     }
   }
@@ -665,10 +876,33 @@ class _HomeShellState extends State<HomeShell> {
         branchId: _settings.activeBranchId,
         uuid: 'u${DateTime.now().millisecondsSinceEpoch}-$_orderCounter',
       ));
+      // Potong stok bahan dari resep (permintaan Adnan
+      // 2026-11-15): menu beresep mengurangi bahan per porsi;
+      // bundle mengurangi lewat resep komponennya. Stok tidak
+      // pernah minus — berhenti di 0.
+      final kebutuhan = <String, double>{};
+      for (final c in _cart) {
+        kebutuhanBahan(c.menu, _menus).forEach((idBahan, qty) {
+          kebutuhan[idBahan] = (kebutuhan[idBahan] ?? 0) + qty * c.qty;
+        });
+      }
+      if (kebutuhan.isNotEmpty) {
+        for (final ing in _ingredients) {
+          final pakai = kebutuhan[ing.id];
+          if (pakai != null && pakai > 0) {
+            ing.stock = ing.stock - pakai < 0 ? 0 : ing.stock - pakai;
+          }
+        }
+      }
       _cart.clear();
     });
     LocalStore.saveTables(_tables);
     LocalStore.saveTransactions(_transactions);
+    LocalStore.saveIngredients(_ingredients);
+    _tandaiKotor('transactions');
+    _tandaiKotor('ingredients');
+    _jadwalkanSinkron();
+    _periksaStokNotifikasi();
   }
 
   String _nowHHmm() {
@@ -715,8 +949,8 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (!_ready || !_splashSelesai) {
+      return const SplashScreen();
     }
     // Pemasangan pertama: onboarding + wizard cabang pertama dulu.
     if (!_settings.onboarded) {
@@ -736,7 +970,7 @@ class _HomeShellState extends State<HomeShell> {
         tablesEnabled: _settings.tablesEnabled,
         tablesOccupied: _tables.where((t) => t.status != TableStatus.kosong).length,
         tablesTotal: _tables.length,
-        noticeCount: _notices.length,
+        noticeCount: _belumDibaca,
         onOpenKasir: () => setState(() => _index = 1),
         onNavigate: (i) => setState(() => _index = i),
         onManageTables: _openKelolaMeja,
@@ -780,6 +1014,7 @@ class _HomeShellState extends State<HomeShell> {
         ingredients: _ingredients,
         onBulkPrice: _applyBulkPrice,
         onImport: _importMenus,
+        businessName: _settings.businessName,
       ),
       MejaScreen(
         tables: _tables,
@@ -835,22 +1070,11 @@ class _HomeShellState extends State<HomeShell> {
         onOpenProfile: _openProfile,
         onOpenPinSettings: _openPinSettings,
         onOpenBranchWizard: _openBranchWizard,
-        supabaseUrl: _settings.supabaseUrl,
-        supabaseAnonKey: _settings.supabaseAnonKey,
-        businessKey: _settings.businessKey,
-        lastSyncLabel: _settings.lastSyncLabel,
-        onSupabaseChanged: (u, k, b) => _settingChanged(() {
-          // Bersihkan otomatis: spasi/enter dari hasil tempel & garis
-          // miring di ujung URL adalah sebab gagal sinkron paling umum.
-          var url = u.trim();
-          while (url.endsWith('/')) {
-            url = url.substring(0, url.length - 1);
-          }
-          _settings.supabaseUrl = url;
-          _settings.supabaseAnonKey = k.trim();
-          _settings.businessKey = b.trim();
-        }),
-        onSyncNow: _syncNow,
+        businessPhotoPath: _settings.businessPhotoPath,
+        cloudSyncEnabled: _settings.cloudSyncEnabled,
+        onCloudSyncChanged: (v) => _settingChanged(() => _settings.cloudSyncEnabled = v),
+        statusSinkronRingkasan: _ringkasanStatusSinkron,
+        onOpenSyncStatus: _openSyncStatus,
         modeTema: _settings.modeTema,
         onModeTemaChanged: (v) {
           _settingChanged(() => _settings.modeTema = v);
@@ -886,6 +1110,15 @@ class _HomeShellState extends State<HomeShell> {
                     items: visible,
                     kitchenCount: _kitchen.where((o) => o.status == KitchenStatus.baru).length,
                     onChanged: (i) => setState(() => _index = i),
+                    businessName: _settings.businessName,
+                    branchName: _settings.activeBranch.name,
+                    businessPhotoPath: _settings.businessPhotoPath,
+                    unreadCount: _belumDibaca,
+                    onOpenProfile: _openProfile,
+                    onOpenSyncStatus: _openSyncStatus,
+                    onOpenPin: _openPinSettings,
+                    onOpenNotices: _openNotices,
+                    onOpenAbout: () => showAppInfoDialog(context),
                   ),
                   Expanded(child: _tumpukanLayar(screens)),
                 ],
@@ -912,7 +1145,14 @@ class _HomeShellState extends State<HomeShell> {
             index: _index,
             items: drawerNav,
             businessName: _settings.businessName,
+            businessPhotoPath: _settings.businessPhotoPath,
+            unreadCount: _belumDibaca,
             onSelect: (i) => setState(() => _index = i),
+            onOpenProfile: _openProfile,
+            onOpenSyncStatus: _openSyncStatus,
+            onOpenPin: _openPinSettings,
+            onOpenNotices: _openNotices,
+            onOpenAbout: () => showAppInfoDialog(context),
           ),
           bottomNavigationBar: Builder(
             builder: (barCtx) => NavigationBar(
@@ -994,17 +1234,95 @@ class _HomeShellState extends State<HomeShell> {
   }
 }
 
+/// Satu baris pintasan di drawer/sidebar (Profil, Status
+/// Sinkronisasi, PIN, Pemberitahuan, Info) — isi sidebar ditambah
+/// atas permintaan Adnan 2026-11-15 ('isinya masih sedikit').
+class _BarisPintasan extends StatelessWidget {
+  const _BarisPintasan({required this.icon, required this.label, required this.onTap, this.badge = 0});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final int badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: ListTile(
+          dense: true,
+          minTileHeight: 48,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+          leading: Icon(icon, color: AppColors.muted, size: 24),
+          title: Text(label, style: AppText.body.copyWith(fontWeight: FontWeight.w500)),
+          trailing: badge > 0 ? StatusChip(label: '$badge', color: AppColors.danger) : null,
+          onTap: onTap,
+        ),
+      ),
+    );
+  }
+}
+
+/// Avatar usaha 40px: foto profil usaha bila ada, selain itu
+/// kotak aksen + ikon kafe seperti sebelumnya.
+class _AvatarUsaha extends StatelessWidget {
+  const _AvatarUsaha({required this.path});
+  final String? path;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
+      child: Icon(Icons.local_cafe, color: AppColors.card, size: 20),
+    );
+    if (path == null || path!.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: Image.file(
+        File(path!),
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
+}
+
 /// Sidebar geser (drawer) khusus HP: menampung menu selain tiga menu
 /// utama di bar bawah. Tampilannya meniru sidebar tablet supaya
 /// rasanya satu keluarga.
 class _PhoneDrawer extends StatelessWidget {
-  const _PhoneDrawer({required this.index, required this.items, required this.businessName, required this.onSelect});
+  const _PhoneDrawer({
+    required this.index,
+    required this.items,
+    required this.businessName,
+    required this.businessPhotoPath,
+    required this.unreadCount,
+    required this.onSelect,
+    required this.onOpenProfile,
+    required this.onOpenSyncStatus,
+    required this.onOpenPin,
+    required this.onOpenNotices,
+    required this.onOpenAbout,
+  });
   final int index;
 
   /// Indeks layar yang masuk drawer (menu selain bar bawah).
   final List<int> items;
   final String businessName;
+  final String? businessPhotoPath;
+  final int unreadCount;
   final ValueChanged<int> onSelect;
+  final VoidCallback onOpenProfile;
+  final VoidCallback onOpenSyncStatus;
+  final VoidCallback onOpenPin;
+  final VoidCallback onOpenNotices;
+  final VoidCallback onOpenAbout;
 
   @override
   Widget build(BuildContext context) {
@@ -1018,12 +1336,7 @@ class _PhoneDrawer extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.md),
               child: Row(
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                    child: Icon(Icons.local_cafe, color: AppColors.card, size: 20),
-                  ),
+                  _AvatarUsaha(path: businessPhotoPath),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
@@ -1071,6 +1384,51 @@ class _PhoneDrawer extends StatelessWidget {
                   ),
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.sm),
+              child: Text('PINTASAN', style: AppText.caption.copyWith(color: AppColors.muted, fontWeight: FontWeight.w700)),
+            ),
+            _BarisPintasan(
+              icon: Icons.storefront_outlined,
+              label: 'Profil Usaha',
+              onTap: () {
+                Navigator.of(context).pop();
+                onOpenProfile();
+              },
+            ),
+            _BarisPintasan(
+              icon: Icons.cloud_sync_outlined,
+              label: 'Status Sinkronisasi',
+              onTap: () {
+                Navigator.of(context).pop();
+                onOpenSyncStatus();
+              },
+            ),
+            _BarisPintasan(
+              icon: Icons.pin_outlined,
+              label: 'PIN Kasir',
+              onTap: () {
+                Navigator.of(context).pop();
+                onOpenPin();
+              },
+            ),
+            _BarisPintasan(
+              icon: Icons.notifications_outlined,
+              label: 'Pemberitahuan',
+              badge: unreadCount,
+              onTap: () {
+                Navigator.of(context).pop();
+                onOpenNotices();
+              },
+            ),
+            _BarisPintasan(
+              icon: Icons.info_outlined,
+              label: 'Info Aplikasi',
+              onTap: () {
+                Navigator.of(context).pop();
+                onOpenAbout();
+              },
+            ),
             const Spacer(),
             Padding(
               padding: const EdgeInsets.all(AppSpacing.xl),
@@ -1084,13 +1442,36 @@ class _PhoneDrawer extends StatelessWidget {
 }
 
 class _SideBar extends StatelessWidget {
-  const _SideBar({required this.index, required this.items, required this.onChanged, required this.kitchenCount});
+  const _SideBar({
+    required this.index,
+    required this.items,
+    required this.onChanged,
+    required this.kitchenCount,
+    required this.businessName,
+    required this.branchName,
+    required this.businessPhotoPath,
+    required this.unreadCount,
+    required this.onOpenProfile,
+    required this.onOpenSyncStatus,
+    required this.onOpenPin,
+    required this.onOpenNotices,
+    required this.onOpenAbout,
+  });
   final int index;
 
   /// Indeks layar yang tampil (Meja bisa hilang saat fiturnya mati).
   final List<int> items;
   final ValueChanged<int> onChanged;
   final int kitchenCount;
+  final String businessName;
+  final String branchName;
+  final String? businessPhotoPath;
+  final int unreadCount;
+  final VoidCallback onOpenProfile;
+  final VoidCallback onOpenSyncStatus;
+  final VoidCallback onOpenPin;
+  final VoidCallback onOpenNotices;
+  final VoidCallback onOpenAbout;
 
   @override
   Widget build(BuildContext context) {
@@ -1107,19 +1488,14 @@ class _SideBar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.sm),
             child: Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                  child: Icon(Icons.local_cafe, color: AppColors.card, size: 20),
-                ),
+                _AvatarUsaha(path: businessPhotoPath),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Avoera POS', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.subtitle.copyWith(fontWeight: FontWeight.w800)),
-                      Text('Resto · Cafe · Kopi', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(color: AppColors.muted)),
+                      Text(businessName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.subtitle.copyWith(fontWeight: FontWeight.w800)),
+                      Text(appName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(color: AppColors.muted)),
                     ],
                   ),
                 ),
@@ -1133,7 +1509,7 @@ class _SideBar extends StatelessWidget {
                 const Icon(Icons.circle, size: 8, color: AppColors.accent),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: Text('Shift pagi · Kasir: Rina', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(color: AppColors.muted)),
+                  child: Text('Cabang aktif: $branchName', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(color: AppColors.muted)),
                 ),
               ],
             ),
@@ -1172,6 +1548,19 @@ class _SideBar extends StatelessWidget {
                         ),
                       ),
                     ),
+                  const Divider(height: AppSpacing.xl, indent: AppSpacing.xl, endIndent: AppSpacing.xl),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.sm),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('PINTASAN', style: AppText.caption.copyWith(color: AppColors.muted, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                  _BarisPintasan(icon: Icons.storefront_outlined, label: 'Profil Usaha', onTap: onOpenProfile),
+                  _BarisPintasan(icon: Icons.cloud_sync_outlined, label: 'Status Sinkronisasi', onTap: onOpenSyncStatus),
+                  _BarisPintasan(icon: Icons.pin_outlined, label: 'PIN Kasir', onTap: onOpenPin),
+                  _BarisPintasan(icon: Icons.notifications_outlined, label: 'Pemberitahuan', badge: unreadCount, onTap: onOpenNotices),
+                  _BarisPintasan(icon: Icons.info_outlined, label: 'Info Aplikasi', onTap: onOpenAbout),
                 ],
               ),
             ),

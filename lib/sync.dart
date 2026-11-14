@@ -48,6 +48,7 @@ class HasilSinkron {
     required this.transactions,
     required this.pengaturanServer,
     required this.ringkasan,
+    required this.rincian,
   });
   final List<MenuItem> menus;
   final List<Ingredient> ingredients;
@@ -55,6 +56,31 @@ class HasilSinkron {
   final List<TxRecord> transactions;
   final Map<String, dynamic>? pengaturanServer;
   final String ringkasan;
+
+  /// Hasil per tabel (untuk halaman Status Sinkronisasi):
+  /// mana yang berhasil terkirim, mana yang gagal + sebabnya.
+  final List<StatusTabel> rincian;
+
+  bool get adaGagal => rincian.any((r) => !r.berhasil);
+}
+
+/// Nasib satu tabel dalam sekali sinkron.
+class StatusTabel {
+  StatusTabel({required this.kunci, required this.label, required this.berhasil, required this.jumlah, this.galat});
+  final String kunci;
+  final String label;
+  bool berhasil;
+  int jumlah;
+  String? galat;
+
+  Map<String, dynamic> toJson() => {'kunci': kunci, 'label': label, 'berhasil': berhasil, 'jumlah': jumlah, 'galat': galat};
+  factory StatusTabel.fromJson(Map<String, dynamic> j) => StatusTabel(
+        kunci: j['kunci'] as String,
+        label: j['label'] as String? ?? '',
+        berhasil: j['berhasil'] as bool? ?? false,
+        jumlah: (j['jumlah'] as num?)?.toInt() ?? 0,
+        galat: j['galat'] as String?,
+      );
 }
 
 Map<String, dynamic> _pengaturanAman(AppSettings s) {
@@ -70,6 +96,8 @@ Map<String, dynamic> _pengaturanAman(AppSettings s) {
     'branches',
     'activeBranchId',
     'backendBawaanDitanam',
+    'businessPhotoPath',
+    'cloudSyncEnabled',
   ]) {
     j.remove(k);
   }
@@ -82,6 +110,7 @@ Future<HasilSinkron> sinkronkanSupabase({
   required List<Ingredient> ingredients,
   required List<Branch> branches,
   required List<TxRecord> transactions,
+  bool perbaruiSemua = false,
 }) async {
   final kode = settings.businessKey.trim();
   // Jaring pengaman kedua (selain pembersihan saat disimpan):
@@ -109,6 +138,7 @@ Future<HasilSinkron> sinkronkanSupabase({
       ingredients: ingredients,
       branches: branches,
       transactions: transactions,
+      perbaruiSemua: perbaruiSemua,
     );
   } finally {
     // WAJIB dibuang: SupabaseClient menyalakan timer auto-refresh
@@ -126,103 +156,125 @@ Future<HasilSinkron> _kerjakanSinkron(
   required List<Ingredient> ingredients,
   required List<Branch> branches,
   required List<TxRecord> transactions,
+  bool perbaruiSemua = false,
 }) async {
   final sekarang = DateTime.now().toUtc().toIso8601String();
+  final rincian = <String, StatusTabel>{};
+
+  void catat(String kunci, String label, bool ok, int jumlah, [Object? e]) {
+    rincian[kunci] = StatusTabel(
+      kunci: kunci,
+      label: label,
+      berhasil: ok,
+      jumlah: jumlah,
+      galat: e == null ? null : ringkasErrorSinkron(e),
+    );
+  }
 
   Map<String, dynamic> barisData(String id, Map<String, dynamic> data) => {
-    'business_key': kode,
-    'id': id,
-    'data': data,
-    'updated_at': sekarang,
-  };
+        'business_key': kode,
+        'id': id,
+        'data': data,
+        'updated_at': sekarang,
+      };
 
-  // ---------- UNGGAH ----------
-  if (branches.isNotEmpty) {
-    await client.from('avoera_branches').upsert([
-      for (final b in branches) barisData(b.id, b.toJson()),
-    ]);
-  }
-  if (menus.isNotEmpty) {
-    await client.from('avoera_menus').upsert([
-      for (final m in menus) barisData(m.id, m.toJson()),
-    ]);
-  }
-  if (ingredients.isNotEmpty) {
-    await client.from('avoera_ingredients').upsert([
-      for (final i in ingredients) barisData(i.id, i.toJson()),
-    ]);
-  }
-  if (transactions.isNotEmpty) {
-    await client.from('avoera_transactions').upsert([
-      for (final t in transactions)
-        {
-          'business_key': kode,
-          'uuid': t.uuid.isEmpty ? t.id : t.uuid,
-          'at': t.at.toUtc().toIso8601String(),
-          'data': t.toJson(),
-          'updated_at': sekarang,
-        },
-    ]);
-  }
-  await client.from('avoera_settings').upsert([
-    barisData('main', _pengaturanAman(settings)),
-  ]);
-
-  // ---------- TARIK & GABUNG ----------
-  Future<List<Map<String, dynamic>>> ambil(String tabel) async {
-    final rows = await client
-        .from(tabel)
-        .select('data')
-        .eq('business_key', kode);
-    return [for (final r in rows) (r['data'] as Map).cast<String, dynamic>()];
+  // ---------- UNGGAH (per tabel dijaga sendiri-sendiri: satu
+  // tabel gagal tidak membatalkan tabel lain, dan kegagalannya
+  // tercatat untuk halaman Status Sinkronisasi) ----------
+  Future<void> unggah(String kunci, String label, String tabel, List<Map<String, dynamic>> baris, {bool walauKosong = false}) async {
+    if (baris.isEmpty && !walauKosong) {
+      catat(kunci, label, true, 0);
+      return;
+    }
+    try {
+      await client.from(tabel).upsert(baris);
+      catat(kunci, label, true, baris.length);
+    } catch (e) {
+      catat(kunci, label, false, 0, e);
+    }
   }
 
-  final menuServer = [
-    for (final j in await ambil('avoera_menus')) MenuItem.fromJson(j),
-  ];
-  final bahanServer = [
-    for (final j in await ambil('avoera_ingredients')) Ingredient.fromJson(j),
-  ];
-  final cabangServer = [
-    for (final j in await ambil('avoera_branches')) Branch.fromJson(j),
-  ];
-  final txServer = [
-    for (final j in await ambil('avoera_transactions')) TxRecord.fromJson(j),
-  ];
-  final pengaturanRows = await ambil('avoera_settings');
-  final pengaturanServer = pengaturanRows.isEmpty ? null : pengaturanRows.first;
+  List<Map<String, dynamic>> barisTx(List<TxRecord> txs) => [
+        for (final t in txs)
+          {
+            'business_key': kode,
+            'uuid': t.uuid.isEmpty ? t.id : t.uuid,
+            'at': t.at.toUtc().toIso8601String(),
+            'data': t.toJson(),
+            'updated_at': sekarang,
+          },
+      ];
 
-  // Gabung per id: server menimpa lokal untuk id yang sama,
-  // data lokal yang belum ada di server tetap dipertahankan.
+  await unggah('branches', 'Cabang', 'avoera_branches', [for (final b in branches) barisData(b.id, b.toJson())]);
+  await unggah('menus', 'Menu', 'avoera_menus', [for (final m in menus) barisData(m.id, m.toJson())]);
+  await unggah('ingredients', 'Bahan', 'avoera_ingredients', [for (final i in ingredients) barisData(i.id, i.toJson())]);
+  await unggah('transactions', 'Transaksi', 'avoera_transactions', barisTx(transactions));
+  await unggah('settings', 'Pengaturan', 'avoera_settings', [barisData('main', _pengaturanAman(settings))], walauKosong: true);
+
+  // ---------- TARIK & GABUNG (per tabel juga dijaga: tarik yang
+  // gagal memakai data lokal apa adanya) ----------
+  Future<List<Map<String, dynamic>>?> ambil(String kunci, String tabel) async {
+    try {
+      final rows = await client.from(tabel).select('data').eq('business_key', kode);
+      return [for (final r in rows) (r['data'] as Map).cast<String, dynamic>()];
+    } catch (e) {
+      final lama = rincian[kunci];
+      if (lama != null && lama.berhasil) {
+        lama.berhasil = false;
+        lama.galat = ringkasErrorSinkron(e);
+      }
+      return null;
+    }
+  }
+
   List<T> gabung<T>(List<T> lokal, List<T> server, String Function(T) idOf) {
     final hasil = <T>[...lokal];
-    for (final s in server) {
-      final idx = hasil.indexWhere((e) => idOf(e) == idOf(s));
+    for (final sv in server) {
+      final idx = hasil.indexWhere((e) => idOf(e) == idOf(sv));
       if (idx >= 0) {
-        hasil[idx] = s;
+        hasil[idx] = sv;
       } else {
-        hasil.add(s);
+        hasil.add(sv);
       }
     }
     return hasil;
   }
 
-  final menuGabung = gabung(menus, menuServer, (m) => m.id);
-  final bahanGabung = gabung(ingredients, bahanServer, (i) => i.id);
-  final cabangGabung = gabung(branches, cabangServer, (b) => b.id);
-  final txGabung = gabung(
-    transactions,
-    txServer,
-    (t) => t.uuid.isEmpty ? t.id : t.uuid,
-  )..sort((a, b) => a.at.compareTo(b.at));
+  final menuJson = await ambil('menus', 'avoera_menus');
+  final menuGabung = menuJson == null ? menus : gabung(menus, [for (final j in menuJson) MenuItem.fromJson(j)], (m) => m.id);
+  final bahanJson = await ambil('ingredients', 'avoera_ingredients');
+  final bahanGabung = bahanJson == null ? ingredients : gabung(ingredients, [for (final j in bahanJson) Ingredient.fromJson(j)], (i) => i.id);
+  final cabangJson = await ambil('branches', 'avoera_branches');
+  final cabangGabung = cabangJson == null ? branches : gabung(branches, [for (final j in cabangJson) Branch.fromJson(j)], (b) => b.id);
+  final txJson = await ambil('transactions', 'avoera_transactions');
+  final txGabung = txJson == null
+      ? transactions
+      : (gabung(transactions, [for (final j in txJson) TxRecord.fromJson(j)], (t) => t.uuid.isEmpty ? t.id : t.uuid)
+        ..sort((a, b) => a.at.compareTo(b.at)));
+  final pengaturanJson = await ambil('settings', 'avoera_settings');
+  final pengaturanServer = (pengaturanJson == null || pengaturanJson.isEmpty) ? null : pengaturanJson.first;
 
+  // ---------- PERBARUI SEMUA: hasil gabungan diunggah sekali
+  // lagi, supaya server persis mencerminkan keadaan gabungan
+  // terakhir (permintaan Adnan: tombol 'Perbarui Semua Data').
+  if (perbaruiSemua) {
+    await unggah('branches', 'Cabang', 'avoera_branches', [for (final b in cabangGabung) barisData(b.id, b.toJson())]);
+    await unggah('menus', 'Menu', 'avoera_menus', [for (final m in menuGabung) barisData(m.id, m.toJson())]);
+    await unggah('ingredients', 'Bahan', 'avoera_ingredients', [for (final i in bahanGabung) barisData(i.id, i.toJson())]);
+    await unggah('transactions', 'Transaksi', 'avoera_transactions', barisTx(txGabung));
+  }
+
+  final daftar = rincian.values.toList();
+  final gagal = daftar.where((r) => !r.berhasil).length;
   return HasilSinkron(
     menus: menuGabung,
     ingredients: bahanGabung,
     branches: cabangGabung,
     transactions: txGabung,
     pengaturanServer: pengaturanServer,
-    ringkasan:
-        'Sinkron selesai: ${menuGabung.length} menu, ${bahanGabung.length} bahan, ${cabangGabung.length} cabang, ${txGabung.length} transaksi.',
+    rincian: daftar,
+    ringkasan: gagal == 0
+        ? 'Sinkron selesai: ${menuGabung.length} menu, ${bahanGabung.length} bahan, ${cabangGabung.length} cabang, ${txGabung.length} transaksi.'
+        : 'Sinkron belum tuntas: $gagal dari ${daftar.length} bagian gagal — rincian di Status Sinkronisasi.',
   );
 }

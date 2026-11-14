@@ -14,3 +14,15 @@ Future<String> simpanFotoMenu(String sumber, String menuId) async {
   await File(sumber).copy(tujuan.path);
   return tujuan.path;
 }
+
+/// Simpan foto profil usaha ke folder dokumen aplikasi (nama
+/// berkas tetap — foto baru menimpa yang lama).
+Future<String> simpanFotoProfil(String sumber) async {
+  final dir = await getApplicationDocumentsDirectory();
+  final folder = Directory('${dir.path}/profil_foto');
+  if (!await folder.exists()) await folder.create(recursive: true);
+  final ext = sumber.contains('.') ? sumber.split('.').last : 'jpg';
+  final tujuan = File('${folder.path}/usaha.$ext');
+  await File(sumber).copy(tujuan.path);
+  return tujuan.path;
+}

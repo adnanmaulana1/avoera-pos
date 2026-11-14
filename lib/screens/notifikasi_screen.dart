@@ -1,35 +1,49 @@
 import 'package:flutter/material.dart';
 
+import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-/// Satu pemberitahuan di pusat notifikasi.
-class AppNotice {
-  const AppNotice({required this.title, required this.body, required this.danger});
-  final String title;
-  final String body;
-  final bool danger;
-}
-
-/// Pusat Pemberitahuan (v0.7.0): pemberitahuan di dalam aplikasi
-/// dari keadaan nyata — stok habis & stok kritis. Pemberitahuan
-/// sistem (push) menyusul bersama backend.
+/// Pusat Pemberitahuan (difungsikan penuh 2026-11-15): daftar
+/// pemberitahuan TERSIMPAN dari kejadian nyata — stok kritis &
+/// habis, sinkron gagal. Yang belum dibaca berjudul tebal + titik
+/// penanda; membuka halaman ini menandai semuanya dibaca.
 class NotifikasiScreen extends StatelessWidget {
-  const NotifikasiScreen({super.key, required this.notices});
-  final List<AppNotice> notices;
+  const NotifikasiScreen({super.key, required this.notifications});
+  final List<AppNotification> notifications;
+
+  (IconData, Color) _gaya(AppNotification n) {
+    switch (n.jenis) {
+      case 'stok':
+        return n.judul.contains('habis')
+            ? (Icons.error_outline, AppColors.danger)
+            : (Icons.warning_amber_outlined, AppColors.warning);
+      case 'sinkron':
+        return (Icons.cloud_off_outlined, AppColors.danger);
+      default:
+        return (Icons.info_outline, AppColors.accentDark);
+    }
+  }
+
+  String _waktu(DateTime w) {
+    final jam = '${w.hour.toString().padLeft(2, '0')}:${w.minute.toString().padLeft(2, '0')}';
+    final now = DateTime.now();
+    final hariIni = w.year == now.year && w.month == now.month && w.day == now.day;
+    return hariIni ? 'Hari ini · $jam' : '${w.day}/${w.month}/${w.year} · $jam';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Pemberitahuan')),
-      body: notices.isEmpty
+      body: notifications.isEmpty
           ? const EmptyState(message: 'Tidak ada pemberitahuan.\nStok aman, semua berjalan baik.', icon: Icons.notifications_none_outlined)
           : ListView.builder(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              itemCount: notices.length,
+              itemCount: notifications.length,
               itemBuilder: (_, i) {
-                final n = notices[i];
-                final color = n.danger ? AppColors.danger : AppColors.warning;
+                final n = notifications[i];
+                final (icon, color) = _gaya(n);
                 return AppCard(
                   margin: const EdgeInsets.only(bottom: AppSpacing.md),
                   child: Row(
@@ -39,16 +53,33 @@ class NotifikasiScreen extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.sm)),
-                        child: Icon(n.danger ? Icons.error_outline : Icons.warning_amber_outlined, color: color, size: 22),
+                        child: Icon(icon, color: color, size: 22),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(n.title, style: AppText.body.copyWith(fontWeight: FontWeight.w700)),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    n.judul,
+                                    style: AppText.body.copyWith(fontWeight: n.dibaca ? FontWeight.w600 : FontWeight.w800),
+                                  ),
+                                ),
+                                if (!n.dibaca)
+                                  Container(
+                                    width: 9,
+                                    height: 9,
+                                    decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+                                  ),
+                              ],
+                            ),
                             const SizedBox(height: AppSpacing.xs),
-                            Text(n.body, style: AppText.small.copyWith(color: AppColors.muted)),
+                            Text(n.isi, style: AppText.small.copyWith(color: AppColors.muted)),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(_waktu(n.waktu), style: AppText.caption.copyWith(color: AppColors.muted)),
                           ],
                         ),
                       ),

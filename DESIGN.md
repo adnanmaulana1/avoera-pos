@@ -206,3 +206,79 @@ Teks tidak pernah lebih kecil dari 11.
   WAJIB membaca Theme.of(context) di build-nya — kalau tidak,
   warnanya basi saat mode terang/gelap diganti di tengah jalan
   (kejadian nyata: judul seksi Pengaturan tak terlihat di gelap).
+
+## v0.9.0 — Brand Avorea, Fitur "Segera" Tuntas, Status Sinkron (2026-11-15)
+
+Diminta Adnan 2026-11-15 pagi (dengan artwork banner Avorea — "Maestro
+Alpukat Kocok"): splash screen dari artwork, rombak kunci kasir, tombol
+cari Produk saat tergulir, sidebar ditambah isi, semua fitur "Segera"
+dituntaskan, foto profil usaha, notifikasi difungsikan, menu
+Sinkronisasi Online dirapikan, toast didesain ulang. Catatan tambahan
+Adnan di tengah jalan: toast "Menyinkronkan…" DIBUANG — penanda proses
+cukup dari putaran ikon awan / indikator tarik-untuk-segar; toast hanya
+untuk hasil akhir.
+
+- **Identitas brand:** logo dipotong dari banner (kotak logo saja;
+  berkas asli banner TIDAK ikut APK — disimpan di luar repo).
+  Warna brand: hijau alpukat tua #1E3A2A (latar splash), kuning
+  #F5B921 (slogan), krem #F7F8F2 (kartu logo). Aset:
+  assets/branding/avorea-logo.png.
+- **Splash:** layar penuh hijau brand, kartu krem berisi logo, slogan
+  kuning "Bikin Harimu Lebih Segar!", penanda muat kecil, footer
+  "Avoera POS · by Webtales Studio". Tampil selama data dimuat,
+  minimal ±0,5 detik, animasi masuk fade+scale halus. Ukuran logo
+  ditetapkan eksplisit + fallback teks "AVOREA" bila aset gagal —
+  pelajaran: widget gambar tanpa ukuran membuat tata letak runtuh
+  saat gambar belum termuat.
+- **Kunci kasir:** kepala bergaya brand (kartu logo + nama usaha +
+  chip "Kasir Terkunci"), tombol angka kini lingkaran terisi lembut.
+  Semua perilaku lama dipertahankan: titik PIN membesar saat ditekan,
+  goyang + titik merah + getar saat salah, tekan-lama hapus =
+  kosongkan.
+- **Produk:** tombol cari bulat melayang muncul di atas tombol +
+  sesudah daftar digulir jauh; ketuk = kembali ke atas + fokus ke
+  kolom cari. Menu ⋯: empat item "Segera" kini berfungsi semua.
+- **Resep & HPP:** tiap menu bisa punya resep (bahan + takaran per
+  porsi). Bahan kini punya "Harga Beli per Satuan" → HPP per porsi
+  dihitung dan margin ditampilkan langsung di editor menu. Saat
+  pembayaran berhasil, stok bahan DIPOTONG otomatis sesuai resep
+  (bundle diperluas ke isi-isinya), tidak pernah di bawah nol.
+- **Bundle:** menu bisa ditandai paket berisi menu lain (isi + jumlah
+  diatur di editor); lencana "Bundle" di daftar Produk; layar kelola
+  Resep & Bundle tersendiri dari menu ⋯ Produk.
+- **Harga Ojol:** kolom harga khusus ojek online per menu (boleh
+  kosong); saklar "Tampilkan Harga Ojol" di menu ⋯ menampilkannya di
+  daftar Produk. Sifatnya tampilan/informasi — belum ada integrasi
+  ojol sungguhan.
+- **Cetak Label Harga:** pratinjau label (nama usaha, nama menu,
+  kategori, harga) dalam kisi bergaya kertas + tombol "Bagikan /
+  Cetak PDF" (PDF A4 siap cetak).
+- **Foto profil usaha:** halaman Profil Usaha kini bisa memasang foto
+  (kamera/galeri/hapus); foto tampil juga sebagai avatar kecil di
+  kartu profil Pengaturan dan di kepala sidebar/drawer. Foto hanya
+  tersimpan lokal di HP (tidak ikut sinkron).
+- **Notifikasi difungsikan:** pemberitahuan kini DISIMPAN (riwayat
+  tetap ada sesudah aplikasi ditutup), dibuat otomatis untuk stok
+  habis & stok kritis (tanpa dobel selama belum dibaca) dan untuk
+  sinkron yang gagal. Lonceng Beranda + baris Pemberitahuan di drawer
+  menampilkan jumlah belum dibaca; membuka halaman = menandai semua
+  dibaca (ditunda ±0,7 detik supaya penanda sempat terlihat).
+- **Sinkronisasi Online dirapikan:** di Pengaturan kini hanya 2 baris
+  — saklar "Cloud Sync" (matikan = semua sinkron otomatis berhenti)
+  dan "Status Sinkronisasi". Halaman Status khusus berisi: kartu
+  status terakhir, daftar "Menunggu Terkirim" (perubahan lokal yang
+  belum terkirim, dihitung per jenis data dan disimpan persisten),
+  "Hasil Sinkron Terakhir" per tabel (termasuk pesan galatnya),
+  tombol "Sinkronkan Sekarang", "Perbarui Semua Data" (kirim ulang
+  semua data lokal ke server, dengan dialog konfirmasi), dan
+  pengaturan Supabase (URL/Kunci/Kode Usaha) yang PINDAH ke halaman
+  ini dari Pengaturan. Sinkron kini tahan banting per tabel: satu
+  tabel gagal tidak membatalkan tabel lain.
+- **Toast baru:** pemberitahuan melayang bergaya pil gelap dengan
+  lingkaran ikon berwarna (hijau berhasil, merah gagal, oranye
+  peringatan) + bayangan; dipakai di seluruh aplikasi.
+- **FormSheet (semua formulir sheet):** tombol Simpan/Hapus kini
+  TETAP di bawah, isi yang bergulir — perbaikan dari temuan uji:
+  formulir yang makin panjang (editor menu + resep + bundle) membuat
+  tombol yang ikut bergulir berhenti beberapa piksel di luar tepi
+  bawah layar 800px dan tidak terjangkau ketukan.

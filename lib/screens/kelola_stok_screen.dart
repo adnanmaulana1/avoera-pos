@@ -119,8 +119,9 @@ Future<void> showIngredientEditor(
   final unitCtrl = TextEditingController(text: ing?.unit ?? 'kg');
   final minCtrl = TextEditingController(text: ing == null ? '' : _qtyText(ing.minStock));
   final maxCtrl = TextEditingController(text: ing == null ? '' : _qtyText(ing.maxStock));
+  final costCtrl = TextEditingController(text: ing == null || ing.costPerUnit == 0 ? '' : ThousandsFormatter.format(ing.costPerUnit));
   String? error;
-  String snapshot() => [nameCtrl.text, stockCtrl.text, unitCtrl.text, minCtrl.text, maxCtrl.text].join('|');
+  String snapshot() => [nameCtrl.text, stockCtrl.text, unitCtrl.text, minCtrl.text, maxCtrl.text, costCtrl.text].join('|');
   final awal = snapshot();
 
   await showAppSheet<void>(
@@ -166,14 +167,16 @@ Future<void> showIngredientEditor(
                 setSheet(() => error = 'Jumlah, batas kritis, dan stok maksimal harus angka yang benar.');
                 return;
               }
+              final cost = int.tryParse(costCtrl.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
               if (ing == null) {
-                onAdd(Ingredient(name: name, stock: stock, unit: unit, minStock: min, maxStock: max));
+                onAdd(Ingredient(name: name, stock: stock, unit: unit, minStock: min, maxStock: max, costPerUnit: cost));
               } else {
                 ing.name = name;
                 ing.stock = stock;
                 ing.unit = unit;
                 ing.minStock = min;
                 ing.maxStock = max;
+                ing.costPerUnit = cost;
                 onChanged();
               }
               Navigator.of(ctx).pop();
@@ -251,11 +254,24 @@ Future<void> showIngredientEditor(
                 'Batas kritis = angka peringatan "stok mau habis". Stok maksimal = patokan bar penuh di layar Stok.',
                 style: AppText.caption.copyWith(color: AppColors.muted),
               ),
+              const SizedBox(height: AppSpacing.lg),
+              const FormLabel('Harga Beli per Satuan (Rp)'),
+              TextField(
+                controller: costCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, const ThousandsFormatter()],
+                decoration: const InputDecoration(prefixText: 'Rp ', hintText: '0'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Harga beli terakhir bahan ini per satuannya — dasar hitung HPP (modal) menu dari resep. Boleh kosong.',
+                style: AppText.caption.copyWith(color: AppColors.muted),
+              ),
             ],
           ),
         );
       },
     ),
   );
-  disposeControllersLater([nameCtrl, stockCtrl, unitCtrl, minCtrl, maxCtrl]);
+  disposeControllersLater([nameCtrl, stockCtrl, unitCtrl, minCtrl, maxCtrl, costCtrl]);
 }

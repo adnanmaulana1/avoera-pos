@@ -6,6 +6,8 @@ import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_menu_screen.dart' show MenuThumb, menuPalette, showMenuEditor;
+import 'label_screen.dart';
+import 'resep_screen.dart';
 
 /// Layar Produk ala referensi Kasaba (permintaan Adnan 2026-11-14):
 /// daftar produk dengan foto, nama, kategori + SKU, harga di kanan;
@@ -24,6 +26,7 @@ class ProdukScreen extends StatefulWidget {
     required this.ingredients,
     required this.onBulkPrice,
     required this.onImport,
+    this.businessName = '',
   });
 
   final List<MenuItem> menus;
@@ -37,6 +40,10 @@ class ProdukScreen extends StatefulWidget {
   final ValueChanged<int> onBulkPrice;
   final ValueChanged<List<MenuItem>> onImport;
 
+  /// Nama usaha untuk kepala label harga (boleh kosong → pakai
+  /// nama cabang).
+  final String businessName;
+
   @override
   State<ProdukScreen> createState() => _ProdukScreenState();
 }
@@ -45,8 +52,39 @@ class _ProdukScreenState extends State<ProdukScreen> {
   String _kategori = 'Semua';
   String _query = '';
   bool _tampilBahan = false;
+  bool _tampilOjol = false;
   bool _modePilih = false;
   final Set<String> _terpilih = {};
+
+  // Tombol cari melayang (permintaan Adnan 2026-11-15): sesudah
+  // daftar digulir jauh, kolom cari di atas sudah tak terlihat —
+  // tombol ini muncul untuk melompat kembali ke kolom cari.
+  final _gulirCtrl = ScrollController();
+  final _cariCtrl = TextEditingController();
+  final _fokusCari = FocusNode();
+  bool _sudahGulir = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _gulirCtrl.addListener(() {
+      final jauh = _gulirCtrl.hasClients && _gulirCtrl.offset > 260;
+      if (jauh != _sudahGulir) setState(() => _sudahGulir = jauh);
+    });
+  }
+
+  @override
+  void dispose() {
+    _gulirCtrl.dispose();
+    _cariCtrl.dispose();
+    _fokusCari.dispose();
+    super.dispose();
+  }
+
+  Future<void> _lompatKeCari() async {
+    await _gulirCtrl.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+    if (mounted) _fokusCari.requestFocus();
+  }
 
   List<MenuItem> get _list => widget.menus.where((m) {
         final cocokKategori = _kategori == 'Semua' || m.category == _kategori;
@@ -230,7 +268,15 @@ class _ProdukScreenState extends State<ProdukScreen> {
   }
 
   Future<void> _bukaEditor(MenuItem? m) async {
-    await showMenuEditor(context, initial: m, onAdd: widget.onAdd, onChanged: widget.onChanged, onDelete: widget.onDelete);
+    await showMenuEditor(
+      context,
+      initial: m,
+      onAdd: widget.onAdd,
+      onChanged: widget.onChanged,
+      onDelete: widget.onDelete,
+      ingredients: widget.ingredients,
+      allMenus: widget.menus,
+    );
     if (mounted) setState(() {});
   }
 
@@ -240,12 +286,35 @@ class _ProdukScreenState extends State<ProdukScreen> {
         _editHargaMassal();
       case 'bahan':
         setState(() => _tampilBahan = !_tampilBahan);
+      case 'ojol':
+        setState(() => _tampilOjol = !_tampilOjol);
       case 'pilih':
         setState(() => _modePilih = true);
       case 'ekspor':
         _eksporData();
       case 'impor':
         _imporData();
+      case 'resep':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ResepScreen(menus: widget.menus, ingredients: widget.ingredients, onEditMenu: _bukaEditor),
+          ),
+        );
+      case 'bundle':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BundleScreen(menus: widget.menus, onEditMenu: _bukaEditor),
+          ),
+        );
+      case 'label':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => LabelHargaScreen(
+              menus: widget.menus,
+              businessName: widget.businessName.isNotEmpty ? widget.businessName : widget.branchName,
+            ),
+          ),
+        );
     }
   }
 
@@ -255,6 +324,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
     return Stack(
       children: [
         ListView(
+          controller: _gulirCtrl,
           padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
@@ -284,16 +354,26 @@ class _ProdukScreenState extends State<ProdukScreen> {
                   const PopupMenuItem(value: 'ekspor', child: Text('Ekspor Data')),
                   const PopupMenuItem(value: 'impor', child: Text('Impor Data')),
                   const PopupMenuDivider(),
-                  // Tahap berikutnya — ditampilkan jujur sebagai Segera.
-                  const PopupMenuItem(enabled: false, child: Text('Resep — Segera')),
-                  const PopupMenuItem(enabled: false, child: Text('Bundle — Segera')),
-                  const PopupMenuItem(enabled: false, child: Text('Harga Ojol — Segera')),
-                  const PopupMenuItem(enabled: false, child: Text('Cetak Label Harga — Segera')),
+                  const PopupMenuItem(value: 'resep', child: Text('Resep')),
+                  const PopupMenuItem(value: 'bundle', child: Text('Bundle')),
+                  PopupMenuItem(
+                    value: 'ojol',
+                    child: Row(
+                      children: [
+                        const Expanded(child: Text('Tampilkan Harga Ojol')),
+                        if (_tampilOjol)
+                          Text('Aktif', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(value: 'label', child: Text('Cetak Label Harga')),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
+              controller: _cariCtrl,
+              focusNode: _fokusCari,
               decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari produk…'),
               onChanged: (v) => setState(() => _query = v),
             ),
@@ -344,13 +424,28 @@ class _ProdukScreenState extends State<ProdukScreen> {
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               Text(skuOf(m), style: AppText.caption.copyWith(color: AppColors.muted)),
+                              if (m.isBundle) ...[
+                                const SizedBox(width: AppSpacing.sm),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                                  decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                                  child: Text('Bundle', style: AppText.caption.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+                                ),
+                              ],
                             ],
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
-                    Text(rupiah(m.price), style: AppText.body.copyWith(fontWeight: FontWeight.w800, color: AppColors.accentDark)),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(rupiah(m.price), style: AppText.body.copyWith(fontWeight: FontWeight.w800, color: AppColors.accentDark)),
+                        if (_tampilOjol)
+                          Text('Ojol ${rupiah(m.hargaOjolEfektif)}', style: AppText.caption.copyWith(color: AppColors.muted)),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -406,11 +501,34 @@ class _ProdukScreenState extends State<ProdukScreen> {
           Positioned(
             right: AppSpacing.lg,
             bottom: AppSpacing.lg,
-            child: FloatingActionButton(
-              heroTag: 'tambahProduk',
-              onPressed: () => _bukaEditor(null),
-              tooltip: 'Tambah Produk',
-              child: const Icon(Icons.add),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (_sudahGulir) ...[
+                  Material(
+                    color: AppColors.card,
+                    elevation: 5,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: _lompatKeCari,
+                      child: const SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Icon(Icons.search, color: AppColors.accentDark, size: 23),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+                FloatingActionButton(
+                  heroTag: 'tambahProduk',
+                  onPressed: () => _bukaEditor(null),
+                  tooltip: 'Tambah Produk',
+                  child: const Icon(Icons.add),
+                ),
+              ],
             ),
           ),
       ],

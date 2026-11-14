@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.8.1';
+const appVersion = '0.9.0';
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -25,6 +25,8 @@ class AppSettings {
     this.businessKey = '',
     this.lastSyncLabel = '',
     this.backendBawaanDitanam = false,
+    this.cloudSyncEnabled = true,
+    this.businessPhotoPath,
     // Bawaan pemasangan pertama = TERANG (permintaan Adnan
     // 2026-11-14). Pilihan yang sudah tersimpan tidak ditimpa.
     this.modeTema = 'terang',
@@ -69,6 +71,16 @@ class AppSettings {
   /// Pilihan tema tampilan: 'terang' | 'gelap' | 'sistem'.
   String modeTema;
 
+  /// Saklar Cloud Sync (permintaan Adnan 2026-11-15): mati =
+  /// aplikasi murni lokal, tidak ada sinkron otomatis maupun
+  /// manual. Pilihan khusus perangkat ini (tidak disinkronkan).
+  bool cloudSyncEnabled;
+
+  /// Foto/logo usaha (permintaan Adnan 2026-11-15): berkas lokal
+  /// di folder dokumen aplikasi. Khusus perangkat (tidak ikut
+  /// diunggah ke server), sama seperti foto menu.
+  String? businessPhotoPath;
+
   Branch get activeBranch => branches.firstWhere((b) => b.id == activeBranchId, orElse: () => branches.first);
 
   Map<String, dynamic> toJson() => {
@@ -89,6 +101,8 @@ class AppSettings {
         'lastSyncLabel': lastSyncLabel,
         'backendBawaanDitanam': backendBawaanDitanam,
         'modeTema': modeTema,
+        'cloudSyncEnabled': cloudSyncEnabled,
+        'businessPhotoPath': businessPhotoPath,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -113,6 +127,9 @@ class AppSettings {
         // Data lama tanpa kunci ini → terang (bawaan baru);
         // nilai yang tersimpan ('terang'/'gelap'/'sistem') utuh.
         modeTema: j['modeTema'] as String? ?? 'terang',
+        // Data lama belum punya kunci ini → sinkron awan menyala.
+        cloudSyncEnabled: j['cloudSyncEnabled'] as bool? ?? true,
+        businessPhotoPath: j['businessPhotoPath'] as String?,
       );
 }
 
@@ -177,6 +194,34 @@ int _iconIndexFromCodePoint(int codePoint) {
   return i < 0 ? 0 : i;
 }
 
+/// Satu baris resep: bahan + takaran per SATU porsi menu.
+/// Takaran memakai satuan bahan itu sendiri (gram/kg/liter/pcs
+/// sesuai satuan yang diisi pemilik di Stok Bahan).
+class RecipeLine {
+  RecipeLine({required this.ingredientId, required this.qty});
+  final String ingredientId;
+  double qty;
+
+  Map<String, dynamic> toJson() => {'ingredientId': ingredientId, 'qty': qty};
+  factory RecipeLine.fromJson(Map<String, dynamic> j) => RecipeLine(
+        ingredientId: j['ingredientId'] as String,
+        qty: (j['qty'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+/// Satu baris isi bundle: menu komponen + jumlahnya.
+class BundleLine {
+  BundleLine({required this.menuId, required this.qty});
+  final String menuId;
+  int qty;
+
+  Map<String, dynamic> toJson() => {'menuId': menuId, 'qty': qty};
+  factory BundleLine.fromJson(Map<String, dynamic> j) => BundleLine(
+        menuId: j['menuId'] as String,
+        qty: (j['qty'] as num?)?.toInt() ?? 1,
+      );
+}
+
 class MenuItem {
   MenuItem({
     required this.id,
@@ -187,7 +232,12 @@ class MenuItem {
     required IconData icon,
     this.isDrink = false,
     this.imagePath,
-  }) : iconIndex = _iconIndexOf(icon);
+    this.priceOjol = 0,
+    List<RecipeLine>? recipe,
+    List<BundleLine>? bundle,
+  })  : iconIndex = _iconIndexOf(icon),
+        recipe = recipe ?? <RecipeLine>[],
+        bundle = bundle ?? <BundleLine>[];
   final String id;
   String name;
   String category;
@@ -195,6 +245,25 @@ class MenuItem {
   Color color;
   int iconIndex;
   bool isDrink;
+
+  /// Harga khusus ojol (permintaan Adnan 2026-11-15, fitur yang
+  /// dulu 'Segera'). 0 = belum diatur (tampilan memakai harga
+  /// biasa). Hanya untuk ditampilkan/dibandingkan — kasir tetap
+  /// memakai harga biasa.
+  int priceOjol;
+
+  /// Resep per porsi (dulu 'Segera'). Kosong = menu ini tidak
+  /// memotong stok bahan saat terjual.
+  List<RecipeLine> recipe;
+
+  /// Isi bundle (dulu 'Segera'). Tidak kosong = menu PAKET:
+  /// menjualnya memotong stok lewat resep menu komponennya.
+  List<BundleLine> bundle;
+
+  bool get isBundle => bundle.isNotEmpty;
+
+  /// Harga ojol efektif untuk tampilan.
+  int get hargaOjolEfektif => priceOjol > 0 ? priceOjol : price;
 
   /// Foto produk (permintaan Adnan 2026-11-14): berkas lokal di
   /// folder dokumen aplikasi. Null = tampilkan ikon & warna seperti
@@ -215,6 +284,9 @@ class MenuItem {
         'iconIndex': iconIndex,
         'isDrink': isDrink,
         'imagePath': imagePath,
+        'priceOjol': priceOjol,
+        'recipe': recipe.map((r) => r.toJson()).toList(),
+        'bundle': bundle.map((b) => b.toJson()).toList(),
       };
 
   factory MenuItem.fromJson(Map<String, dynamic> j) {
@@ -230,8 +302,51 @@ class MenuItem {
       icon: menuIconChoices[idx.clamp(0, menuIconChoices.length - 1)],
       isDrink: j['isDrink'] as bool? ?? false,
       imagePath: j['imagePath'] as String?,
+      priceOjol: (j['priceOjol'] as num?)?.toInt() ?? 0,
+      recipe: (j['recipe'] as List?)?.map((e) => RecipeLine.fromJson(e as Map<String, dynamic>)).toList(),
+      bundle: (j['bundle'] as List?)?.map((e) => BundleLine.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
+}
+
+/// Kebutuhan bahan untuk SATU porsi [m]: resepnya sendiri, atau —
+/// bila [m] bundle — gabungan resep semua komponennya (dikali
+/// jumlah komponen). Bundle di dalam bundle tidak diperluas lagi
+/// (satu tingkat) supaya tidak ada lingkaran tak berujung.
+Map<String, double> kebutuhanBahan(MenuItem m, List<MenuItem> semuaMenu) {
+  final hasil = <String, double>{};
+  void tambah(RecipeLine r, double kali) {
+    if (r.qty <= 0) return;
+    hasil[r.ingredientId] = (hasil[r.ingredientId] ?? 0) + r.qty * kali;
+  }
+
+  if (m.isBundle) {
+    for (final b in m.bundle) {
+      final komponen = semuaMenu.where((x) => x.id == b.menuId);
+      if (komponen.isEmpty) continue;
+      for (final r in komponen.first.recipe) {
+        tambah(r, b.qty.toDouble());
+      }
+    }
+  } else {
+    for (final r in m.recipe) {
+      tambah(r, 1);
+    }
+  }
+  return hasil;
+}
+
+/// HPP (modal bahan) satu porsi [m] dari harga beli bahan.
+/// Bundle = jumlah HPP komponen × jumlahnya. Bahan yang harga
+/// belinya belum diisi menyumbang 0.
+int hppMenu(MenuItem m, List<MenuItem> semuaMenu, List<Ingredient> bahan) {
+  final kebutuhan = kebutuhanBahan(m, semuaMenu);
+  var total = 0;
+  kebutuhan.forEach((idBahan, qty) {
+    final b = bahan.where((i) => i.id == idBahan);
+    if (b.isNotEmpty) total += (qty * b.first.costPerUnit).round();
+  });
+  return total;
 }
 
 /// Kode produk tampilan (gaya PRD-001 di referensi Kasaba) — diturunkan
@@ -399,7 +514,7 @@ enum StockStatus { aman, kritis, habis }
 enum StatusSinkron { belumDiatur, menyinkron, tersinkron, gagal }
 
 class Ingredient {
-  Ingredient({String? id, required this.name, required this.stock, required this.unit, required this.minStock, required this.maxStock})
+  Ingredient({String? id, required this.name, required this.stock, required this.unit, required this.minStock, required this.maxStock, this.costPerUnit = 0})
       : id = id ?? 'b${name.hashCode.abs()}';
 
   /// Id stabil untuk sinkronisasi (data lama diturunkan dari nama).
@@ -410,6 +525,10 @@ class Ingredient {
   double minStock;
   double maxStock;
 
+  /// Harga beli per satuan (Rp) — dasar hitung HPP menu dari
+  /// resep (permintaan Adnan 2026-11-15). 0 = belum diisi.
+  int costPerUnit;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
@@ -417,6 +536,7 @@ class Ingredient {
         'unit': unit,
         'minStock': minStock,
         'maxStock': maxStock,
+        'costPerUnit': costPerUnit,
       };
 
   factory Ingredient.fromJson(Map<String, dynamic> j) => Ingredient(
@@ -426,6 +546,7 @@ class Ingredient {
         unit: j['unit'] as String,
         minStock: (j['minStock'] as num).toDouble(),
         maxStock: (j['maxStock'] as num).toDouble(),
+        costPerUnit: (j['costPerUnit'] as num?)?.toInt() ?? 0,
       );
   StockStatus get status {
     if (stock <= 0) return StockStatus.habis;
@@ -533,5 +654,52 @@ class Branch {
         name: j['name'] as String? ?? 'Cabang',
         address: j['address'] as String? ?? '',
         phone: j['phone'] as String? ?? '',
+      );
+}
+
+// ---------- Pemberitahuan ----------
+
+/// Satu pemberitahuan TERSIMPAN (permintaan Adnan 2026-11-15:
+/// notifikasi difungsikan beneran — bukan daftar hitungan sesaat).
+/// Dibuat dari kejadian nyata: stok kritis/habis, sinkron gagal.
+/// [kunci] dipakai mencegah duplikat untuk keadaan yang sama.
+class AppNotification {
+  AppNotification({
+    required this.id,
+    required this.judul,
+    required this.isi,
+    required this.waktu,
+    required this.jenis,
+    this.kunci = '',
+    this.dibaca = false,
+  });
+  final String id;
+  final String judul;
+  final String isi;
+  final DateTime waktu;
+
+  /// 'stok' | 'sinkron' | 'info'
+  final String jenis;
+  final String kunci;
+  bool dibaca;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'judul': judul,
+        'isi': isi,
+        'waktu': waktu.toIso8601String(),
+        'jenis': jenis,
+        'kunci': kunci,
+        'dibaca': dibaca,
+      };
+
+  factory AppNotification.fromJson(Map<String, dynamic> j) => AppNotification(
+        id: j['id'] as String,
+        judul: j['judul'] as String? ?? '',
+        isi: j['isi'] as String? ?? '',
+        waktu: DateTime.tryParse(j['waktu'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+        jenis: j['jenis'] as String? ?? 'info',
+        kunci: j['kunci'] as String? ?? '',
+        dibaca: j['dibaca'] as bool? ?? false,
       );
 }

@@ -6,12 +6,13 @@ import 'data.dart';
 
 /// Data aplikasi yang tersimpan permanen di perangkat.
 class AppData {
-  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings, this.transactions = const []});
+  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings, this.transactions = const [], this.notifications = const []});
   final List<MenuItem> menus;
   final List<CafeTable> tables;
   final List<Ingredient> ingredients;
   final AppSettings settings;
   final List<TxRecord> transactions;
+  final List<AppNotification> notifications;
 }
 
 /// Tempat simpan lokal (SharedPreferences + JSON).
@@ -25,6 +26,8 @@ class LocalStore {
   static const _kIngredients = 'avoera.ingredients.v1';
   static const _kSettings = 'avoera.settings.v1';
   static const _kTx = 'avoera.tx.v1';
+  static const _kNotif = 'avoera.notifications.v1';
+  static const _kSyncMeta = 'avoera.syncmeta.v1';
 
   static Future<AppData> load() async {
     try {
@@ -35,6 +38,7 @@ class LocalStore {
         ingredients: _decodeList(prefs.getString(_kIngredients), Ingredient.fromJson) ?? seedIngredients(),
         settings: _decodeSettings(prefs.getString(_kSettings)),
         transactions: _decodeList(prefs.getString(_kTx), TxRecord.fromJson) ?? <TxRecord>[],
+        notifications: _decodeList(prefs.getString(_kNotif), AppNotification.fromJson) ?? <AppNotification>[],
       );
     } catch (_) {
       // Penyimpanan tidak tersedia (mis. lingkungan tes) → data contoh.
@@ -75,4 +79,20 @@ class LocalStore {
   static Future<void> saveIngredients(List<Ingredient> ings) => _save(_kIngredients, ings.map((i) => i.toJson()).toList());
   static Future<void> saveSettings(AppSettings settings) => _save(_kSettings, settings.toJson());
   static Future<void> saveTransactions(List<TxRecord> tx) => _save(_kTx, tx.map((t) => t.toJson()).toList());
+  static Future<void> saveNotifications(List<AppNotification> n) => _save(_kNotif, n.map((e) => e.toJson()).toList());
+
+  /// Meta sinkron untuk halaman Status Sinkronisasi: jumlah
+  /// perubahan yang menunggu per tabel + laporan sinkron terakhir.
+  static Future<Map<String, dynamic>> loadSyncMeta() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kSyncMeta);
+      if (raw == null) return <String, dynamic>{};
+      return (jsonDecode(raw) as Map).cast<String, dynamic>();
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }
+
+  static Future<void> saveSyncMeta(Map<String, dynamic> meta) => _save(_kSyncMeta, meta);
 }

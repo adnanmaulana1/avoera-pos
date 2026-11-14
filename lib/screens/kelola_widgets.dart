@@ -43,6 +43,12 @@ class FormSheet extends StatelessWidget {
     // tinggi dari layar (mis. editor menu + foto) membuat tombol
     // bawah jatuh DI LUAR layar dan tidak bisa diketuk — isi harus
     // bergulir di dalam sheet.
+    //
+    // Tombol Simpan/Hapus DIPASANG TETAP di luar area gulir
+    // (perbaikan 2026-11-15): formulir menu kini panjang (resep +
+    // bundle) dan tombol yang ikut bergulir bisa berhenti beberapa
+    // piksel di luar tepi bawah layar — tidak terjangkau ketukan.
+    // Judul + isi bergulir di atas, tombol selalu terlihat.
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.92),
       child: Padding(
@@ -52,7 +58,6 @@ class FormSheet extends StatelessWidget {
           AppSpacing.xl,
           AppSpacing.lg + MediaQuery.viewInsetsOf(context).bottom,
         ),
-        child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,7 +66,15 @@ class FormSheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             Text(title, style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.lg),
-            ...children,
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: children,
+                ),
+              ),
+            ),
             if (errorText != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(errorText!, style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w600)),
@@ -80,7 +93,6 @@ class FormSheet extends StatelessWidget {
                 ),
               ),
           ],
-          ),
         ),
       ),
     );

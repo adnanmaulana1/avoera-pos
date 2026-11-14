@@ -112,6 +112,18 @@ ThemeData buildTheme() {
       foregroundColor: AppColors.ink,
     ),
     dividerColor: AppColors.border,
+    // Toast/pesan bawah didesain ulang (permintaan Adnan
+    // 2026-11-15): melayang di atas bar bawah, sudut membulat,
+    // gelap pekat dengan teks terang — terasa seperti notifikasi
+    // aplikasi modern, bukan bilah hitam polos menempel di tepi.
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: AppColors.gelap ? const Color(0xFF2A332E) : const Color(0xFF14201A),
+      contentTextStyle: const TextStyle(color: Color(0xFFF3F5F4), fontSize: 14, fontWeight: FontWeight.w500),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 8,
+      insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+    ),
     // SATU pola transisi halaman untuk semua layar (permintaan
     // Adnan 2026-11-14): geser halus + memudar, durasi rute bawaan
     // ±300 mdtk. Dialog & lembar bawah tidak lewat sini.

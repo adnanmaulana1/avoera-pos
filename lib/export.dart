@@ -7,6 +7,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import 'data.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -299,4 +300,73 @@ class TombolEkspor extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(icon: const Icon(Icons.share_outlined), tooltip: 'Bagikan / ekspor', onPressed: onPressed);
   }
+}
+
+/// PDF label harga (permintaan Adnan 2026-11-15 — fitur yang dulu
+/// 'Segera'): lembar A4 berisi label-label siap potong — nama
+/// usaha kecil di atas, nama menu, harga besar. Dicetak lalu
+/// digunting untuk ditempel di etalase / daftar menu fisik.
+Future<Uint8List> buatPdfLabel({
+  required List<MenuItem> menus,
+  required String businessName,
+}) async {
+  final doc = pw.Document();
+  doc.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(28),
+      build: (_) => [
+        pw.Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final m in menus)
+              pw.Container(
+                width: 168,
+                padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey400, width: 0.7),
+                  borderRadius: pw.BorderRadius.circular(6),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      businessName.toUpperCase(),
+                      style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600),
+                      maxLines: 1,
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Text(
+                      m.name,
+                      style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                      maxLines: 2,
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(m.category, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
+                    pw.SizedBox(height: 5),
+                    pw.Text(
+                      rupiah(m.price),
+                      style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: const PdfColor.fromInt(0xFF047857)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        pw.SizedBox(height: 14),
+        pw.Text('Label harga $businessName · dibuat oleh Avoera POS', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+      ],
+    ),
+  );
+  return doc.save();
+}
+
+/// Bangun PDF label lalu buka lembar bagikan sistem.
+Future<void> bagikanPdfLabel({
+  required List<MenuItem> menus,
+  required String businessName,
+}) async {
+  final bytes = await buatPdfLabel(menus: menus, businessName: businessName);
+  await _bagikanBerkas('label-harga.pdf', bytes);
 }

@@ -113,20 +113,50 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
-        const SizedBox(height: AppSpacing.xxxl),
+        const SizedBox(height: AppSpacing.xxl),
+        // Kepala bergaya brand (rombak tampilan kunci kasir,
+        // permintaan Adnan 2026-11-15): logo Avorea di kartu krem,
+        // nama usaha besar, lencana gembok 'Kasir Terkunci'.
         Center(
           child: Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
-            child: const Icon(Icons.lock_outline, color: AppColors.accentDark, size: 30),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F8F2),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 14, offset: Offset(0, 5))],
+            ),
+            child: Image.asset(
+              'assets/branding/avorea-logo.png',
+              width: 168,
+              height: 77,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const SizedBox(
+                height: 77,
+                child: Center(child: Text('AVOREA', style: TextStyle(color: Color(0xFF1E3A2A), fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 2))),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        Text('Kasir Terkunci', textAlign: TextAlign.center, style: AppText.pageTitle),
-        const SizedBox(height: AppSpacing.xs),
+        Text(widget.businessName, textAlign: TextAlign.center, style: AppText.pageTitle),
+        const SizedBox(height: AppSpacing.sm),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs + 2),
+            decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.pill)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline, size: 15, color: AppColors.accentDark),
+                const SizedBox(width: AppSpacing.xs),
+                Text('Kasir Terkunci', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
         Text(
-          'Masukkan PIN kasir untuk membuka kasir ${widget.businessName}.',
+          'Masukkan PIN kasir untuk membuka kasir.',
           textAlign: TextAlign.center,
           style: AppText.small.copyWith(color: AppColors.muted),
         ),
@@ -220,12 +250,12 @@ class _TombolPinState extends State<_TombolPin> {
           height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: _ditekan ? AppColors.accentSoft : Colors.transparent,
+            color: _ditekan ? AppColors.accentSoft : AppColors.track,
           ),
           child: Center(
             child: widget.label == '<'
-                ? const Icon(Icons.backspace_outlined, size: 24)
-                : Text(widget.label, style: AppText.hero.copyWith(fontWeight: FontWeight.w600)),
+                ? Icon(Icons.backspace_outlined, size: 24, color: _ditekan ? AppColors.accentDark : AppColors.ink)
+                : Text(widget.label, style: AppText.hero.copyWith(fontWeight: FontWeight.w600, color: _ditekan ? AppColors.accentDark : AppColors.ink)),
           ),
         ),
       ),
