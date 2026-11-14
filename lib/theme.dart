@@ -314,6 +314,15 @@ BoxDecoration cardDecoration({
     color: color ?? AppColors.card,
     borderRadius: BorderRadius.circular(radius),
     border: Border.all(color: borderColor ?? AppColors.border),
+    // Bayangan TIPIS di semua kartu (permintaan Adnan 23:50):
+    // cukup untuk mengangkat kartu dari latar, tidak dekoratif.
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: AppColors.gelap ? 0.30 : 0.05),
+        blurRadius: 12,
+        offset: const Offset(0, 2),
+      ),
+    ],
   );
 }
 

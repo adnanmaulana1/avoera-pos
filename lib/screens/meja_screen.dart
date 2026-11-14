@@ -36,6 +36,7 @@ class _MejaScreenState extends State<MejaScreen> {
       };
     }).toList();
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         const PageHeader(

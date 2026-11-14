@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- WAJIB untuk sinkron Supabase di build RELEASE. Tanpa baris
+         ini aplikasi tidak boleh membuka internet sama sekali
+         (manifest debug/profile punya, main tidak) — akar gagal
+         sinkron berhari-hari, ketahuan 2026-11-14 23:47 WITA. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Avoera POS"
         android:name="${applicationName}"

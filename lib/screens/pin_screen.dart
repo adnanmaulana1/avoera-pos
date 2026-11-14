@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme.dart';
 import '../widgets.dart';
@@ -19,12 +22,26 @@ class PinGateScreen extends StatefulWidget {
   State<PinGateScreen> createState() => _PinGateScreenState();
 }
 
-class _PinGateScreenState extends State<PinGateScreen> {
+class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProviderStateMixin {
   String _input = '';
   String? _error;
+  late final AnimationController _goyang;
+
+  @override
+  void initState() {
+    super.initState();
+    _goyang = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+  }
+
+  @override
+  void dispose() {
+    _goyang.dispose();
+    super.dispose();
+  }
 
   void _tekan(String d) {
     if (_input.length >= 6) return;
+    HapticFeedback.selectionClick();
     final baru = _input + d;
     // PIN 4–6 angka: periksa tiap panjang yang mungkin.
     if (baru.length >= 4 && hashPin(baru) == widget.pinHash) {
@@ -32,6 +49,9 @@ class _PinGateScreenState extends State<PinGateScreen> {
       return;
     }
     if (baru.length == 6) {
+      // PIN penuh tapi salah: getar, titik digoyang & memerah.
+      HapticFeedback.mediumImpact();
+      _goyang.forward(from: 0);
       setState(() {
         _input = '';
         _error = 'PIN salah — coba lagi.';
@@ -46,10 +66,46 @@ class _PinGateScreenState extends State<PinGateScreen> {
 
   void _hapus() {
     if (_input.isEmpty) return;
+    HapticFeedback.selectionClick();
     setState(() {
       _input = _input.substring(0, _input.length - 1);
       _error = null;
     });
+  }
+
+  void _hapusSemua() {
+    if (_input.isEmpty) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _input = '';
+      _error = null;
+    });
+  }
+
+  Widget _titik(int i) {
+    final terisi = i < _input.length;
+    final gagal = _error != null;
+    final isi = AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      width: 14,
+      height: 14,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: terisi ? (gagal ? AppColors.danger : AppColors.accent) : AppColors.card,
+        border: Border.all(color: gagal ? AppColors.danger : (terisi ? AppColors.accent : AppColors.border), width: 1.5),
+      ),
+    );
+    // Titik yang baru terisi memantul kecil — terasa hidup.
+    if (terisi && i == _input.length - 1) {
+      return TweenAnimationBuilder<double>(
+        key: ValueKey('pop-${_input.length}'),
+        tween: Tween(begin: 1.5, end: 1),
+        duration: const Duration(milliseconds: 180),
+        builder: (_, skala, child) => Transform.scale(scale: skala, child: child),
+        child: isi,
+      );
+    }
+    return isi;
   }
 
   @override
@@ -75,21 +131,23 @@ class _PinGateScreenState extends State<PinGateScreen> {
           style: AppText.small.copyWith(color: AppColors.muted),
         ),
         const SizedBox(height: AppSpacing.xl),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < 6; i++)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 5),
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: i < _input.length ? AppColors.accent : AppColors.card,
-                  border: Border.all(color: i < _input.length ? AppColors.accent : AppColors.border, width: 1.5),
+        AnimatedBuilder(
+          animation: _goyang,
+          builder: (_, child) {
+            final v = _goyang.value;
+            final geser = _goyang.isAnimating ? math.sin(v * math.pi * 4) * 9 * (1 - v) : 0.0;
+            return Transform.translate(offset: Offset(geser, 0), child: child);
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < 6; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: _titik(i),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
         SizedBox(height: _error == null ? AppSpacing.xl : AppSpacing.sm),
         if (_error != null)
@@ -112,25 +170,65 @@ class _PinGateScreenState extends State<PinGateScreen> {
                   height: 76,
                   child: d.isEmpty
                       ? const SizedBox.shrink()
-                      : InkWell(
-                          customBorder: const CircleBorder(),
+                      : _TombolPin(
+                          label: d,
                           onTap: () => d == '<' ? _hapus() : _tekan(d),
-                          child: Center(
-                            child: d == '<'
-                                ? const Icon(Icons.backspace_outlined, size: 24)
-                                : Text(d, style: AppText.hero.copyWith(fontWeight: FontWeight.w600)),
-                          ),
+                          onLongPress: d == '<' ? _hapusSemua : null,
                         ),
                 ),
             ],
           ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'PIN diatur pemilik di Pengaturan → Keamanan → PIN Kasir.',
+          'PIN diatur pemilik di Pengaturan → Keamanan → PIN Kasir. Tekan lama tombol hapus untuk mengosongkan PIN.',
           textAlign: TextAlign.center,
           style: AppText.caption.copyWith(color: AppColors.muted),
         ),
       ],
+    );
+  }
+}
+
+/// Satu tombol papan angka PIN: lingkaran tombol menyala lembut
+/// selama ditekan — papan terasa hidup, bukan teks diam.
+class _TombolPin extends StatefulWidget {
+  const _TombolPin({required this.label, required this.onTap, this.onLongPress});
+  final String label;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  State<_TombolPin> createState() => _TombolPinState();
+}
+
+class _TombolPinState extends State<_TombolPin> {
+  bool _ditekan = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _ditekan = true),
+      onTapUp: (_) => setState(() => _ditekan = false),
+      onTapCancel: () => setState(() => _ditekan = false),
+      onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _ditekan ? AppColors.accentSoft : Colors.transparent,
+          ),
+          child: Center(
+            child: widget.label == '<'
+                ? const Icon(Icons.backspace_outlined, size: 24)
+                : Text(widget.label, style: AppText.hero.copyWith(fontWeight: FontWeight.w600)),
+          ),
+        ),
+      ),
     );
   }
 }

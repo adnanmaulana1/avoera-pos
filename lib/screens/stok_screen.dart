@@ -65,6 +65,7 @@ class _StokScreenState extends State<StokScreen> {
       children: [
         ListView(
           padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
             PageHeader(
               title: 'Stok Bahan',

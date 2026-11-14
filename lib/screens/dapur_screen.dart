@@ -71,6 +71,7 @@ class _DapurScreenState extends State<DapurScreen> {
         ? columns
         : columns.where((c) => c.$1.label == _filter).toList();
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         header,
         for (final (status, list) in tampil) _Column(status: status, orders: list, onAdvance: onAdvance, shrinkWrap: true),
@@ -119,7 +120,7 @@ class _Column extends StatelessWidget {
           Expanded(
             child: orders.isEmpty
                 ? empty
-                : ListView(children: [for (final o in orders) _OrderCard(order: o, onAdvance: onAdvance)]),
+                : ListView(physics: const AlwaysScrollableScrollPhysics(), children: [for (final o in orders) _OrderCard(order: o, onAdvance: onAdvance)]),
           ),
       ],
     );

@@ -56,6 +56,7 @@ class LaporanScreen extends StatelessWidget {
     ];
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         const PageHeader(title: 'Laporan', subtitle: 'Ringkasan pemilik · angka asli dari kasir cabang ini.'),

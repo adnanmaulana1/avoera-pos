@@ -703,7 +703,13 @@ class _HomeShellState extends State<HomeShell> {
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
       builder: (_, v, child) => Opacity(opacity: v, child: child),
-      child: IndexedStack(index: _index, children: screens),
+      // Tarik ke bawah di halaman mana pun = sinkron Supabase
+      // (permintaan Adnan 23:51: data diambil dari internet,
+      // semua halaman harus bisa ditarik untuk menyegarkan).
+      child: RefreshIndicator(
+        onRefresh: () => _syncNow(),
+        child: IndexedStack(index: _index, children: screens),
+      ),
     );
   }
 
@@ -757,6 +763,7 @@ class _HomeShellState extends State<HomeShell> {
         servicePercent: _settings.servicePercent,
         taxPercent: _settings.taxPercent,
         tablesEnabled: _settings.tablesEnabled,
+        kitchenEnabled: _settings.kitchenEnabled,
         onSelectTable: _selectTable,
         onAdd: _addToCart,
         onInc: _inc,

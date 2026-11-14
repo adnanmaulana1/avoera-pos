@@ -115,6 +115,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
     ];
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.lg),
       children: [
         Row(

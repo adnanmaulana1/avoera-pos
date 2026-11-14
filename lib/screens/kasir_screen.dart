@@ -15,6 +15,7 @@ class KasirScreen extends StatefulWidget {
     required this.servicePercent,
     required this.taxPercent,
     required this.tablesEnabled,
+    this.kitchenEnabled = true,
     required this.onSelectTable,
     required this.onAdd,
     required this.onInc,
@@ -37,6 +38,13 @@ class KasirScreen extends StatefulWidget {
   /// Fitur meja dari Pengaturan. Mati → tombol Pilih Meja disembunyikan
   /// (kedai tanpa meja tidak perlu memilih meja).
   final bool tablesEnabled;
+
+  /// Fitur dapur menyala? Menentukan bunyi dialog sesudah bayar:
+  /// mati = tidak ada tiket, dialog TIDAK boleh mengaku pesanan
+  /// diteruskan ke dapur (laporan Adnan 23:51: dialog lama selalu
+  /// mengaku diteruskan walau dapur mati — tiketnya memang tidak
+  /// dibuat, tapi tulisannya berbohong).
+  final bool kitchenEnabled;
   final ValueChanged<CafeTable> onSelectTable;
   final void Function(MenuItem menu, String variant, int unitPrice, String note) onAdd;
   final ValueChanged<CartItem> onInc;
@@ -160,6 +168,7 @@ class _KasirScreenState extends State<KasirScreen> {
             child: _filtered.isEmpty
                 ? const EmptyState(message: 'Menu tidak ditemukan.\nCoba kata kunci atau kategori lain.', icon: Icons.search_off_outlined)
                 : GridView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 180,
                       // 184: nama menu 2 baris (mis. "Nasi Goreng Kampung")
@@ -510,7 +519,7 @@ class _KasirScreenState extends State<KasirScreen> {
             Text('Metode: $methodResult · ${rupiah(paidTotal)}',
                 style: TextStyle(color: AppColors.muted)),
             const SizedBox(height: AppSpacing.xs),
-            Text('Pesanan diteruskan ke dapur.', style: TextStyle(color: AppColors.muted)),
+            Text(widget.kitchenEnabled ? 'Pesanan diteruskan ke dapur.' : 'Transaksi tercatat di laporan.', style: TextStyle(color: AppColors.muted)),
           ],
         ),
         actions: [
