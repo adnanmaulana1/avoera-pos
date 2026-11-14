@@ -25,8 +25,13 @@ String ringkasErrorSinkron(Object e) {
     final pesan = e.message.trim();
     return kode.isEmpty ? pesan : '$pesan (kode $kode)';
   }
+  if (e.toString().contains('TimeoutException')) {
+    return 'server terlalu lama menjawab — periksa koneksi internet, lalu coba lagi.';
+  }
   final s = e.toString();
-  if (s.contains('SocketException') || s.contains('Failed host lookup') || s.contains('ClientException')) {
+  if (s.contains('SocketException') ||
+      s.contains('Failed host lookup') ||
+      s.contains('ClientException')) {
     return 'tidak bisa menjangkau server Supabase — periksa koneksi internet & alamat URL proyek.';
   }
   if (s.contains('Invalid argument') || s.contains('FormatException')) {
@@ -36,7 +41,14 @@ String ringkasErrorSinkron(Object e) {
 }
 
 class HasilSinkron {
-  HasilSinkron({required this.menus, required this.ingredients, required this.branches, required this.transactions, required this.pengaturanServer, required this.ringkasan});
+  HasilSinkron({
+    required this.menus,
+    required this.ingredients,
+    required this.branches,
+    required this.transactions,
+    required this.pengaturanServer,
+    required this.ringkasan,
+  });
   final List<MenuItem> menus;
   final List<Ingredient> ingredients;
   final List<Branch> branches;
@@ -48,7 +60,17 @@ class HasilSinkron {
 Map<String, dynamic> _pengaturanAman(AppSettings s) {
   final j = s.toJson();
   // Jangan unggah rahasia & data khusus perangkat ini.
-  for (final k in ['pinHash', 'supabaseUrl', 'supabaseAnonKey', 'businessKey', 'lastSyncLabel', 'modeTema', 'branches', 'activeBranchId']) {
+  for (final k in [
+    'pinHash',
+    'supabaseUrl',
+    'supabaseAnonKey',
+    'businessKey',
+    'lastSyncLabel',
+    'modeTema',
+    'branches',
+    'activeBranchId',
+    'backendBawaanDitanam',
+  ]) {
     j.remove(k);
   }
   return j;
@@ -72,25 +94,63 @@ Future<HasilSinkron> sinkronkanSupabase({
     url,
     settings.supabaseAnonKey.trim(),
     headers: {'x-business-key': kode},
+    // Aplikasi ini TIDAK memakai login Supabase (kunci anon saja),
+    // jadi matikan auto-refresh auth: menyalakannya membuat timer
+    // berkala yang tidak pernah berhenti (bocor + mengganggu tes).
+    authOptions: const AuthClientOptions(autoRefreshToken: false),
   );
+
+  try {
+    return await _kerjakanSinkron(
+      client,
+      kode: kode,
+      settings: settings,
+      menus: menus,
+      ingredients: ingredients,
+      branches: branches,
+      transactions: transactions,
+    );
+  } finally {
+    // WAJIB dibuang: SupabaseClient menyalakan timer auto-refresh
+    // auth di konstruktornya — tanpa dispose, timer itu hidup
+    // selamanya (bocor di produksi, menggagalkan tes widget).
+    await client.dispose();
+  }
+}
+
+Future<HasilSinkron> _kerjakanSinkron(
+  SupabaseClient client, {
+  required String kode,
+  required AppSettings settings,
+  required List<MenuItem> menus,
+  required List<Ingredient> ingredients,
+  required List<Branch> branches,
+  required List<TxRecord> transactions,
+}) async {
   final sekarang = DateTime.now().toUtc().toIso8601String();
 
   Map<String, dynamic> barisData(String id, Map<String, dynamic> data) => {
-        'business_key': kode,
-        'id': id,
-        'data': data,
-        'updated_at': sekarang,
-      };
+    'business_key': kode,
+    'id': id,
+    'data': data,
+    'updated_at': sekarang,
+  };
 
   // ---------- UNGGAH ----------
   if (branches.isNotEmpty) {
-    await client.from('avoera_branches').upsert([for (final b in branches) barisData(b.id, b.toJson())]);
+    await client.from('avoera_branches').upsert([
+      for (final b in branches) barisData(b.id, b.toJson()),
+    ]);
   }
   if (menus.isNotEmpty) {
-    await client.from('avoera_menus').upsert([for (final m in menus) barisData(m.id, m.toJson())]);
+    await client.from('avoera_menus').upsert([
+      for (final m in menus) barisData(m.id, m.toJson()),
+    ]);
   }
   if (ingredients.isNotEmpty) {
-    await client.from('avoera_ingredients').upsert([for (final i in ingredients) barisData(i.id, i.toJson())]);
+    await client.from('avoera_ingredients').upsert([
+      for (final i in ingredients) barisData(i.id, i.toJson()),
+    ]);
   }
   if (transactions.isNotEmpty) {
     await client.from('avoera_transactions').upsert([
@@ -104,18 +164,31 @@ Future<HasilSinkron> sinkronkanSupabase({
         },
     ]);
   }
-  await client.from('avoera_settings').upsert([barisData('main', _pengaturanAman(settings))]);
+  await client.from('avoera_settings').upsert([
+    barisData('main', _pengaturanAman(settings)),
+  ]);
 
   // ---------- TARIK & GABUNG ----------
   Future<List<Map<String, dynamic>>> ambil(String tabel) async {
-    final rows = await client.from(tabel).select('data').eq('business_key', kode);
+    final rows = await client
+        .from(tabel)
+        .select('data')
+        .eq('business_key', kode);
     return [for (final r in rows) (r['data'] as Map).cast<String, dynamic>()];
   }
 
-  final menuServer = [for (final j in await ambil('avoera_menus')) MenuItem.fromJson(j)];
-  final bahanServer = [for (final j in await ambil('avoera_ingredients')) Ingredient.fromJson(j)];
-  final cabangServer = [for (final j in await ambil('avoera_branches')) Branch.fromJson(j)];
-  final txServer = [for (final j in await ambil('avoera_transactions')) TxRecord.fromJson(j)];
+  final menuServer = [
+    for (final j in await ambil('avoera_menus')) MenuItem.fromJson(j),
+  ];
+  final bahanServer = [
+    for (final j in await ambil('avoera_ingredients')) Ingredient.fromJson(j),
+  ];
+  final cabangServer = [
+    for (final j in await ambil('avoera_branches')) Branch.fromJson(j),
+  ];
+  final txServer = [
+    for (final j in await ambil('avoera_transactions')) TxRecord.fromJson(j),
+  ];
   final pengaturanRows = await ambil('avoera_settings');
   final pengaturanServer = pengaturanRows.isEmpty ? null : pengaturanRows.first;
 
@@ -137,8 +210,11 @@ Future<HasilSinkron> sinkronkanSupabase({
   final menuGabung = gabung(menus, menuServer, (m) => m.id);
   final bahanGabung = gabung(ingredients, bahanServer, (i) => i.id);
   final cabangGabung = gabung(branches, cabangServer, (b) => b.id);
-  final txGabung = gabung(transactions, txServer, (t) => t.uuid.isEmpty ? t.id : t.uuid)
-    ..sort((a, b) => a.at.compareTo(b.at));
+  final txGabung = gabung(
+    transactions,
+    txServer,
+    (t) => t.uuid.isEmpty ? t.id : t.uuid,
+  )..sort((a, b) => a.at.compareTo(b.at));
 
   return HasilSinkron(
     menus: menuGabung,
@@ -146,6 +222,7 @@ Future<HasilSinkron> sinkronkanSupabase({
     branches: cabangGabung,
     transactions: txGabung,
     pengaturanServer: pengaturanServer,
-    ringkasan: 'Sinkron selesai: ${menuGabung.length} menu, ${bahanGabung.length} bahan, ${cabangGabung.length} cabang, ${txGabung.length} transaksi.',
+    ringkasan:
+        'Sinkron selesai: ${menuGabung.length} menu, ${bahanGabung.length} bahan, ${cabangGabung.length} cabang, ${txGabung.length} transaksi.',
   );
 }

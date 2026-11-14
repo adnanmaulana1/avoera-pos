@@ -24,6 +24,7 @@ class AppSettings {
     this.supabaseAnonKey = '',
     this.businessKey = '',
     this.lastSyncLabel = '',
+    this.backendBawaanDitanam = false,
     // Bawaan pemasangan pertama = TERANG (permintaan Adnan
     // 2026-11-14). Pilihan yang sudah tersimpan tidak ditimpa.
     this.modeTema = 'terang',
@@ -60,6 +61,11 @@ class AppSettings {
   String businessKey;
   String lastSyncLabel;
 
+  /// Penanda backend bawaan (lib/backend_bawaan.dart) sudah
+  /// ditulis ke pengaturan — migrasi sekali jalan saat aplikasi
+  /// pertama kali memakai build yang menanam backend.
+  bool backendBawaanDitanam;
+
   /// Pilihan tema tampilan: 'terang' | 'gelap' | 'sistem'.
   String modeTema;
 
@@ -81,6 +87,7 @@ class AppSettings {
         'supabaseAnonKey': supabaseAnonKey,
         'businessKey': businessKey,
         'lastSyncLabel': lastSyncLabel,
+        'backendBawaanDitanam': backendBawaanDitanam,
         'modeTema': modeTema,
       };
 
@@ -102,6 +109,7 @@ class AppSettings {
         supabaseAnonKey: j['supabaseAnonKey'] as String? ?? '',
         businessKey: j['businessKey'] as String? ?? '',
         lastSyncLabel: j['lastSyncLabel'] as String? ?? '',
+        backendBawaanDitanam: j['backendBawaanDitanam'] as bool? ?? false,
         // Data lama tanpa kunci ini → terang (bawaan baru);
         // nilai yang tersimpan ('terang'/'gelap'/'sistem') utuh.
         modeTema: j['modeTema'] as String? ?? 'terang',

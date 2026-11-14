@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
+import 'backend_bawaan.dart';
 import 'store.dart';
 import 'sync.dart';
 import 'theme.dart';
@@ -231,6 +232,7 @@ class _HomeShellState extends State<HomeShell> {
   bool _syncing = false;
   Timer? _syncDebounce;
   Timer? _syncPeriodik;
+  Timer? _syncTimeoutTimer;
 
   bool get _syncSiap => _settings.supabaseUrl.isNotEmpty && _settings.supabaseAnonKey.isNotEmpty && _settings.businessKey.isNotEmpty;
 
@@ -260,6 +262,17 @@ class _HomeShellState extends State<HomeShell> {
       _tables = data.tables;
       _ingredients = data.ingredients;
       _settings = data.settings;
+      // Migrasi backend bawaan (sekali jalan): tanam nilai
+      // Supabase usaha ini ke pengaturan, menimpa isian lama —
+      // isian manual kemarin terbukti meleset & bikin sinkron
+      // gagal terus. Sesudah ini kolom Pengaturan yang menang.
+      if (!_settings.backendBawaanDitanam) {
+        _settings.supabaseUrl = kSupabaseUrlBawaan;
+        _settings.supabaseAnonKey = kSupabaseAnonKeyBawaan;
+        _settings.businessKey = kKodeUsahaBawaan;
+        _settings.backendBawaanDitanam = true;
+        LocalStore.saveSettings(_settings);
+      }
       _transactions = data.transactions;
       _ready = true;
       _syncStatus = _syncSiap ? StatusSinkron.tersinkron : StatusSinkron.belumDiatur;
@@ -273,6 +286,7 @@ class _HomeShellState extends State<HomeShell> {
   void dispose() {
     _syncDebounce?.cancel();
     _syncPeriodik?.cancel();
+    _syncTimeoutTimer?.cancel();
     super.dispose();
   }
 
@@ -475,20 +489,47 @@ class _HomeShellState extends State<HomeShell> {
       );
 
   // ---------- Sinkronisasi Supabase ----------
+  /// Sinkron dengan batas 25 detik: koneksi menggantung tidak
+  /// boleh membuat status 'menyinkron' selamanya — gagalkan saja,
+  /// ikon jadi merah dan sinkron berikutnya mencoba lagi. Timer
+  /// batasnya milik shell ini (dibatalkan di dispose), BUKAN
+  /// Future.timeout yang timernya menggantung tanpa pemilik.
+  Future<HasilSinkron> _sinkronDenganBatasWaktu() {
+    final selesai = Completer<HasilSinkron>();
+    _syncTimeoutTimer?.cancel();
+    _syncTimeoutTimer = Timer(const Duration(seconds: 25), () {
+      if (!selesai.isCompleted) {
+        selesai.completeError(TimeoutException('Sinkron melewati batas 25 detik'));
+      }
+    });
+    sinkronkanSupabase(
+      settings: _settings,
+      menus: _menus,
+      ingredients: _ingredients,
+      branches: _settings.branches,
+      transactions: _transactions,
+    ).then((h) {
+      _syncTimeoutTimer?.cancel();
+      if (!selesai.isCompleted) selesai.complete(h);
+    }, onError: (Object e) {
+      _syncTimeoutTimer?.cancel();
+      if (!selesai.isCompleted) selesai.completeError(e);
+    });
+    return selesai.future;
+  }
+
   Future<void> _syncNow({bool diam = false}) async {
     if (_syncing || !_syncSiap) return;
     _syncing = true;
-    if (mounted) setState(() => _syncStatus = StatusSinkron.menyinkron);
+    // Ikon berputar hanya untuk sinkron MANUAL (ketuk awan /
+    // tombol Sinkronkan). Sinkron otomatis berjalan diam-diam —
+    // ikon cukup berubah ke hasil akhir (centang / merah), tidak
+    // berputar terus setiap ada perubahan data.
+    if (!diam && mounted) setState(() => _syncStatus = StatusSinkron.menyinkron);
     final messenger = ScaffoldMessenger.of(context);
     if (!diam) messenger.showSnackBar(const SnackBar(content: Text('Menyinkronkan…')));
     try {
-      final hasil = await sinkronkanSupabase(
-        settings: _settings,
-        menus: _menus,
-        ingredients: _ingredients,
-        branches: _settings.branches,
-        transactions: _transactions,
-      );
+      final hasil = await _sinkronDenganBatasWaktu();
       if (!mounted) return;
       setState(() {
         _menus = hasil.menus;
