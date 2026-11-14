@@ -4,6 +4,7 @@ import 'package:avoera_pos/main.dart';
 import 'package:avoera_pos/screens/pengaturan_screen.dart';
 import 'package:avoera_pos/screens/produk_screen.dart';
 import 'package:avoera_pos/screens/stok_screen.dart';
+import 'package:avoera_pos/theme.dart';
 import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -176,5 +177,33 @@ void main() {
     await tester.tap(find.text('Batal'));
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 600));
+  });
+
+  testWidgets('Ganti tema di tengah jalan: judul seksi ikut berubah warna (tidak basi)', (tester) async {
+    // Laporan Adnan 2026-11-14 20:13: sesudah pindah ke Gelap,
+    // judul seksi Pengaturan tetap berwarna gelap → tak terlihat.
+    // Akar: SectionTitle dibuat const dan membaca warna statis.
+    await pumpWide(tester);
+    expect(AppColors.gelap, isFalse);
+    await tester.tap(find.widgetWithText(ListTile, 'Pengaturan'));
+    await tester.pumpAndSettle();
+    Color warnaJudul() => tester.widget<Text>(find.text('Sinkronisasi Online')).style!.color!;
+    await tester.scrollUntilVisible(find.text('Sinkronisasi Online'), 200, scrollable: scrollPengaturan());
+    await tester.pumpAndSettle();
+    expect(warnaJudul(), AppColors.ink);
+    await tester.scrollUntilVisible(
+      find.descendant(of: find.byType(PengaturanScreen), matching: find.text('Gelap')),
+      200,
+      scrollable: scrollPengaturan(),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(PengaturanScreen), matching: find.text('Gelap')));
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+    expect(AppColors.gelap, isTrue);
+    await tester.scrollUntilVisible(find.text('Sinkronisasi Online'), 200, scrollable: scrollPengaturan());
+    await tester.pumpAndSettle();
+    expect(warnaJudul(), AppColors.ink, reason: 'Judul harus berwarna tinta mode gelap (terang)');
+    expect(warnaJudul().computeLuminance(), greaterThan(0.7), reason: 'Judul harus terlihat jelas di atas latar gelap');
   });
 }

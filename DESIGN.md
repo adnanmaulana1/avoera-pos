@@ -192,3 +192,17 @@ Teks tidak pernah lebih kecil dari 11.
   + harga kanan; menu ⋯ = Harga Massal, Tampilkan Bahan Baku,
   Pilih Produk, Ekspor/Impor — sisanya (Resep, Bundle, Harga
   Ojol, Cetak Label) ditandai 'Segera' dengan jujur.
+
+## Catatan v0.8.1+18 (permintaan + laporan Adnan 2026-11-14 malam)
+
+- **Kolom isian SATU gaya baru:** label kecil tebal DI ATAS kolom
+  (FormLabel), kotak isi beralas lembut (AppColors.fieldFill),
+  TANPA garis tepi & tanpa label melayang di garis (gaya lama
+  dibuang dari semua formulir: Profil Usaha, wizard, PIN,
+  editor kelola, dialog). Garis hanya muncul saat kolom aktif
+  (accent 1,5px).
+- **Aturan warna tema:** widget yang bisa dibuat const dan membaca
+  warna AppColors di build (SectionTitle, PageHeader, EmptyState)
+  WAJIB membaca Theme.of(context) di build-nya — kalau tidak,
+  warnanya basi saat mode terang/gelap diganti di tengah jalan
+  (kejadian nyata: judul seksi Pengaturan tak terlihat di gelap).

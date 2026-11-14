@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import '../widgets.dart';
+import 'kelola_widgets.dart' show FormLabel;
 
 /// Halaman Profil Usaha (permintaan Adnan 2026-11-14): data usaha
 /// diedit di halaman sendiri — Pengaturan cukup menampilkan kartu
@@ -70,11 +71,14 @@ class _ProfilUsahaScreenState extends State<ProfilUsahaScreen> {
             Text(widget.nama, textAlign: TextAlign.center, style: AppText.title),
             Text('Profil ini tampil di Beranda, struk, dan laporan.', textAlign: TextAlign.center, style: AppText.caption.copyWith(color: AppColors.muted)),
             const SizedBox(height: AppSpacing.xl),
-            TextField(controller: _namaCtrl, decoration: const InputDecoration(labelText: 'Nama usaha')),
+            const FormLabel('Nama Usaha'),
+            TextField(controller: _namaCtrl, decoration: const InputDecoration(hintText: 'cth. Kopi Senja')),
             const SizedBox(height: AppSpacing.md),
-            TextField(controller: _alamatCtrl, decoration: const InputDecoration(labelText: 'Alamat usaha')),
+            const FormLabel('Alamat Usaha'),
+            TextField(controller: _alamatCtrl, decoration: const InputDecoration(hintText: 'cth. Jl. Merdeka No. 10')),
             const SizedBox(height: AppSpacing.md),
-            TextField(controller: _teleponCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Telepon / WhatsApp')),
+            const FormLabel('Telepon / WhatsApp'),
+            TextField(controller: _teleponCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(hintText: 'cth. 0812-3456-7890')),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(_error!, style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w600)),

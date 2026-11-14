@@ -28,6 +28,7 @@ class AppColors {
   static Color get warningSoft => gelap ? const Color(0xFF2E230B) : const Color(0xFFFFFBEB);
   static Color get warningBorder => gelap ? const Color(0xFF6B5518) : const Color(0xFFFDE68A);
   static Color get track => gelap ? const Color(0xFF242B27) : const Color(0xFFF3F4F6); // rel bar stok
+  static Color get fieldFill => gelap ? const Color(0xFF242B27) : const Color(0xFFEDF1EE); // isi kolom isian (lembut, tanpa garis)
   static Color get chartBar => gelap ? const Color(0xFF134E3A) : const Color(0xFFA7F3D0); // batang grafik tidak aktif
 }
 
@@ -99,7 +100,7 @@ ThemeData buildTheme() {
   final chipBorder = BorderSide(color: AppColors.border);
   final inputBorder = OutlineInputBorder(
     borderRadius: BorderRadius.circular(AppRadius.md),
-    borderSide: chipBorder,
+    borderSide: BorderSide.none,
   );
 
   return base.copyWith(
@@ -221,7 +222,7 @@ ThemeData buildTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.card,
+      fillColor: AppColors.fieldFill,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       hintStyle: AppText.small.copyWith(color: AppColors.muted),
@@ -229,7 +230,7 @@ ThemeData buildTheme() {
       enabledBorder: inputBorder,
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.accent),
+        borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
       ),
     ),
   );
@@ -271,6 +272,11 @@ class SectionTitle extends StatelessWidget {
   final Widget? trailing;
   @override
   Widget build(BuildContext context) {
+    // Wajib membaca Theme di sini: SectionTitle sering dibuat const,
+    // dan warna AppColors dibaca dari penanda statis — tanpa
+    // ketergantungan Theme, judul tidak ikut berubah saat mode
+    // terang/gelap diganti di tengah jalan (teks jadi tak terlihat).
+    final _ = Theme.of(context);
     return Row(
       children: [
         Expanded(child: Text(text, style: AppText.title.copyWith(color: AppColors.ink))),

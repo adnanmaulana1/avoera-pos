@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import '../widgets.dart';
+import 'kelola_widgets.dart' show FormLabel;
 import 'onboarding_screen.dart' show hashPin;
 
 /// Gerbang PIN kasir (permintaan Adnan 2026-11-14): selama PIN
@@ -237,29 +238,32 @@ class _PinSettingsScreenState extends State<PinSettingsScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
             if (_pinSet) ...[
+              const FormLabel('PIN Lama'),
               TextField(
                 controller: _lamaCtrl,
                 keyboardType: TextInputType.number,
                 obscureText: true,
                 maxLength: 6,
-                decoration: const InputDecoration(labelText: 'PIN lama'),
+                decoration: const InputDecoration(hintText: 'PIN yang dipakai sekarang'),
               ),
               const SizedBox(height: AppSpacing.md),
             ],
+            FormLabel(_pinSet ? 'PIN Baru (4–6 angka)' : 'PIN Kasir (4–6 angka)'),
             TextField(
               controller: _baruCtrl,
               keyboardType: TextInputType.number,
               obscureText: true,
               maxLength: 6,
-              decoration: InputDecoration(labelText: _pinSet ? 'PIN baru (4–6 angka)' : 'PIN kasir (4–6 angka)'),
+              decoration: const InputDecoration(hintText: '4–6 angka'),
             ),
             const SizedBox(height: AppSpacing.md),
+            const FormLabel('Ulangi PIN Baru'),
             TextField(
               controller: _ulangCtrl,
               keyboardType: TextInputType.number,
               obscureText: true,
               maxLength: 6,
-              decoration: const InputDecoration(labelText: 'Ulangi PIN baru'),
+              decoration: const InputDecoration(hintText: 'Ketik ulang PIN baru'),
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.md),

@@ -21,6 +21,9 @@ class PageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Baca Theme agar ikut dibangun ulang saat mode terang/gelap
+    // berganti (lihat catatan di SectionTitle).
+    final _ = Theme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -294,6 +297,9 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Baca Theme agar ikut dibangun ulang saat mode terang/gelap
+    // berganti (lihat catatan di SectionTitle).
+    final _ = Theme.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),

@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'kelola_widgets.dart' show FormLabel;
 
 /// Hash PIN kasir (tidak pernah menyimpan PIN mentah).
 String hashPin(String pin) => sha256.convert(utf8.encode('avoera:$pin')).toString();
@@ -190,24 +191,28 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
         const SizedBox(height: AppSpacing.xs),
         Text('Tiga hal ini cukup untuk mulai jualan. Sisanya bisa diubah kapan saja di Pengaturan.', style: AppText.small.copyWith(color: AppColors.muted)),
         const SizedBox(height: AppSpacing.xl),
-        TextField(controller: _usahaCtrl, decoration: const InputDecoration(labelText: 'Nama usaha', hintText: 'cth. Kopi Senja')),
+        const FormLabel('Nama Usaha'),
+        TextField(controller: _usahaCtrl, decoration: const InputDecoration(hintText: 'cth. Kopi Senja')),
         const SizedBox(height: AppSpacing.md),
-        TextField(controller: _cabangCtrl, decoration: const InputDecoration(labelText: 'Nama cabang pertama', hintText: 'cth. Cabang Utama')),
+        const FormLabel('Nama Cabang Pertama'),
+        TextField(controller: _cabangCtrl, decoration: const InputDecoration(hintText: 'cth. Cabang Utama')),
         const SizedBox(height: AppSpacing.md),
+        const FormLabel('PIN Kasir (4–6 angka)'),
         TextField(
           controller: _pinCtrl,
           keyboardType: TextInputType.number,
           obscureText: true,
           maxLength: 6,
-          decoration: const InputDecoration(labelText: 'PIN kasir (4–6 angka)', hintText: 'Untuk persetujuan penting di kasir'),
+          decoration: const InputDecoration(hintText: 'Untuk persetujuan penting di kasir'),
         ),
         const SizedBox(height: AppSpacing.md),
+        const FormLabel('Ulangi PIN'),
         TextField(
           controller: _pin2Ctrl,
           keyboardType: TextInputType.number,
           obscureText: true,
           maxLength: 6,
-          decoration: const InputDecoration(labelText: 'Ulangi PIN'),
+          decoration: const InputDecoration(hintText: 'Ketik ulang PIN yang sama'),
         ),
         const SizedBox(height: AppSpacing.md),
         Container(

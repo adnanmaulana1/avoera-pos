@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'kelola_widgets.dart' show FormLabel;
 import 'onboarding_screen.dart' show SetupCelebration;
 
 /// Wizard tambah cabang (permintaan Adnan 2026-11-14: tambah cabang
@@ -96,11 +97,14 @@ class _BranchWizardScreenState extends State<BranchWizardScreen> {
         const SizedBox(height: AppSpacing.xs),
         Text('Cabang baru memakai menu & stok yang sama (menu pusat). Penjualannya tercatat terpisah per cabang.', style: AppText.small.copyWith(color: AppColors.muted)),
         const SizedBox(height: AppSpacing.xl),
-        TextField(controller: _namaCtrl, decoration: const InputDecoration(labelText: 'Nama cabang', hintText: 'cth. Cabang Wonomulyo')),
+        const FormLabel('Nama Cabang'),
+        TextField(controller: _namaCtrl, decoration: const InputDecoration(hintText: 'cth. Cabang Wonomulyo')),
         const SizedBox(height: AppSpacing.md),
-        TextField(controller: _alamatCtrl, decoration: const InputDecoration(labelText: 'Alamat cabang', hintText: 'cth. Jl. Poros Majene No. 5')),
+        const FormLabel('Alamat Cabang'),
+        TextField(controller: _alamatCtrl, decoration: const InputDecoration(hintText: 'cth. Jl. Poros Majene No. 5')),
         const SizedBox(height: AppSpacing.md),
-        TextField(controller: _teleponCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Telepon / WhatsApp (boleh kosong)')),
+        const FormLabel('Telepon / WhatsApp'),
+        TextField(controller: _teleponCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(hintText: 'Boleh kosong')),
         if (_error != null) ...[
           const SizedBox(height: AppSpacing.md),
           Text(_error!, style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w600)),
