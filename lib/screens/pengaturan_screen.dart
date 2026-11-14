@@ -410,7 +410,7 @@ class PengaturanScreen extends StatelessWidget {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
-            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Simpan')),
+            PrimaryButton(label: 'Simpan', onPressed: () => Navigator.of(ctx).pop(true)),
           ],
         ),
       ),
@@ -481,7 +481,7 @@ class PengaturanScreen extends StatelessWidget {
               ),
               actions: [
                 TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
-                FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Simpan')),
+                PrimaryButton(label: 'Simpan', onPressed: () => Navigator.of(ctx).pop(true)),
               ],
             ),
           );

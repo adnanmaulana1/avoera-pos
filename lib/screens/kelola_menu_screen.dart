@@ -309,11 +309,20 @@ Future<void> showMenuEditor(
                   for (final c in menuPalette)
                     GestureDetector(
                       onTap: () => setSheet(() => color = c),
+                      // Warna terpilih ditandai CINCIN (tepi putih +
+                      // lingkaran luar aksen), bukan centang —
+                      // aturan permanen Adnan.
                       child: Container(
                         width: 40,
                         height: 40,
-                        decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-                        child: color == c ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: color == c ? Border.all(color: Colors.white, width: 3) : Border.all(color: AppColors.border),
+                          boxShadow: color == c
+                              ? [BoxShadow(color: AppColors.accentDark, spreadRadius: 2, blurRadius: 0)]
+                              : null,
+                        ),
                       ),
                     ),
                 ],

@@ -56,7 +56,9 @@ class KasirFnbApp extends StatefulWidget {
 
 class _KasirFnbAppState extends State<KasirFnbApp> {
   /// Pilihan tema dari Pengaturan: 'terang' | 'gelap' | 'sistem'.
-  String _modeTema = 'sistem';
+  /// Keadaan awal sebelum data termuat = terang, sama dengan
+  /// bawaan pemasangan pertama di AppSettings.
+  String _modeTema = 'terang';
 
   /// Kunci RepaintBoundary akar tampilan — sumber tangkapan gambar
   /// tema lama untuk animasi iris.
@@ -644,6 +646,21 @@ class _HomeShellState extends State<HomeShell> {
 
   void _selectTable(CafeTable t) => setState(() => _selectedTable = t);
 
+  /// Tumpukan layar utama dengan pudar singkat saat pindah tab
+  /// (permintaan Adnan 2026-11-14): perpindahan menu terasa halus
+  /// ±200 mdtk, BUKAN dorongan halaman. Keadaan tiap layar tetap
+  /// utuh karena IndexedStack-nya sendiri tidak berubah.
+  Widget _tumpukanLayar(List<Widget> screens) {
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(_index),
+      tween: Tween(begin: 0.45, end: 1),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      builder: (_, v, child) => Opacity(opacity: v, child: child),
+      child: IndexedStack(index: _index, children: screens),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_ready) {
@@ -811,7 +828,7 @@ class _HomeShellState extends State<HomeShell> {
                     kitchenCount: _kitchen.where((o) => o.status == KitchenStatus.baru).length,
                     onChanged: (i) => setState(() => _index = i),
                   ),
-                  Expanded(child: IndexedStack(index: _index, children: screens)),
+                  Expanded(child: _tumpukanLayar(screens)),
                 ],
               ),
             ),
@@ -824,7 +841,7 @@ class _HomeShellState extends State<HomeShell> {
           // tombol navigasi Android.
           body: SafeArea(
             bottom: false,
-            child: IndexedStack(index: _index, children: screens),
+            child: _tumpukanLayar(screens),
           ),
           // Menu utama (Beranda, Kasir, Meja, Dapur) tinggal di bar
           // bawah; menu lain (Laporan, Stok, Pengaturan) pindah ke

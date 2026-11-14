@@ -4,6 +4,7 @@ import 'package:avoera_pos/main.dart';
 import 'package:avoera_pos/screens/pengaturan_screen.dart';
 import 'package:avoera_pos/screens/produk_screen.dart';
 import 'package:avoera_pos/screens/stok_screen.dart';
+import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -139,7 +140,7 @@ void main() {
     // Kali ini buang perubahan lewat dialognya.
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Buang'));
+    await tester.tap(find.widgetWithText(PrimaryButton, 'Buang'));
     await tester.pumpAndSettle();
     expect(find.text('Ubah Menu'), findsNothing, reason: 'Sesudah Buang, formulir tertutup');
     await tester.pump(const Duration(milliseconds: 600));

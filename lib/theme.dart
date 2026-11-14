@@ -111,6 +111,19 @@ ThemeData buildTheme() {
       foregroundColor: AppColors.ink,
     ),
     dividerColor: AppColors.border,
+    // SATU pola transisi halaman untuk semua layar (permintaan
+    // Adnan 2026-11-14): geser halus + memudar, durasi rute bawaan
+    // ±300 mdtk. Dialog & lembar bawah tidak lewat sini.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: AvoeraPageTransitionsBuilder(),
+        TargetPlatform.iOS: AvoeraPageTransitionsBuilder(),
+        TargetPlatform.linux: AvoeraPageTransitionsBuilder(),
+        TargetPlatform.macOS: AvoeraPageTransitionsBuilder(),
+        TargetPlatform.windows: AvoeraPageTransitionsBuilder(),
+        TargetPlatform.fuchsia: AvoeraPageTransitionsBuilder(),
+      },
+    ),
     // Chip pilihan di semua layar: satu gaya terpilih / tak terpilih.
     chipTheme: base.chipTheme.copyWith(
       backgroundColor: AppColors.card,
@@ -130,6 +143,19 @@ ThemeData buildTheme() {
         minimumSize: const Size(64, 52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
         textStyle: AppText.subtitle,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+      ),
+    ),
+    // Tombol garis (pasangan tombol utama di dialog/wizard, aksi
+    // sekunder di lembar): tinggi sama 52 dengan PrimaryButton
+    // supaya pasangan tombol selalu sejajar rapi.
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.ink,
+        minimumSize: const Size(48, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        side: BorderSide(color: AppColors.border),
+        textStyle: AppText.body.copyWith(fontWeight: FontWeight.w600),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
       ),
     ),
@@ -207,6 +233,36 @@ ThemeData buildTheme() {
       ),
     ),
   );
+}
+
+/// Pembangun transisi halaman bersama Avoera: halaman masuk
+/// memudar sambil bergeser sedikit dari kanan (0,05 lebar layar),
+/// kurva easeOutCubic; arah balik easeInCubic. Tenang, satu pola
+/// untuk semua rute halaman (MaterialPageRoute membaca tema ini).
+class AvoeraPageTransitionsBuilder extends PageTransitionsBuilder {
+  const AvoeraPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final masuk = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: masuk,
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0.05, 0), end: Offset.zero).animate(masuk),
+        child: child,
+      ),
+    );
+  }
 }
 
 class SectionTitle extends StatelessWidget {

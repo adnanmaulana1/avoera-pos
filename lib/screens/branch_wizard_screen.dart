@@ -163,7 +163,7 @@ class _BranchWizardScreenState extends State<BranchWizardScreen> {
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: PrimaryButton(label: 'Buat Cabang', icon: Icons.check, onPressed: () => setState(() => _selesai = true)),
+              child: PrimaryButton(label: 'Buat Cabang', icon: Icons.add_business_outlined, onPressed: () => setState(() => _selesai = true)),
             ),
           ],
         ),
@@ -187,8 +187,10 @@ class _TitikLangkah extends StatelessWidget {
           height: 28,
           decoration: BoxDecoration(color: warna, shape: BoxShape.circle),
           child: Center(
+            // Langkah beres ditandai titik isi, BUKAN centang
+            // (aturan permanen Adnan: tanpa ikon centang).
             child: beres
-                ? Icon(Icons.check, size: 16, color: AppColors.card)
+                ? Icon(Icons.circle, size: 10, color: AppColors.card)
                 : Text('$nomor', style: AppText.small.copyWith(color: aktif ? AppColors.card : AppColors.muted, fontWeight: FontWeight.w800)),
           ),
         ),

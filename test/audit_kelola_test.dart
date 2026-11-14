@@ -129,7 +129,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Hapus')));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Hapus'));
+    await tester.tap(find.widgetWithText(PrimaryButton, 'Hapus'));
     await tester.pumpAndSettle();
     expect(find.text('Meja 13'), findsNothing, reason: 'Sesudah konfirmasi, meja harus hilang');
     data = await LocalStore.load();
@@ -199,7 +199,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Hapus')));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Hapus'));
+    await tester.tap(find.widgetWithText(PrimaryButton, 'Hapus'));
     await tester.pumpAndSettle();
     expect(find.text('Paket Berdua'), findsNothing);
     data = await LocalStore.load();

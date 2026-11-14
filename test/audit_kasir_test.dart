@@ -238,14 +238,14 @@ void main() {
     await tester.tap(inSheet(find.text('Bayar Sekarang')));
     await tester.pumpAndSettle();
 
-    final proses = find.widgetWithText(FilledButton, 'Proses Bayar');
-    expect(tester.widget<FilledButton>(proses).onPressed, isNull, reason: 'Belum pilih uang → Proses Bayar harus terkunci');
+    final proses = find.widgetWithText(PrimaryButton, 'Proses Bayar');
+    expect(tester.widget<PrimaryButton>(proses).onPressed, isNull, reason: 'Belum pilih uang → Proses Bayar harus terkunci');
 
     final kolom = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
     await tester.enterText(kolom, '50000');
     await tester.pumpAndSettle();
     expect(find.text('Kembalian: Rp13.200'), findsOneWidget, reason: '50.000 − 36.800 = 13.200');
-    expect(tester.widget<FilledButton>(proses).onPressed, isNotNull, reason: 'Nominal cukup → tombol terbuka');
+    expect(tester.widget<PrimaryButton>(proses).onPressed, isNotNull, reason: 'Nominal cukup → tombol terbuka');
 
     await tester.tap(proses);
     await tester.pumpAndSettle();

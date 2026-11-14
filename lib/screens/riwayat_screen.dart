@@ -48,7 +48,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         ringkasan.writeln('• ${t.at.day}/${t.at.month}/${t.at.year} ${dua(t.at.hour)}:${dua(t.at.minute)} · ${t.id} · ${t.method} — ${rupiah(t.total)}');
       }
       ringkasan.writeln('Total: ${rupiah(total)}');
-      return tampilkanMenuEkspor(
+      return bukaPratinjauLaporan(
         context,
         judul: 'Riwayat Transaksi',
         ringkasan: ringkasan.toString().trim(),

@@ -185,6 +185,9 @@ class FitNumber extends StatelessWidget {
 
 /// Chip pilihan tunggal — gaya terpilih/tidak-terpilih diatur tema chip.
 /// Dipakai untuk kategori menu, filter stok, varian, dan metode bayar.
+///
+/// ATURAN PERMANEN Adnan: chip TIDAK PERNAH memakai ikon centang —
+/// keadaan terpilih cukup dari warna isi & teks (showCheckmark mati).
 class AppChip extends StatelessWidget {
   const AppChip({super.key, required this.label, required this.selected, required this.onSelected});
 
@@ -200,6 +203,7 @@ class AppChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: onSelected,
+      showCheckmark: false,
     );
   }
 }
@@ -342,10 +346,10 @@ Future<bool> konfirmasiBuangPerubahan(BuildContext context) async {
       content: const Text('Data yang sudah diisi akan hilang. Buang perubahan ini?'),
       actions: [
         TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Tetap Mengisi')),
-        FilledButton(
+        PrimaryButton(
+          label: 'Buang',
+          backgroundColor: AppColors.danger,
           onPressed: () => Navigator.of(ctx).pop(true),
-          style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-          child: const Text('Buang'),
         ),
       ],
     ),

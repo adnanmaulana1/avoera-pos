@@ -47,7 +47,7 @@ class _StokScreenState extends State<StokScreen> {
     for (final i in semua) {
       ringkasan.writeln('• ${i.name}: sisa ${stockText(i.stock)} ${i.unit} (${i.status.name})');
     }
-    return tampilkanMenuEkspor(
+    return bukaPratinjauLaporan(
       context,
       judul: 'Stok Bahan',
       ringkasan: ringkasan.toString().trim(),

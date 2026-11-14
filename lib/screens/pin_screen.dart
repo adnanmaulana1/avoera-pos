@@ -194,7 +194,7 @@ class _PinSettingsScreenState extends State<PinSettingsScreen> {
         content: const Text('Kasir tidak lagi dikunci PIN. Siapa pun yang memegang perangkat bisa membuka kasir.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), style: FilledButton.styleFrom(backgroundColor: AppColors.danger), child: const Text('Hapus PIN')),
+          PrimaryButton(label: 'Hapus PIN', backgroundColor: AppColors.danger, onPressed: () => Navigator.of(ctx).pop(true)),
         ],
       ),
     );

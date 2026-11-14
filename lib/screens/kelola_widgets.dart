@@ -97,10 +97,10 @@ Future<bool> showConfirmDelete(BuildContext context, {required String title, req
       content: Text(message),
       actions: [
         TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
-        FilledButton(
+        PrimaryButton(
+          label: 'Hapus',
+          backgroundColor: AppColors.danger,
           onPressed: () => Navigator.of(ctx).pop(true),
-          style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-          child: const Text('Hapus'),
         ),
       ],
     ),

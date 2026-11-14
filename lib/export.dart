@@ -12,8 +12,8 @@ import 'widgets.dart';
 
 /// Ekspor laporan (permintaan Adnan 2026-11-14): setiap laporan &
 /// daftar penting bisa dibagikan sebagai ringkasan teks (langsung
-/// cocok untuk WhatsApp), berkas CSV, atau berkas PDF — dipilih
-/// dari satu menu bagikan yang sama di semua layar.
+/// cocok untuk WhatsApp), berkas CSV, atau berkas PDF — TAPI selalu
+/// lewat layar pratinjau dulu (lihat [bukaPratinjauLaporan]).
 
 String toCsv(List<List<String>> rows) {
   String cell(String s) => s.contains(RegExp(r'[;",\n]')) ? '"${s.replaceAll('"', '""')}"' : s;
@@ -68,10 +68,14 @@ Future<Uint8List> buatPdfLaporan({
   return doc.save();
 }
 
-/// Menu bagikan standar — dipanggil tombol bagikan di AppBar laporan.
+/// Pintu ekspor SATU-SATUNYA (permintaan Adnan 2026-11-14):
+/// laporan TIDAK boleh langsung dibagikan/disimpan/diunduh —
+/// selalu tampil layar pratinjau dulu. Semua layar laporan &
+/// daftar memanggil fungsi ini; tombol bagikan/simpan/unduh hanya
+/// ada di dalam [PratinjauLaporanScreen].
 /// [ringkasan] = teks siap kirim (WhatsApp), [kepala]+[baris] = isi
 /// tabel untuk CSV & PDF.
-Future<void> tampilkanMenuEkspor(
+Future<void> bukaPratinjauLaporan(
   BuildContext context, {
   required String judul,
   required String ringkasan,
@@ -79,73 +83,209 @@ Future<void> tampilkanMenuEkspor(
   required List<List<String>> baris,
   String catatan = '',
 }) {
-  final namaDasar = judul.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
-  return showAppSheet<void>(
-    context: context,
-    builder: (ctx) => Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.xl),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SheetHandle(),
-          const SizedBox(height: AppSpacing.md),
-          Text('Bagikan $judul', style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: AppSpacing.md),
-          _PilihanEkspor(
-            icon: Icons.chat_outlined,
-            label: 'Ringkasan teks (WhatsApp)',
-            sub: 'Teks rapi, langsung bisa diteruskan.',
-            onTap: () {
-              Navigator.of(ctx).pop();
-              _bagikanTeks(ringkasan);
-            },
-          ),
-          _PilihanEkspor(
-            icon: Icons.table_chart_outlined,
-            label: 'Berkas CSV',
-            sub: 'Bisa dibuka di Excel / Google Sheets.',
-            onTap: () async {
-              Navigator.of(ctx).pop();
-              await _bagikanBerkas('$namaDasar.csv', toCsv([kepala, ...baris]).codeUnits);
-            },
-          ),
-          _PilihanEkspor(
-            icon: Icons.picture_as_pdf_outlined,
-            label: 'Berkas PDF',
-            sub: 'Dokumen rapi siap cetak / arsip.',
-            onTap: () async {
-              Navigator.of(ctx).pop();
-              final bytes = await buatPdfLaporan(judul: judul, keterangan: ringkasan.split('\n').first, kepala: kepala, baris: baris, catatan: catatan);
-              await _bagikanBerkas('$namaDasar.pdf', bytes);
-            },
-          ),
-        ],
+  return Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      builder: (_) => PratinjauLaporanScreen(
+        judul: judul,
+        ringkasan: ringkasan,
+        kepala: kepala,
+        baris: baris,
+        catatan: catatan,
       ),
     ),
   );
 }
 
-class _PilihanEkspor extends StatelessWidget {
-  const _PilihanEkspor({required this.icon, required this.label, required this.sub, required this.onTap});
-  final IconData icon;
-  final String label;
-  final String sub;
-  final VoidCallback onTap;
+/// Layar pratinjau laporan: memperlihatkan laporan PERSIS wujud
+/// jadinya — judul, keterangan, tabel berkepala hijau, catatan,
+/// dan kaki dokumen yang sama dengan PDF dari [buatPdfLaporan]
+/// (keduanya membaca nilai yang sama persis, jadi yang dilihat =
+/// yang dibagikan). Kertasnya selalu putih seperti hasil cetak,
+/// di mode terang maupun gelap.
+class PratinjauLaporanScreen extends StatelessWidget {
+  const PratinjauLaporanScreen({
+    super.key,
+    required this.judul,
+    required this.ringkasan,
+    required this.kepala,
+    required this.baris,
+    this.catatan = '',
+  });
+
+  final String judul;
+  final String ringkasan;
+  final List<String> kepala;
+  final List<List<String>> baris;
+  final String catatan;
+
+  // Palet kertas cetak (tetap, tidak mengikuti mode aplikasi).
+  static const _hitam = Color(0xFF111827);
+  static const _abu = Color(0xFF6B7280);
+  static const _garis = Color(0xFFE5E7EB);
+  static const _hijau = Color(0xFF059669);
+
+  String get _namaDasar => judul.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+
+  /// Keterangan dokumen = baris pertama ringkasan — persis yang
+  /// ditulis [buatPdfLaporan] di bawah judul PDF.
+  String get _keterangan => ringkasan.split('\n').first;
+
+  Future<Uint8List> _pdf() => buatPdfLaporan(judul: judul, keterangan: _keterangan, kepala: kepala, baris: baris, catatan: catatan);
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-        child: Icon(icon, color: AppColors.accentDark, size: 20),
+    return Scaffold(
+      // Judul AppBar pendek tetap — nama laporan tampil besar di
+      // kertas; "Pratinjau — Riwayat Transaksi" terpotong di HP.
+      appBar: AppBar(title: const Text('Pratinjau Laporan')),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: AppColors.border),
+                ),
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(judul, style: const TextStyle(fontFamily: 'Roboto', fontSize: 18, fontWeight: FontWeight.w700, color: _hitam)),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(_keterangan, style: const TextStyle(fontFamily: 'Roboto', fontSize: 12, color: _abu)),
+                    const SizedBox(height: AppSpacing.lg),
+                    // Tabel sama susunannya dengan PDF: kepala hijau
+                    // putih tebal, baris bergaris bawah tipis. Lebar
+                    // minimal 640 — di layar sempit bisa digeser
+                    // menyamping, di layar lebar memenuhi kertas.
+                    // (560 bikin kolom tanggal 7-kolom cuma 80px —
+                    // "14/11/2026" terpotong jadi dua baris.)
+                    LayoutBuilder(
+                      builder: (context, c) {
+                        final lebar = c.maxWidth < 640 ? 640.0 : c.maxWidth;
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: lebar,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                            Container(
+                              color: _hijau,
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+                              child: Row(
+                                children: [
+                                  for (final k in kepala)
+                                    Expanded(
+                                      child: Text(k, style: const TextStyle(fontFamily: 'Roboto', fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            for (final b in baris)
+                              Container(
+                                decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: _garis, width: 0.5))),
+                                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+                                child: Row(
+                                  children: [
+                                    for (final sel in b)
+                                      Expanded(
+                                        child: Text(sel, style: const TextStyle(fontFamily: 'Roboto', fontSize: 12, color: _hitam)),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    if (catatan.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Text(catatan, style: const TextStyle(fontFamily: 'Roboto', fontSize: 11, color: _abu)),
+                    ],
+                    const SizedBox(height: AppSpacing.lg),
+                    const Text('Dibuat oleh Avoera POS · Webtales Studio', style: TextStyle(fontFamily: 'Roboto', fontSize: 10, color: _abu)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Bar aksi ekspor — SATU-SATUNYA tempat bagikan/simpan/
+          // unduh boleh jalan, dan hanya sesudah pratinjau tampil.
+          Container(
+            decoration: BoxDecoration(color: AppColors.card, border: Border(top: BorderSide(color: AppColors.border))),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: PrimaryButton(
+                        label: 'Bagikan PDF',
+                        icon: Icons.share_outlined,
+                        onPressed: () async {
+                          final bytes = await _pdf();
+                          await _bagikanBerkas('$_namaDasar.pdf', bytes);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                            icon: const Icon(Icons.save_alt, size: 16),
+                            label: const Text('Simpan PDF', style: TextStyle(fontSize: 12), maxLines: 1),
+                            onPressed: () async {
+                              final bytes = await _pdf();
+                              final dir = await getApplicationDocumentsDirectory();
+                              final file = File('${dir.path}/$_namaDasar.pdf');
+                              await file.writeAsBytes(bytes, flush: true);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('PDF tersimpan di ${file.path}')),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                            icon: const Icon(Icons.table_chart_outlined, size: 16),
+                            label: const Text('CSV', style: TextStyle(fontSize: 12), maxLines: 1),
+                            onPressed: () => _bagikanBerkas('$_namaDasar.csv', toCsv([kepala, ...baris]).codeUnits),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                            icon: const Icon(Icons.chat_outlined, size: 16),
+                            label: const Text('Teks WA', style: TextStyle(fontSize: 12), maxLines: 1),
+                            onPressed: () => _bagikanTeks(ringkasan),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      title: Text(label, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
-      subtitle: Text(sub, style: AppText.caption.copyWith(color: AppColors.muted)),
-      onTap: onTap,
     );
   }
 }

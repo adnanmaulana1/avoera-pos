@@ -132,6 +132,9 @@ class _KasirScreenState extends State<KasirScreen> {
               ),
               const SizedBox(width: AppSpacing.sm),
               SegmentedButton<String>(
+                // Tanpa ikon centang pada pilihan aktif (aturan
+                // permanen Adnan) — cukup warna dari tema segmented.
+                showSelectedIcon: false,
                 segments: const [
                   ButtonSegment(value: 'Dine-in', label: Text('Dine-in')),
                   ButtonSegment(value: 'Bungkus', label: Text('Bungkus')),
@@ -469,9 +472,9 @@ class _KasirScreenState extends State<KasirScreen> {
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-              FilledButton(
+              PrimaryButton(
+                label: 'Proses Bayar',
                 onPressed: (method == 'Tunai' && (paid == null || paid! < _grandTotal)) ? null : () => Navigator.pop(ctx, method),
-                child: const Text('Proses Bayar'),
               ),
             ],
           );
@@ -511,9 +514,9 @@ class _KasirScreenState extends State<KasirScreen> {
           ],
         ),
         actions: [
-          FilledButton(
+          PrimaryButton(
+            label: 'Selesai',
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Selesai'),
           ),
         ],
       ),

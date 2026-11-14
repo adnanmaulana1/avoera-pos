@@ -66,7 +66,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
         content: const Text('Produk terpilih akan dihapus dari daftar dan tidak bisa lagi dijual di kasir.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), style: FilledButton.styleFrom(backgroundColor: AppColors.danger), child: const Text('Hapus')),
+          PrimaryButton(label: 'Hapus', backgroundColor: AppColors.danger, onPressed: () => Navigator.of(ctx).pop(true)),
         ],
       ),
     );
@@ -95,17 +95,33 @@ class _ProdukScreenState extends State<ProdukScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Pill arah & kotak persen SATU tinggi (48, dikunci
+                // tegas dengan SizedBox) dan SATU radius (md) dari
+                // tema — dulu chip mungil + kolom isian tinggi beda
+                // + centang, terlihat tidak rapi.
                 Row(
                   children: [
-                    AppChip(label: 'Naik', selected: naik, onSelected: (_) => setDialog(() => naik = true)),
-                    const SizedBox(width: AppSpacing.sm),
-                    AppChip(label: 'Turun', selected: !naik, onSelected: (_) => setDialog(() => naik = false)),
+                    SizedBox(
+                      height: 48,
+                      child: SegmentedButton<bool>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(value: true, label: Text('Naik')),
+                          ButtonSegment(value: false, label: Text('Turun')),
+                        ],
+                        selected: {naik},
+                        onSelectionChanged: (s) => setDialog(() => naik = s.first),
+                      ),
+                    ),
                     const SizedBox(width: AppSpacing.md),
-                    Expanded(
+                    SizedBox(
+                      width: 88,
+                      height: 48,
                       child: TextField(
                         controller: ctrl,
                         keyboardType: TextInputType.number,
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        textAlign: TextAlign.center,
                         decoration: const InputDecoration(suffixText: '%', isDense: true),
                         onChanged: (_) => setDialog(() {}),
                       ),
@@ -123,13 +139,13 @@ class _ProdukScreenState extends State<ProdukScreen> {
             ),
             actions: [
               TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
-              FilledButton(
+              PrimaryButton(
+                label: 'Terapkan',
                 onPressed: () {
                   widget.onBulkPrice(bertanda);
                   Navigator.of(ctx).pop();
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Harga ${widget.menus.length} produk diperbarui.')));
                 },
-                child: const Text('Terapkan'),
               ),
             ],
           );
@@ -160,7 +176,8 @@ class _ProdukScreenState extends State<ProdukScreen> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
-          FilledButton(
+          PrimaryButton(
+            label: 'Impor',
             onPressed: () {
               final hasil = <MenuItem>[];
               var dilewati = 0;
@@ -190,7 +207,6 @@ class _ProdukScreenState extends State<ProdukScreen> {
                 SnackBar(content: Text('${hasil.length} produk diimpor${dilewati > 0 ? ', $dilewati baris dilewati (format salah)' : ''}.')),
               );
             },
-            child: const Text('Impor'),
           ),
         ],
       ),
@@ -204,7 +220,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
     for (final m in semua) {
       ringkasan.writeln('• ${m.name} (${m.category}) — ${rupiah(m.price)}');
     }
-    return tampilkanMenuEkspor(
+    return bukaPratinjauLaporan(
       context,
       judul: 'Daftar Produk',
       ringkasan: ringkasan.toString().trim(),
@@ -252,10 +268,13 @@ class _ProdukScreenState extends State<ProdukScreen> {
                   const PopupMenuItem(value: 'massal', child: Text('Edit Harga Massal')),
                   PopupMenuItem(
                     value: 'bahan',
+                    // Keadaan nyala ditandai TEKS 'Aktif', bukan
+                    // centang (aturan permanen Adnan).
                     child: Row(
                       children: [
                         const Expanded(child: Text('Tampilkan Bahan Baku')),
-                        if (_tampilBahan) const Icon(Icons.check, size: 18, color: AppColors.accentDark),
+                        if (_tampilBahan)
+                          Text('Aktif', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -373,10 +392,10 @@ class _ProdukScreenState extends State<ProdukScreen> {
                 children: [
                   Expanded(child: Text('${_terpilih.length} dipilih', style: AppText.body.copyWith(fontWeight: FontWeight.w700))),
                   TextButton(onPressed: _keluarModePilih, child: const Text('Batal')),
-                  FilledButton(
+                  PrimaryButton(
+                    label: 'Hapus Terpilih',
+                    backgroundColor: AppColors.danger,
                     onPressed: _terpilih.isEmpty ? null : _hapusTerpilih,
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-                    child: const Text('Hapus Terpilih'),
                   ),
                 ],
               ),

@@ -24,7 +24,9 @@ class AppSettings {
     this.supabaseAnonKey = '',
     this.businessKey = '',
     this.lastSyncLabel = '',
-    this.modeTema = 'sistem',
+    // Bawaan pemasangan pertama = TERANG (permintaan Adnan
+    // 2026-11-14). Pilihan yang sudah tersimpan tidak ditimpa.
+    this.modeTema = 'terang',
   }) : branches = branches ?? [Branch(id: 'c1', name: 'Cabang Utama')];
   String businessName;
   String businessAddress;
@@ -100,7 +102,9 @@ class AppSettings {
         supabaseAnonKey: j['supabaseAnonKey'] as String? ?? '',
         businessKey: j['businessKey'] as String? ?? '',
         lastSyncLabel: j['lastSyncLabel'] as String? ?? '',
-        modeTema: j['modeTema'] as String? ?? 'sistem',
+        // Data lama tanpa kunci ini → terang (bawaan baru);
+        // nilai yang tersimpan ('terang'/'gelap'/'sistem') utuh.
+        modeTema: j['modeTema'] as String? ?? 'terang',
       );
 }
 

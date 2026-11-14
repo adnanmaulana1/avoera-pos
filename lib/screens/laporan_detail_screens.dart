@@ -44,7 +44,7 @@ class LaporanBulananScreen extends StatelessWidget {
         ringkasan.writeln('• $label: ${rupiah(total)} ($count transaksi)');
       }
       if (bestDay.$2 > 0) ringkasan.writeln('Hari terbaik bulan ini: tanggal ${bestDay.$1} — ${rupiah(bestDay.$2)}');
-      return tampilkanMenuEkspor(
+      return bukaPratinjauLaporan(
         context,
         judul: 'Laporan Bulanan',
         ringkasan: ringkasan.toString().trim(),
@@ -151,7 +151,7 @@ class _LaporanPajakScreenState extends State<LaporanPajakScreen> {
           'Biaya layanan terkumpul: ${rupiah(service)}\n'
           'Pajak terkumpul: ${rupiah(tax)}\n'
           'Total diterima: ${rupiah(total)} (Tunai ${rupiah(tunai)} · QRIS ${rupiah(qris)})';
-      return tampilkanMenuEkspor(
+      return bukaPratinjauLaporan(
         context,
         judul: 'Laporan Pajak',
         ringkasan: ringkasan,
@@ -235,7 +235,7 @@ class LaporanPiutangScreen extends StatelessWidget {
       for (final t in utang) {
         ringkasan.writeln('• Meja ${t.number} · ${t.guestName ?? 'Tamu'}: ${rupiah(t.openAmount)}');
       }
-      return tampilkanMenuEkspor(
+      return bukaPratinjauLaporan(
         context,
         judul: 'Laporan Piutang',
         ringkasan: ringkasan.toString().trim(),
