@@ -175,7 +175,9 @@ Teks tidak pernah lebih kecil dari 11.
   angka sendiri) mengunci Kasir bila PIN diatur, sekali per sesi.
 - **Animasi yang hidup tapi hemat:** denyut cepat tombol + dan
   total keranjang bergerak (AnimatedRupiah) di kasir; bundaran
-  perayaan sesudah wizard; telur dadar saat ganti tema. Semua
+  perayaan sesudah wizard; iris melingkar saat ganti tema
+  (gambar tema lama di-clip lingkaran membesar dari tombol yang
+  diketuk, tema baru mengintip dari dalam lingkaran). Semua
   ±300–2300 mdtk, tanpa dekorasi lain.
 - **Mode gelap:** warna permukaan/teks jadi getter sadar mode di
   AppColors (aksen tetap); palet gelap = arang kehijauan

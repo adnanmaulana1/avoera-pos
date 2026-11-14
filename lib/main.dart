@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
@@ -56,9 +58,19 @@ class _KasirFnbAppState extends State<KasirFnbApp> {
   /// Pilihan tema dari Pengaturan: 'terang' | 'gelap' | 'sistem'.
   String _modeTema = 'sistem';
 
-  /// Mode yang sedang dianimasikan menuju ke sana (animasi telur
-  /// dadar); tema dibalik di tengah animasi.
-  String? _temaAnimasi;
+  /// Kunci RepaintBoundary akar tampilan — sumber tangkapan gambar
+  /// tema lama untuk animasi iris.
+  final GlobalKey _akarKey = GlobalKey();
+
+  /// Tangkapan tampilan tema LAMA selama animasi iris berjalan;
+  /// null = tidak ada animasi.
+  ui.Image? _gambarTemaLama;
+
+  /// Titik pusat iris (dari ketukan tombol tema); null = fallback.
+  Offset? _pusatIris;
+
+  /// Penjaga supaya tangkapan tidak tumpang tindih.
+  bool _irisBerjalan = false;
 
   bool _gelapEfektif(String mode, Brightness platform) => switch (mode) {
         'gelap' => true,
@@ -68,13 +80,59 @@ class _KasirFnbAppState extends State<KasirFnbApp> {
 
   /// Dipanggil HomeShell: sesudah data dimuat (terapkan tanpa
   /// animasi) dan tiap pemilik mengganti pilihan tema (animasi).
-  void _temaBerubah(String mode, {required bool animasi, required Brightness platform}) {
+  Future<void> _temaBerubah(String mode, {required bool animasi, required Brightness platform}) async {
     if (mode == _modeTema) return;
-    if (animasi && _gelapEfektif(mode, platform) != _gelapEfektif(_modeTema, platform)) {
-      setState(() => _temaAnimasi = mode);
-    } else {
+    final berubahNyata = _gelapEfektif(mode, platform) != _gelapEfektif(_modeTema, platform);
+    if (!animasi || !berubahNyata || _irisBerjalan) {
       setState(() => _modeTema = mode);
+      return;
     }
+    // Metode iris: tangkap dulu tampilan tema LAMA, baru ganti
+    // tema. Tema baru langsung terpasang di bawah; gambar lama
+    // di-clip lingkaran membesar oleh AnimasiIrisTema.
+    _irisBerjalan = true;
+    ui.Image? gambar;
+    try {
+      final batas = _akarKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      gambar = await batas?.toImage(pixelRatio: 1.5);
+    } catch (_) {
+      gambar = null; // tangkapan gagal → ganti tema tanpa animasi
+    }
+    if (!mounted) {
+      gambar?.dispose();
+      _irisBerjalan = false;
+      return;
+    }
+    if (gambar == null) {
+      _irisBerjalan = false;
+      setState(() => _modeTema = mode);
+      return;
+    }
+    setState(() {
+      _modeTema = mode;
+      _gambarTemaLama = gambar;
+      _pusatIris = AnimasiIrisTema.pusatDariKetukan;
+      AnimasiIrisTema.pusatDariKetukan = null;
+    });
+  }
+
+  /// Animasi iris selesai (atau overlay dibuang di tengah):
+  /// bersihkan gambar lama dari state & memori.
+  void _irisSelesai() {
+    if (!mounted || _gambarTemaLama == null) return;
+    final gambar = _gambarTemaLama;
+    setState(() {
+      _gambarTemaLama = null;
+      _pusatIris = null;
+      _irisBerjalan = false;
+    });
+    gambar?.dispose();
+  }
+
+  @override
+  void dispose() {
+    _gambarTemaLama?.dispose();
+    super.dispose();
   }
 
   @override
@@ -102,15 +160,20 @@ class _KasirFnbAppState extends State<KasirFnbApp> {
       },
       home: Stack(
         children: [
-          HomeShell(
-            onModeTema: (mode, animasi) => _temaBerubah(mode, animasi: animasi, platform: platform),
+          // Akar tampilan dibungkus RepaintBoundary: dari sinilah
+          // gambar tema lama ditangkap sebelum tema diganti.
+          RepaintBoundary(
+            key: _akarKey,
+            child: HomeShell(
+              onModeTema: (mode, animasi) => _temaBerubah(mode, animasi: animasi, platform: platform),
+            ),
           ),
-          if (_temaAnimasi != null)
+          if (_gambarTemaLama != null)
             Positioned.fill(
-              child: AnimasiTelurDadar(
-                keGelap: _gelapEfektif(_temaAnimasi!, platform),
-                onTengah: () => setState(() => _modeTema = _temaAnimasi!),
-                onSelesai: () => setState(() => _temaAnimasi = null),
+              child: AnimasiIrisTema(
+                gambarLama: _gambarTemaLama!,
+                pusat: _pusatIris,
+                onSelesai: _irisSelesai,
               ),
             ),
         ],
@@ -141,7 +204,7 @@ class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.onModeTema});
 
   /// Lapor perubahan pilihan tema ke KasirFnbApp (yang memegang
-  /// MaterialApp): (mode, pakaiAnimasiTelurDadar).
+  /// MaterialApp): (mode, pakaiAnimasiIris).
   final void Function(String mode, bool animasi) onModeTema;
 
   @override

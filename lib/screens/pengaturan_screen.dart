@@ -349,16 +349,21 @@ class PengaturanScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              FilterChipRow(
-                children: [
-                  AppChip(label: 'Terang', selected: modeTema == 'terang', onSelected: (_) => onModeTemaChanged('terang')),
-                  AppChip(label: 'Gelap', selected: modeTema == 'gelap', onSelected: (_) => onModeTemaChanged('gelap')),
-                  AppChip(label: 'Ikuti Sistem', selected: modeTema == 'sistem', onSelected: (_) => onModeTemaChanged('sistem')),
-                ],
+              // Listener mencatat titik ketukan terakhir: dari titik
+              // chip inilah lingkaran iris animasi ganti tema membesar.
+              Listener(
+                onPointerDown: (e) => AnimasiIrisTema.pusatDariKetukan = e.position,
+                child: FilterChipRow(
+                  children: [
+                    AppChip(label: 'Terang', selected: modeTema == 'terang', onSelected: (_) => onModeTemaChanged('terang')),
+                    AppChip(label: 'Gelap', selected: modeTema == 'gelap', onSelected: (_) => onModeTemaChanged('gelap')),
+                    AppChip(label: 'Ikuti Sistem', selected: modeTema == 'sistem', onSelected: (_) => onModeTemaChanged('sistem')),
+                  ],
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Ikuti Sistem = ikut pengaturan gelap/terang HP. Ganti mode ditemani animasi telur dadar.',
+                'Ikuti Sistem = ikut pengaturan gelap/terang HP. Ganti mode membuka seperti iris dari tombol yang diketuk.',
                 style: AppText.caption.copyWith(color: AppColors.muted),
               ),
             ],

@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -409,92 +411,138 @@ void disposeControllersLater(List<TextEditingController> controllers) {
   });
 }
 
-/// Animasi ganti tema "telur dadar" (permintaan Adnan 2026-11-14):
-/// bundaran putih telur melebar dari tengah layar dengan kuning
-/// telur (amber) di tengahnya — seperti telur yang digoreng
-/// menyebar di wajan. Di tengah animasi tema dibalik (lewat
-/// [onTengah]), lalu telur menyusut & memudar membuka tampilan
-/// tema baru di belakangnya.
-class AnimasiTelurDadar extends StatefulWidget {
-  const AnimasiTelurDadar({super.key, required this.keGelap, required this.onTengah, required this.onSelesai});
+/// Animasi ganti tema IRIS (perbaikan v0.8.1, permintaan Adnan
+/// 2026-11-14): metode standar transisi tema melingkar — gambar
+/// tampilan LAMA (ditangkap KasirFnbApp dari RepaintBoundary akar
+/// sebelum tema diganti) ditampilkan di atas tema baru, di-clip
+/// jalur evenOdd: persegi layar penuh DIKURANGI lingkaran yang
+/// membesar dari titik tombol tema yang diketuk. Tema baru
+/// "mengintip" lewat lingkaran itu dan tema lama tersisih ke
+/// tepi — seperti iris kamera membuka. Overlay ini HANYA gambar:
+/// tidak menangkap sentuhan dan tidak mengubah state apa pun.
+class AnimasiIrisTema extends StatefulWidget {
+  const AnimasiIrisTema({
+    super.key,
+    required this.gambarLama,
+    required this.pusat,
+    required this.onSelesai,
+  });
 
-  /// true = menuju gelap (putih telur memakai warna latar gelap).
-  final bool keGelap;
-  final VoidCallback onTengah;
+  /// Tangkapan tampilan tema lama (sudah diskalakan pixelRatio
+  /// tangkapan; painter meregangkannya ke ukuran layar penuh).
+  final ui.Image gambarLama;
+
+  /// Titik pusat lingkaran iris (koordinat global = logis layar).
+  /// Boleh null → fallback pojok kanan atas.
+  final Offset? pusat;
+
+  /// Dipanggil TEPAT sekali saat animasi tuntas (atau saat widget
+  /// dibuang di tengah jalan) supaya overlay selalu dibersihkan.
   final VoidCallback onSelesai;
 
+  /// Durasi satu arah ganti tema.
+  static const durasi = Duration(milliseconds: 600);
+
+  /// Pusat iris dari ketukan terakhir pada pilihan tema di
+  /// Pengaturan (dicatat Listener di sana). Dikosongkan pemakai
+  /// sesudah dibaca.
+  static Offset? pusatDariKetukan;
+
   @override
-  State<AnimasiTelurDadar> createState() => _AnimasiTelurDadarState();
+  State<AnimasiIrisTema> createState() => _AnimasiIrisTemaState();
 }
 
-class _AnimasiTelurDadarState extends State<AnimasiTelurDadar> with SingleTickerProviderStateMixin {
+class _AnimasiIrisTemaState extends State<AnimasiIrisTema> with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  bool _tengahDilaporkan = false;
+  late final Animation<double> _kurva;
   bool _selesaiDilaporkan = false;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1150))..forward();
-    _ctrl.addListener(() {
-      if (_ctrl.value >= 0.45 && !_tengahDilaporkan) {
-        _tengahDilaporkan = true;
-        widget.onTengah();
-      }
-    });
+    _ctrl = AnimationController(vsync: this, duration: AnimasiIrisTema.durasi);
+    _kurva = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubic);
     _ctrl.addStatusListener((st) {
-      if (st == AnimationStatus.completed && !_selesaiDilaporkan) {
-        _selesaiDilaporkan = true;
-        widget.onSelesai();
-      }
+      if (st == AnimationStatus.completed) _laporSelesai();
     });
+    _ctrl.forward();
+  }
+
+  void _laporSelesai() {
+    if (_selesaiDilaporkan) return;
+    _selesaiDilaporkan = true;
+    widget.onSelesai();
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    // Widget dibuang di tengah animasi → tetap laporkan selesai
+    // (ditunda ke sesudah bingkai ini) supaya gambar lama tidak
+    // tertinggal menempel di state pemilik.
+    if (!_selesaiDilaporkan) {
+      _selesaiDilaporkan = true;
+      final cb = widget.onSelesai;
+      WidgetsBinding.instance.addPostFrameCallback((_) => cb());
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final maks = size.longestSide * 2.4;
-    // Putih telur: warna latar tema TUJUAN supaya saat tema dibalik
-    // di tengah, sambungannya mulus.
-    final warnaPutih = widget.keGelap ? const Color(0xFF121614) : const Color(0xFFF7F7F5);
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, _) {
-        final t = _ctrl.value;
-        final double dPutih;
-        if (t < 0.45) {
-          dPutih = maks * Curves.easeOutCubic.transform(t / 0.45);
-        } else if (t < 0.7) {
-          dPutih = maks;
-        } else {
-          dPutih = maks * (1 - Curves.easeInCubic.transform((t - 0.7) / 0.3));
-        }
-        // Kuning telur: muncul sedikit sesudah putihnya, ikut
-        // menyusut di fase akhir.
-        final tKuning = t < 0.15 ? 0.0 : ((t - 0.15) / 0.3).clamp(0.0, 1.0);
-        var skalaKuning = Curves.easeOutBack.transform(tKuning);
-        if (t > 0.7) skalaKuning *= 1 - Curves.easeInCubic.transform((t - 0.7) / 0.3);
-        final dKuning = 120 * skalaKuning;
-        return SizedBox.expand(
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(width: dPutih, height: dPutih, decoration: BoxDecoration(color: warnaPutih, shape: BoxShape.circle)),
-              Container(
-                width: dKuning,
-                height: dKuning,
-                decoration: const BoxDecoration(color: Color(0xFFF9A825), shape: BoxShape.circle),
-              ),
-            ],
+    // Fallback: pojok kanan atas, di sekitar area tombol/ikon.
+    final pusat = widget.pusat ?? Offset(size.width - 48, 56);
+    // Radius maksimum = jarak pusat ke sudut layar terjauh, supaya
+    // di akhir animasi lingkaran menelan seluruh layar.
+    var rMaks = 0.0;
+    for (final sudut in [Offset.zero, Offset(size.width, 0), Offset(0, size.height), Offset(size.width, size.height)]) {
+      final d = (sudut - pusat).distance;
+      if (d > rMaks) rMaks = d;
+    }
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _kurva,
+        builder: (_, _) => CustomPaint(
+          size: size,
+          painter: _IrisTemaPainter(
+            gambar: widget.gambarLama,
+            pusat: pusat,
+            radius: rMaks * _kurva.value,
           ),
-        );
-      },
+        ),
+      ),
     );
   }
+}
+
+/// Pelukis iris: gambar tema lama digambar HANYA di luar lingkaran
+/// (jalur evenOdd = persegi penuh minus lingkaran). Di dalam
+/// lingkaran, tema baru yang sudah terpasang di bawahnya terlihat.
+class _IrisTemaPainter extends CustomPainter {
+  const _IrisTemaPainter({required this.gambar, required this.pusat, required this.radius});
+
+  final ui.Image gambar;
+  final Offset pusat;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final jalan = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(Offset.zero & size)
+      ..addOval(Rect.fromCircle(center: pusat, radius: radius));
+    canvas.save();
+    canvas.clipPath(jalan);
+    canvas.drawImageRect(
+      gambar,
+      Rect.fromLTWH(0, 0, gambar.width.toDouble(), gambar.height.toDouble()),
+      Offset.zero & size,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _IrisTemaPainter old) => old.radius != radius || old.gambar != gambar || old.pusat != pusat;
 }
