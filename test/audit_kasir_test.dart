@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:avoera_pos/main.dart';
+import 'package:avoera_pos/screens/pengaturan_screen.dart';
+import 'package:avoera_pos/store.dart';
 import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,12 +31,17 @@ void main() {
 
   Finder inSheet(Finder inner) => find.descendant(of: find.byType(BottomSheet), matching: inner);
 
-  Future<void> pumpPhone(WidgetTester tester) async {
+  Future<void> pumpPhone(WidgetTester tester, {bool keKasir = true}) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(const KasirFnbApp());
     await tester.pumpAndSettle();
+    // Aplikasi kini membuka di Beranda — tes kasir pindah dulu ke Kasir.
+    if (keKasir) {
+      await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Kasir')));
+      await tester.pumpAndSettle();
+    }
   }
 
   Future<void> tambahLewatKartu(WidgetTester tester, String namaMenu) async {
@@ -51,10 +58,10 @@ void main() {
   }
 
   testWidgets('Audit: navigasi HP — menu utama di bawah, lainnya di sidebar geser', (tester) async {
-    await pumpPhone(tester);
-    // Bar bawah hanya 4 tombol: 3 menu utama + Lainnya.
+    await pumpPhone(tester, keKasir: false);
+    // Bar bawah 5 tombol: Beranda, Kasir, Meja, Dapur + Lainnya.
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.destinations.length, 4, reason: 'Bar bawah harus berisi Kasir, Meja, Dapur, Lainnya');
+    expect(bar.destinations.length, 5, reason: 'Bar bawah harus berisi Beranda, Kasir, Meja, Dapur, Lainnya');
     expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Pengaturan')), findsNothing,
         reason: 'Pengaturan tidak lagi di bar bawah');
 
@@ -65,7 +72,71 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Kelola Data'), findsOneWidget, reason: 'Pengaturan harus terbuka dari drawer');
     // Selama di menu drawer, sorotan bar bawah jatuh ke 'Lainnya'.
-    expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex, 3);
+    expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex, 4);
+  });
+
+  testWidgets('Audit: Beranda — penjualan ASLI muncul sesudah checkout', (tester) async {
+    await pumpPhone(tester, keKasir: false);
+    expect(find.text('Penjualan hari ini'), findsOneWidget);
+    expect(find.text('Rp0'), findsWidgets, reason: 'Belum ada penjualan → Rp0');
+
+    await tester.tap(find.text('Buka Kasir'));
+    await tester.pumpAndSettle();
+    await tambahLewatKartu(tester, 'Paket Hemat Kopi + Roti');
+    await tester.tap(find.text('Lihat Keranjang'));
+    await tester.pumpAndSettle();
+    await tester.tap(inSheet(find.text('Bayar Sekarang')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Uang pas'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Proses Bayar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Selesai'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Beranda')));
+    await tester.pumpAndSettle();
+    // Total penjualan DAN rata-rata sama-sama Rp36.800 (1 transaksi).
+    expect(find.text('Rp36.800'), findsNWidgets(2), reason: 'Beranda harus menampilkan penjualan asli dari checkout tadi');
+    final loaded = await LocalStore.load();
+    expect(loaded.transactions.length, 1);
+    expect(loaded.transactions.single.total, 36800);
+  });
+
+  testWidgets('Audit: fitur meja bisa dimatikan dari Pengaturan', (tester) async {
+    await pumpPhone(tester, keKasir: false);
+    Finder inBar(Finder inner) => find.descendant(of: find.byType(NavigationBar), matching: inner);
+    expect(inBar(find.text('Meja')), findsOneWidget, reason: 'Awalnya Meja ada di bar bawah');
+
+    // Ke Pengaturan lewat drawer, matikan saklar Manajemen Meja.
+    await tester.tap(inBar(find.text('Lainnya')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Pengaturan')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Manajemen Meja'), 120, scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byType(Scrollable)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect((await LocalStore.load()).settings.tablesEnabled, isFalse, reason: 'Saklar harus tersimpan');
+
+    // Bar bawah: Meja hilang, Dapur tetap ada. Kasir: tanpa Pilih Meja.
+    expect(inBar(find.text('Meja')), findsNothing, reason: 'Meja harus hilang dari bar bawah saat mati');
+    expect(inBar(find.text('Dapur')), findsOneWidget);
+    await tester.tap(inBar(find.text('Kasir')));
+    await tester.pumpAndSettle();
+    expect(find.text('Pilih Meja'), findsNothing, reason: 'Kasir tidak menawarkan meja saat fitur mati');
+
+    // Nyalakan lagi → Meja kembali.
+    await tester.tap(inBar(find.text('Lainnya')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Pengaturan')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Manajemen Meja'), 120, scrollable: find.descendant(of: find.byType(PengaturanScreen), matching: find.byType(Scrollable)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect((await LocalStore.load()).settings.tablesEnabled, isTrue);
+    expect(inBar(find.text('Meja')), findsOneWidget, reason: 'Meja kembali saat fitur dinyalakan');
   });
 
   testWidgets('Audit: cari menu & filter kategori bekerja', (tester) async {

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.4.0';
+const appVersion = '0.5.0';
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -14,6 +14,7 @@ class AppSettings {
     this.businessPhone = '0812-3456-7890',
     this.servicePercent = 5,
     this.taxPercent = 10,
+    this.tablesEnabled = true,
   });
   String businessName;
   String businessAddress;
@@ -21,12 +22,18 @@ class AppSettings {
   int servicePercent;
   int taxPercent;
 
+  /// Meja TIDAK wajib (permintaan Adnan 2026-11-14): kedai tanpa
+  /// meja bisa mematikan ini dari Pengaturan — menu Meja hilang dari
+  /// navigasi dan kasir tidak lagi menawarkan pilihan meja.
+  bool tablesEnabled;
+
   Map<String, dynamic> toJson() => {
         'businessName': businessName,
         'businessAddress': businessAddress,
         'businessPhone': businessPhone,
         'servicePercent': servicePercent,
         'taxPercent': taxPercent,
+        'tablesEnabled': tablesEnabled,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -35,6 +42,8 @@ class AppSettings {
         businessPhone: j['businessPhone'] as String? ?? '',
         servicePercent: (j['servicePercent'] as num?)?.toInt() ?? 5,
         taxPercent: (j['taxPercent'] as num?)?.toInt() ?? 10,
+        // Data lama belum punya kunci ini → meja tetap aktif.
+        tablesEnabled: j['tablesEnabled'] as bool? ?? true,
       );
 }
 
@@ -369,3 +378,33 @@ const topMenus = <TopMenu>[
   TopMenu('Matcha Latte', 39, 858000),
   TopMenu('Kentang Goreng', 36, 540000),
 ];
+
+// ---------- Transaksi ----------
+
+/// Satu pembayaran yang selesai di kasir. Dicatat permanen supaya
+/// Beranda menampilkan penjualan ASLI hasil jualan — bukan angka
+/// contoh. (Laporan masih contoh karena butuh rentang tanggal dsb.)
+class TxRecord {
+  TxRecord({required this.id, required this.total, required this.method, required this.at, required this.items});
+  final String id;
+  final int total;
+  final String method; // 'Tunai' | 'QRIS'
+  final DateTime at;
+  final int items; // jumlah barang pada transaksi ini
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'total': total,
+        'method': method,
+        'at': at.toIso8601String(),
+        'items': items,
+      };
+
+  factory TxRecord.fromJson(Map<String, dynamic> j) => TxRecord(
+        id: j['id'] as String,
+        total: (j['total'] as num).toInt(),
+        method: j['method'] as String? ?? 'Tunai',
+        at: DateTime.tryParse(j['at'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+        items: (j['items'] as num?)?.toInt() ?? 0,
+      );
+}

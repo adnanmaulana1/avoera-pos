@@ -37,6 +37,9 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(const KasirFnbApp());
     await tester.pumpAndSettle();
+    // Aplikasi membuka di Beranda — tes-tes ini mulai dari Kasir.
+    await tester.tap(find.widgetWithText(ListTile, 'Kasir'));
+    await tester.pumpAndSettle();
   }
 
   Future<void> kePengaturan(WidgetTester tester) async {
@@ -118,6 +121,10 @@ void main() {
   testWidgets('Audit: Kelola Stok — tambah bahan tampil di Stok + permanen', (tester) async {
     await pumpWide(tester);
     await kePengaturan(tester);
+    // Bagian Fitur baru bikin daftar Pengaturan lebih panjang —
+    // baris Kelola Stok Bahan bisa di bawah lipatan, gulir dulu.
+    await tester.ensureVisible(find.text('Kelola Stok Bahan'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Kelola Stok Bahan'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tambah Bahan'));
@@ -189,7 +196,7 @@ void main() {
     await tester.tap(find.text('Info Aplikasi'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsOneWidget);
-    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.4.0')), findsOneWidget);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.5.0')), findsOneWidget);
     await tester.tap(find.text('Tutup'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsNothing, reason: 'Popup harus tertutup');
@@ -211,6 +218,9 @@ void main() {
     // "Matikan" aplikasi lalu buka lagi dari nol.
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(const KasirFnbApp());
+    await tester.pumpAndSettle();
+    // Buka ulang mulai dari Beranda — ke Kasir dulu.
+    await tester.tap(find.widgetWithText(ListTile, 'Kasir'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Menu Persist Uji'),

@@ -21,6 +21,8 @@ class PengaturanScreen extends StatelessWidget {
     required this.onBusinessPhoneChanged,
     required this.onServicePercentChanged,
     required this.onTaxPercentChanged,
+    required this.tablesEnabled,
+    required this.onTablesEnabledChanged,
     required this.menuCount,
     required this.tableCount,
     required this.ingredientCount,
@@ -39,6 +41,10 @@ class PengaturanScreen extends StatelessWidget {
   final ValueChanged<String> onBusinessPhoneChanged;
   final ValueChanged<int> onServicePercentChanged;
   final ValueChanged<int> onTaxPercentChanged;
+
+  /// Saklar fitur meja (tidak wajib — bisa dimatikan total).
+  final bool tablesEnabled;
+  final ValueChanged<bool> onTablesEnabledChanged;
 
   /// Jumlah data saat ini + pintu ke layar kelola (CRUD).
   final int menuCount;
@@ -142,6 +148,21 @@ class PengaturanScreen extends StatelessWidget {
           style: AppText.caption.copyWith(color: AppColors.muted),
         ),
         const SizedBox(height: AppSpacing.xl),
+        const SectionTitle('Fitur'),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: _SettingSwitchRow(
+            icon: Icons.table_restaurant_outlined,
+            label: 'Manajemen Meja',
+            subtitle: tablesEnabled
+                ? 'Aktif — ada menu Meja dan pilihan meja di kasir.'
+                : 'Mati — menu Meja disembunyikan, kasir tanpa meja.',
+            value: tablesEnabled,
+            onChanged: onTablesEnabledChanged,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
         const SectionTitle('Kelola Data'),
         const SizedBox(height: AppSpacing.sm),
         AppCard(
@@ -154,13 +175,16 @@ class PengaturanScreen extends StatelessWidget {
                 value: '$menuCount menu',
                 onTap: onManageMenus,
               ),
-              const Divider(height: 1, indent: 68),
-              _SettingRow(
-                icon: Icons.table_restaurant_outlined,
-                label: 'Kelola Meja',
-                value: '$tableCount meja',
-                onTap: onManageTables,
-              ),
+              // Kelola Meja ikut sembunyi saat fitur meja mati.
+              if (tablesEnabled) ...[
+                const Divider(height: 1, indent: 68),
+                _SettingRow(
+                  icon: Icons.table_restaurant_outlined,
+                  label: 'Kelola Meja',
+                  value: '$tableCount meja',
+                  onTap: onManageTables,
+                ),
+              ],
               const Divider(height: 1, indent: 68),
               _SettingRow(
                 icon: Icons.inventory_2_outlined,
@@ -254,6 +278,53 @@ class PengaturanScreen extends StatelessWidget {
       if (value != null) onSave(value.clamp(0, 100));
     }
     disposeControllersLater([controller]);
+  }
+}
+
+/// Baris pengaturan dengan saklar on/off (untuk fitur opsional
+/// seperti Manajemen Meja).
+class _SettingSwitchRow extends StatelessWidget {
+  const _SettingSwitchRow({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
+            child: Icon(icon, size: 20, color: AppColors.accentDark),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                Text(subtitle, style: AppText.caption.copyWith(color: AppColors.muted)),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
   }
 }
 

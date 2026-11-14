@@ -54,6 +54,9 @@ void main() {
 
     await tester.pumpWidget(const KasirFnbApp());
     await tester.pumpAndSettle();
+    // Aplikasi membuka di Beranda — pindah ke Kasir dulu.
+    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Kasir')));
+    await tester.pumpAndSettle();
 
     await tambahPaketDariKartu(tester);
     await tester.tap(find.text('Lihat Keranjang'));
@@ -86,6 +89,9 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(const KasirFnbApp());
+    await tester.pumpAndSettle();
+    // Aplikasi membuka di Beranda — pindah ke Kasir dulu.
+    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Kasir')));
     await tester.pumpAndSettle();
 
     await tambahPaketDariKartu(tester);

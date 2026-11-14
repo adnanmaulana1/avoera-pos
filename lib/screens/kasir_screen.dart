@@ -13,6 +13,7 @@ class KasirScreen extends StatefulWidget {
     required this.tables,
     required this.servicePercent,
     required this.taxPercent,
+    required this.tablesEnabled,
     required this.onSelectTable,
     required this.onAdd,
     required this.onInc,
@@ -31,6 +32,10 @@ class KasirScreen extends StatefulWidget {
   /// Persen biaya dari Pengaturan — berlaku langsung di hitungan kasir.
   final int servicePercent;
   final int taxPercent;
+
+  /// Fitur meja dari Pengaturan. Mati → tombol Pilih Meja disembunyikan
+  /// (kedai tanpa meja tidak perlu memilih meja).
+  final bool tablesEnabled;
   final ValueChanged<CafeTable> onSelectTable;
   final void Function(MenuItem menu, String variant, int unitPrice, String note) onAdd;
   final ValueChanged<CartItem> onInc;
@@ -110,7 +115,7 @@ class _KasirScreenState extends State<KasirScreen> {
           PageHeader(
             title: 'Kasir',
             subtitle: 'Ketuk menu untuk memilih varian. Ketuk + untuk tambah cepat.',
-            trailing: _tablePicker(),
+            trailing: widget.tablesEnabled ? _tablePicker() : null,
           ),
           const SizedBox(height: AppSpacing.md),
           Row(

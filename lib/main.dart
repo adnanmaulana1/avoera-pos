@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'data.dart';
 import 'store.dart';
 import 'theme.dart';
+import 'screens/beranda_screen.dart';
 import 'screens/kasir_screen.dart';
 import 'screens/meja_screen.dart';
 import 'screens/dapur_screen.dart';
@@ -54,6 +55,7 @@ class _NavItem {
 }
 
 const _navItems = <_NavItem>[
+  _NavItem('Beranda', Icons.home_outlined, Icons.home),
   _NavItem('Kasir', Icons.point_of_sale_outlined, Icons.point_of_sale),
   _NavItem('Meja', Icons.table_restaurant_outlined, Icons.table_restaurant),
   _NavItem('Dapur', Icons.soup_kitchen_outlined, Icons.soup_kitchen),
@@ -82,6 +84,7 @@ class _HomeShellState extends State<HomeShell> {
   List<CafeTable> _tables = [];
   List<Ingredient> _ingredients = [];
   AppSettings _settings = AppSettings();
+  List<TxRecord> _transactions = [];
 
   @override
   void initState() {
@@ -97,6 +100,7 @@ class _HomeShellState extends State<HomeShell> {
       _tables = data.tables;
       _ingredients = data.ingredients;
       _settings = data.settings;
+      _transactions = data.transactions;
       _ready = true;
     });
   }
@@ -211,6 +215,8 @@ class _HomeShellState extends State<HomeShell> {
     // tagihan berjalan di kartu meja.
     final subtotal = _cart.fold(0, (a, c) => a + c.total);
     final grandTotal = subtotal + (subtotal * _settings.servicePercent / 100).round() + (subtotal * _settings.taxPercent / 100).round();
+    final orderId = 'A-${_orderCounter++}';
+    final itemCount = _cart.fold(0, (a, c) => a + c.qty);
     setState(() {
       final lines = _cart
           .map((c) => KitchenOrderLine(c.menu.name, c.qty, [c.variant, c.note].where((s) => s.isNotEmpty).join(' · ')))
@@ -218,7 +224,7 @@ class _HomeShellState extends State<HomeShell> {
       _kitchen.insert(
         0,
         KitchenOrder(
-          id: 'A-${_orderCounter++}',
+          id: orderId,
           tableLabel: tableLabel,
           orderType: orderType,
           lines: lines,
@@ -236,9 +242,12 @@ class _HomeShellState extends State<HomeShell> {
         _selectedTable!.openAmount += grandTotal;
         _selectedTable!.since ??= _nowHHmm();
       }
+      // Catat transaksi ASLI untuk Beranda (penjualan hari ini dkk).
+      _transactions.add(TxRecord(id: orderId, total: grandTotal, method: paymentMethod, at: DateTime.now(), items: itemCount));
       _cart.clear();
     });
     LocalStore.saveTables(_tables);
+    LocalStore.saveTransactions(_transactions);
   }
 
   String _nowHHmm() {
@@ -268,13 +277,28 @@ class _HomeShellState extends State<HomeShell> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final screens = <Widget>[
+      BerandaScreen(
+        businessName: _settings.businessName,
+        transactions: _transactions,
+        kitchenActive: _kitchen.length,
+        tablesEnabled: _settings.tablesEnabled,
+        tablesOccupied: _tables.where((t) => t.status != TableStatus.kosong).length,
+        tablesTotal: _tables.length,
+        onOpenKasir: () => setState(() => _index = 1),
+        onNavigate: (i) => setState(() => _index = i),
+        onManageMenus: _openKelolaMenu,
+        onManageTables: _openKelolaMeja,
+        onManageIngredients: _openKelolaStok,
+      ),
       KasirScreen(
         cart: _cart,
         menus: _menus,
-        selectedTable: _selectedTable,
+        // Meja mati → kasir tidak membawa meja sama sekali.
+        selectedTable: _settings.tablesEnabled ? _selectedTable : null,
         tables: _tables,
         servicePercent: _settings.servicePercent,
         taxPercent: _settings.taxPercent,
+        tablesEnabled: _settings.tablesEnabled,
         onSelectTable: _selectTable,
         onAdd: _addToCart,
         onInc: _inc,
@@ -286,7 +310,8 @@ class _HomeShellState extends State<HomeShell> {
         tables: _tables,
         selectedTable: _selectedTable,
         onSelect: _selectTable,
-        onGoKasir: () => setState(() => _index = 0),
+        // Kasir sekarang indeks 1 (indeks 0 = Beranda).
+        onGoKasir: () => setState(() => _index = 1),
       ),
       DapurScreen(orders: _kitchen, onAdvance: _advanceKitchen),
       LaporanScreen(ingredients: _ingredients),
@@ -305,11 +330,31 @@ class _HomeShellState extends State<HomeShell> {
         onBusinessPhoneChanged: (v) => _settingChanged(() => _settings.businessPhone = v),
         onServicePercentChanged: (v) => _settingChanged(() => _settings.servicePercent = v),
         onTaxPercentChanged: (v) => _settingChanged(() => _settings.taxPercent = v),
+        tablesEnabled: _settings.tablesEnabled,
+        onTablesEnabledChanged: (v) => _settingChanged(() {
+          _settings.tablesEnabled = v;
+          if (!v) {
+            // Meja mati: lepas meja terpilih & jangan tinggal di
+            // layar Meja yang sudah tidak ada di navigasi.
+            _selectedTable = null;
+            if (_index == 2) _index = 0;
+          }
+        }),
         onManageMenus: _openKelolaMenu,
         onManageTables: _openKelolaMeja,
         onManageIngredients: _openKelolaStok,
       ),
     ];
+
+    // Indeks layar yang tampil di navigasi. Meja (indeks 2) hilang
+    // dari SEMUA navigasi saat fiturnya dimatikan di Pengaturan.
+    final visible = <int>[
+      for (var i = 0; i < _navItems.length; i++)
+        if (i != 2 || _settings.tablesEnabled) i,
+    ];
+    // HP: 4 menu pertama di bar bawah, sisanya di sidebar geser.
+    final mainNav = visible.take(4).toList();
+    final drawerNav = visible.skip(4).toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -321,6 +366,7 @@ class _HomeShellState extends State<HomeShell> {
                 children: [
                   _SideBar(
                     index: _index,
+                    items: visible,
                     kitchenCount: _kitchen.where((o) => o.status == KitchenStatus.baru).length,
                     onChanged: (i) => setState(() => _index = i),
                   ),
@@ -338,31 +384,34 @@ class _HomeShellState extends State<HomeShell> {
             bottom: false,
             child: IndexedStack(index: _index, children: screens),
           ),
-          // Menu utama (Kasir, Meja, Dapur) tinggal di bar bawah; menu
-          // lain (Laporan, Stok, Pengaturan) pindah ke sidebar geser
-          // yang dibuka dari tombol 'Lainnya' — permintaan Adnan
-          // 2026-11-14: bar bawah lega, menu harian gampang dijangkau.
+          // Menu utama (Beranda, Kasir, Meja, Dapur) tinggal di bar
+          // bawah; menu lain (Laporan, Stok, Pengaturan) pindah ke
+          // sidebar geser yang dibuka dari tombol 'Lainnya' —
+          // permintaan Adnan 2026-11-14: bar bawah lega, menu harian
+          // gampang dijangkau. Saat meja mati, Meja keluar dari daftar
+          // dan Dapur naik mengisi bar bawah.
           drawer: _PhoneDrawer(
             index: _index,
+            items: drawerNav,
             businessName: _settings.businessName,
             onSelect: (i) => setState(() => _index = i),
           ),
           bottomNavigationBar: Builder(
             builder: (barCtx) => NavigationBar(
               // Sedang di menu drawer → sorot 'Lainnya'.
-              selectedIndex: _index <= 2 ? _index : 3,
-              onDestinationSelected: (i) {
-                if (i == 3) {
+              selectedIndex: mainNav.contains(_index) ? mainNav.indexOf(_index) : mainNav.length,
+              onDestinationSelected: (pos) {
+                if (pos == mainNav.length) {
                   Scaffold.of(barCtx).openDrawer();
                 } else {
-                  setState(() => _index = i);
+                  setState(() => _index = mainNav[pos]);
                 }
               },
               destinations: [
-                for (var i = 0; i < 3; i++)
+                for (final i in mainNav)
                   NavigationDestination(
                     icon: Badge(
-                      isLabelVisible: i == 2 && _kitchen.where((o) => o.status == KitchenStatus.baru).isNotEmpty,
+                      isLabelVisible: i == 3 && _kitchen.where((o) => o.status == KitchenStatus.baru).isNotEmpty,
                       label: Text('${_kitchen.where((o) => o.status == KitchenStatus.baru).length}'),
                       child: Icon(_navItems[i].icon),
                     ),
@@ -387,8 +436,11 @@ class _HomeShellState extends State<HomeShell> {
 /// utama di bar bawah. Tampilannya meniru sidebar tablet supaya
 /// rasanya satu keluarga.
 class _PhoneDrawer extends StatelessWidget {
-  const _PhoneDrawer({required this.index, required this.businessName, required this.onSelect});
+  const _PhoneDrawer({required this.index, required this.items, required this.businessName, required this.onSelect});
   final int index;
+
+  /// Indeks layar yang masuk drawer (menu selain bar bawah).
+  final List<int> items;
   final String businessName;
   final ValueChanged<int> onSelect;
 
@@ -428,7 +480,7 @@ class _PhoneDrawer extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.sm),
               child: Text('MENU LAINNYA', style: AppText.caption.copyWith(color: AppColors.muted, fontWeight: FontWeight.w700)),
             ),
-            for (var i = 3; i < _navItems.length; i++)
+            for (final i in items)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                 child: Material(
@@ -470,8 +522,11 @@ class _PhoneDrawer extends StatelessWidget {
 }
 
 class _SideBar extends StatelessWidget {
-  const _SideBar({required this.index, required this.onChanged, required this.kitchenCount});
+  const _SideBar({required this.index, required this.items, required this.onChanged, required this.kitchenCount});
   final int index;
+
+  /// Indeks layar yang tampil (Meja bisa hilang saat fiturnya mati).
+  final List<int> items;
   final ValueChanged<int> onChanged;
   final int kitchenCount;
 
@@ -522,7 +577,7 @@ class _SideBar extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          for (var i = 0; i < _navItems.length; i++)
+          for (final i in items)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
               child: Material(
@@ -544,7 +599,7 @@ class _SideBar extends StatelessWidget {
                       color: index == i ? AppColors.accentDark : AppColors.ink,
                     ),
                   ),
-                  trailing: (i == 2 && kitchenCount > 0) ? StatusChip(label: '$kitchenCount baru', color: AppColors.danger) : null,
+                  trailing: (i == 3 && kitchenCount > 0) ? StatusChip(label: '$kitchenCount baru', color: AppColors.danger) : null,
                   onTap: () => onChanged(i),
                 ),
               ),

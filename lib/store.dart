@@ -6,11 +6,12 @@ import 'data.dart';
 
 /// Data aplikasi yang tersimpan permanen di perangkat.
 class AppData {
-  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings});
+  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings, this.transactions = const []});
   final List<MenuItem> menus;
   final List<CafeTable> tables;
   final List<Ingredient> ingredients;
   final AppSettings settings;
+  final List<TxRecord> transactions;
 }
 
 /// Tempat simpan lokal (SharedPreferences + JSON).
@@ -23,6 +24,7 @@ class LocalStore {
   static const _kTables = 'avoera.tables.v1';
   static const _kIngredients = 'avoera.ingredients.v1';
   static const _kSettings = 'avoera.settings.v1';
+  static const _kTx = 'avoera.tx.v1';
 
   static Future<AppData> load() async {
     try {
@@ -32,6 +34,7 @@ class LocalStore {
         tables: _decodeList(prefs.getString(_kTables), CafeTable.fromJson) ?? seedTables(),
         ingredients: _decodeList(prefs.getString(_kIngredients), Ingredient.fromJson) ?? seedIngredients(),
         settings: _decodeSettings(prefs.getString(_kSettings)),
+        transactions: _decodeList(prefs.getString(_kTx), TxRecord.fromJson) ?? <TxRecord>[],
       );
     } catch (_) {
       // Penyimpanan tidak tersedia (mis. lingkungan tes) → data contoh.
@@ -71,4 +74,5 @@ class LocalStore {
   static Future<void> saveTables(List<CafeTable> tables) => _save(_kTables, tables.map((t) => t.toJson()).toList());
   static Future<void> saveIngredients(List<Ingredient> ings) => _save(_kIngredients, ings.map((i) => i.toJson()).toList());
   static Future<void> saveSettings(AppSettings settings) => _save(_kSettings, settings.toJson());
+  static Future<void> saveTransactions(List<TxRecord> tx) => _save(_kTx, tx.map((t) => t.toJson()).toList());
 }
