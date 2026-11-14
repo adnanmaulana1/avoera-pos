@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -35,7 +36,7 @@ class KasirScreen extends StatefulWidget {
   final ValueChanged<CartItem> onInc;
   final ValueChanged<CartItem> onDec;
   final ValueChanged<CartItem> onRemove;
-  final void Function(String paymentMethod) onCheckout;
+  final void Function(String paymentMethod, String tableLabel, String orderType) onCheckout;
 
   @override
   State<KasirScreen> createState() => _KasirScreenState();
@@ -168,7 +169,8 @@ class _KasirScreenState extends State<KasirScreen> {
                     itemBuilder: (_, i) => _MenuCard(
                       item: _filtered[i],
                       onTap: () => _openVariantSheet(_filtered[i]),
-                      onQuickAdd: () => widget.onAdd(_filtered[i], 'Reguler · Gula normal', _filtered[i].price, ''),
+                      // Tambah cepat: makanan tidak pakai varian gula.
+                      onQuickAdd: () => widget.onAdd(_filtered[i], _filtered[i].isDrink ? 'Reguler · Gula normal' : 'Reguler', _filtered[i].price, ''),
                     ),
                   ),
           ),
@@ -418,6 +420,13 @@ class _KasirScreenState extends State<KasirScreen> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
+                  TextField(
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(prefixText: 'Rp ', hintText: 'atau ketik nominal sendiri'),
+                    onChanged: (v) => setDlg(() => paid = int.tryParse(v)),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     paid == null ? 'Pilih nominal uang diterima.' : 'Kembalian: ${rupiah(change < 0 ? 0 : change)}',
                     style: const TextStyle(color: AppColors.muted),
@@ -452,7 +461,15 @@ class _KasirScreenState extends State<KasirScreen> {
     );
     if (methodResult == null || !context.mounted) return;
     final paidTotal = _grandTotal;
-    widget.onCheckout(methodResult);
+    // Label tiket dapur mengikuti pilihan kasir: meja terpilih selalu
+    // Dine-in; tanpa meja mengikuti tombol Dine-in/Bungkus di atas.
+    final tableLabel = widget.selectedTable != null
+        ? 'Meja ${widget.selectedTable!.number}'
+        : (_orderType == 'Bungkus' ? 'Bungkus' : 'Dine-in');
+    final orderTypeLabel = widget.selectedTable != null
+        ? 'Dine-in'
+        : (_orderType == 'Bungkus' ? 'Takeaway' : 'Dine-in');
+    widget.onCheckout(methodResult, tableLabel, orderTypeLabel);
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(

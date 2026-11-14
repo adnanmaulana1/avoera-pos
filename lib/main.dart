@@ -206,7 +206,11 @@ class _HomeShellState extends State<HomeShell> {
       });
   void _remove(CartItem c) => setState(() => _cart.remove(c));
 
-  void _checkout(String paymentMethod) {
+  void _checkout(String paymentMethod, String tableLabel, String orderType) {
+    // Total dihitung SEBELUM keranjang dikosongkan, untuk catatan
+    // tagihan berjalan di kartu meja.
+    final subtotal = _cart.fold(0, (a, c) => a + c.total);
+    final grandTotal = subtotal + (subtotal * _settings.servicePercent / 100).round() + (subtotal * _settings.taxPercent / 100).round();
     setState(() {
       final lines = _cart
           .map((c) => KitchenOrderLine(c.menu.name, c.qty, [c.variant, c.note].where((s) => s.isNotEmpty).join(' · ')))
@@ -215,20 +219,31 @@ class _HomeShellState extends State<HomeShell> {
         0,
         KitchenOrder(
           id: 'A-${_orderCounter++}',
-          tableLabel: _selectedTable == null ? 'Bungkus' : 'Meja ${_selectedTable!.number}',
-          orderType: _selectedTable == null ? 'Takeaway' : 'Dine-in',
+          tableLabel: tableLabel,
+          orderType: orderType,
           lines: lines,
           status: KitchenStatus.baru,
           time: 'Baru saja',
         ),
       );
-      if (_selectedTable != null && _selectedTable!.status == TableStatus.kosong) {
-        _selectedTable!.status = TableStatus.terisi;
-        _selectedTable!.guestName = 'Pelanggan';
+      if (_selectedTable != null) {
+        if (_selectedTable!.status == TableStatus.kosong) {
+          _selectedTable!.status = TableStatus.terisi;
+          _selectedTable!.guestName = 'Pelanggan';
+        }
+        // Kartu meja wajib mencerminkan pesanan yang masuk — dulu
+        // jumlahnya diam di Rp0 walau sudah pesan & bayar.
+        _selectedTable!.openAmount += grandTotal;
+        _selectedTable!.since ??= _nowHHmm();
       }
       _cart.clear();
     });
     LocalStore.saveTables(_tables);
+  }
+
+  String _nowHHmm() {
+    final n = DateTime.now();
+    return '${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
   }
 
   // ---------- Kitchen ----------
