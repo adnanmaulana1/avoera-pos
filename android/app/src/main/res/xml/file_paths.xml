@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jalur yang boleh dibagikan FileProvider: cache aplikasi
+     (tempat APK unduhan disimpan Dart lewat Directory.systemTemp)
+     dan folder berkas internal. -->
+<paths>
+    <cache-path name="cache" path="." />
+    <files-path name="files" path="." />
+</paths>

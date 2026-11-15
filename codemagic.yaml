@@ -45,6 +45,29 @@ workflows:
         script: flutter pub get
       - name: Build release APK
         script: flutter build apk --release
+      # Pembaruan dalam aplikasi (v0.10.7): unggah APK jadi ke
+      # server supaya aplikasi yang terpasang bisa mengecek,
+      # mengunduh, dan menawarkannya sendiri. Butuh SATU variable
+      # di Codemagic (App settings > Environment variables):
+      # AVOERA_UPLOAD_TOKEN. Belum diatur -> langkah ini dilewati
+      # dengan aman, build tetap berhasil.
+      - name: Unggah APK untuk pembaruan dalam aplikasi
+        script: |
+          if [ -z "$AVOERA_UPLOAD_TOKEN" ]; then
+            echo "AVOERA_UPLOAD_TOKEN belum diatur — unggah dilewati."
+            exit 0
+          fi
+          APK=$(ls build/app/outputs/flutter-apk/app-release.apk)
+          KODE=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          NAMA=$(grep '^version:' pubspec.yaml | sed 's/^version: //' | sed 's/+.*//')
+          CATATAN=$(git log -1 --pretty=%s | tr -cd '[:print:]' | cut -c1-200)
+          curl -f -X POST "https://webtales.my.id/avoera/upload" \
+            -H "X-Upload-Token: $AVOERA_UPLOAD_TOKEN" \
+            -H "X-Version-Code: $KODE" \
+            -H "X-Version-Name: $NAMA" \
+            -H "X-Notes: $CATATAN" \
+            --data-binary @"$APK"
+          echo "APK v$NAMA (build $KODE) terunggah untuk pembaruan dalam aplikasi."
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
 

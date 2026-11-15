@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data.dart';
 import '../theme.dart';
+import '../update.dart';
 import '../widgets.dart';
 
 /// Beranda: layar pembuka ala referensi Bisakasir (permintaan Adnan
@@ -31,6 +32,8 @@ class BerandaScreen extends StatefulWidget {
     required this.onSwitchBranch,
     required this.onOpenNotices,
     required this.onOpenRiwayat,
+    this.infoUpdate,
+    this.onTapUpdate,
   });
 
   final String businessName;
@@ -56,6 +59,12 @@ class BerandaScreen extends StatefulWidget {
   final ValueChanged<Branch> onSwitchBranch;
   final VoidCallback onOpenNotices;
   final VoidCallback onOpenRiwayat;
+
+  /// Pembaruan aplikasi yang tersedia (dari cek versi server).
+  /// Null = tidak ada banner. Ketuk banner → alur unduh+pasang
+  /// di cangkang utama.
+  final InfoUpdate? infoUpdate;
+  final VoidCallback? onTapUpdate;
 
   @override
   State<BerandaScreen> createState() => _BerandaScreenState();
@@ -118,6 +127,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.lg),
       children: [
+        if (widget.infoUpdate != null && widget.onTapUpdate != null) ...[
+          BannerUpdate(info: widget.infoUpdate!, onTap: widget.onTapUpdate!),
+          const SizedBox(height: AppSpacing.lg),
+        ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

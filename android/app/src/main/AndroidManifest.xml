@@ -4,6 +4,11 @@
          (manifest debug/profile punya, main tidak) — akar gagal
          sinkron berhari-hari, ketahuan 2026-11-14 23:47 WITA. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Pembaruan dari dalam aplikasi (v0.10.7): aplikasi boleh
+         meminta Android membuka pemasang untuk APK yang ia
+         unduh sendiri. Pemasangan tetap ditekan pengguna di
+         jendela sistem — izin ini hanya membuka pintunya. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="Avoera POS"
         android:name="${applicationName}"
@@ -35,6 +40,18 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- FileProvider: membagikan berkas APK di cache aplikasi
+             ke pemasang Android lewat URI content:// (syarat
+             sejak Android 7; jalur file:// mentah ditolak). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

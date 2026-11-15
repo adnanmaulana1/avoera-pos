@@ -44,6 +44,7 @@ class PengaturanScreen extends StatelessWidget {
     required this.onOpenSyncStatus,
     required this.modeTema,
     required this.onModeTemaChanged,
+    this.onCekUpdate,
   });
 
   final String businessName;
@@ -96,6 +97,10 @@ class PengaturanScreen extends StatelessWidget {
   /// Pilihan tema tampilan: 'terang' | 'gelap' | 'sistem'.
   final String modeTema;
   final ValueChanged<String> onModeTemaChanged;
+
+  /// Cek pembaruan aplikasi ke server (baris "Pembaruan
+  /// Aplikasi" di bagian Tentang). Null = baris tidak tampil.
+  final VoidCallback? onCekUpdate;
 
   @override
   Widget build(BuildContext context) {
@@ -364,6 +369,18 @@ class PengaturanScreen extends StatelessWidget {
             onTap: () => showAppInfoDialog(context),
           ),
         ),
+        if (onCekUpdate != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: _SettingRow(
+              icon: Icons.system_update_alt_outlined,
+              label: 'Pembaruan Aplikasi',
+              value: 'Periksa',
+              onTap: () => onCekUpdate!(),
+            ),
+          ),
+        ],
       ],
     );
   }

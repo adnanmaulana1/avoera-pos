@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
+import 'update.dart';
 import 'backend_bawaan.dart';
 import 'store.dart';
 import 'sync.dart';
@@ -343,6 +344,7 @@ class _HomeShellState extends State<HomeShell> {
     widget.onModeTema(_settings.modeTema, false);
     _aturTimerSinkron();
     _periksaStokNotifikasi();
+    _cekUpdateOtomatis();
     if (_cloudAktif) _syncNow(diam: true);
   }
 
@@ -456,6 +458,85 @@ class _HomeShellState extends State<HomeShell> {
       if (_tarikJarak >= _tarikAmbang) _tarikSiap.value = true;
     }
     return false;
+  }
+
+  // ---------- Pembaruan dalam aplikasi ----------
+
+  /// Rilis lebih baru yang ditemukan di server (null = belum
+  /// ada / belum diperiksa). Ditampilkan sebagai banner di
+  /// Beranda.
+  InfoUpdate? _infoUpdate;
+
+  /// Cek diam-diam sekali saat aplikasi dibuka. Ada versi
+  /// lebih baru → banner Beranda + pemberitahuan tersimpan
+  /// (kunci per versi, tidak banjir). Gagal cek = diam saja.
+  Future<void> _cekUpdateOtomatis() async {
+    final info = await ambilInfoUpdate();
+    if (info == null || info.kode <= appBuild || !mounted) return;
+    setState(() => _infoUpdate = info);
+    _tambahNotifikasi(
+      jenis: 'info',
+      judul: 'Pembaruan tersedia',
+      isi: 'Avoera POS v${info.nama} siap dipasang. Buka Beranda, lalu ketuk banner pembaruan.',
+      kunci: 'update-${info.kode}',
+    );
+  }
+
+  /// Cek atas permintaan dari Pengaturan → umpan balik selalu
+  /// tampil (toast / dialog tawar), tidak diam seperti cek
+  /// otomatis.
+  Future<void> _cekUpdateManual() async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: AppSpacing.lg),
+            Text('Memeriksa pembaruan…'),
+          ],
+        ),
+      ),
+    );
+    final info = await ambilInfoUpdate();
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    if (info == null) {
+      tampilToast(context, 'Tidak bisa memeriksa pembaruan. Periksa koneksi internet.', icon: Icons.wifi_off_outlined);
+      return;
+    }
+    if (info.kode <= appBuild) {
+      tampilToast(context, 'Sudah versi terbaru (v$appVersion).', icon: Icons.check_circle_outline);
+      return;
+    }
+    setState(() => _infoUpdate = info);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Ada versi baru — v${info.nama}'),
+        content: Text(info.catatan.isNotEmpty ? info.catatan : 'Versi terbaru Avoera POS sudah tersedia.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Nanti')),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _mulaiUpdate(info);
+            },
+            child: const Text('Perbarui'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Buka dialog unduh + pasang untuk rilis ini.
+  void _mulaiUpdate(InfoUpdate info) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => DialogUnduhUpdate(info: info),
+    );
   }
 
   /// Ketuk ikon awan di Beranda: belum diatur → buka Pengaturan;
@@ -1234,6 +1315,8 @@ class _HomeShellState extends State<HomeShell> {
         onSwitchBranch: _switchBranch,
         onOpenNotices: _openNotices,
         onOpenRiwayat: _openRiwayat,
+        infoUpdate: _infoUpdate,
+        onTapUpdate: _infoUpdate == null ? null : () => _mulaiUpdate(_infoUpdate!),
       ),
       // Gerbang PIN: kasir terkunci sampai PIN benar dimasukkan
       // (hanya bila pemilik mengatur PIN; sekali per sesi).
@@ -1346,6 +1429,7 @@ class _HomeShellState extends State<HomeShell> {
           _settingChanged(() => _settings.modeTema = v);
           widget.onModeTema(v, true);
         },
+        onCekUpdate: _cekUpdateManual,
       ),
     ];
 
