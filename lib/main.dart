@@ -222,7 +222,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _index = 0;
   final List<CartItem> _cart = [];
   final List<KitchenOrder> _kitchen = seedKitchenOrders();
@@ -284,10 +284,31 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     Timer(const Duration(milliseconds: 1500), () {
-      if (mounted) setState(() => _splashSelesai = true);
+      if (mounted) {
+        setState(() => _splashSelesai = true);
+        _tawarkanUpdate();
+      }
     });
+    // Penjaga tawaran pembaruan: mencoba lagi berkala —
+    // tawaran hanya tampil bila semua syaratnya pas (Beranda
+    // aktif, splash selesai, versi belum pernah ditawarkan).
+    _timerTawaran = Timer.periodic(const Duration(seconds: 20), (_) => _tawarkanUpdate());
     _loadData();
+  }
+
+  /// Aplikasi kembali ke depan → periksa pembaruan lagi
+  /// (paling sering 5 menit sekali): rilis yang terbit saat
+  /// aplikasi sedang terbuka tetap tertangkap tanpa mulai
+  /// ulang (v0.10.12).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final terakhir = _cekUpdateTerakhir;
+    if (terakhir == null || DateTime.now().difference(terakhir) > const Duration(minutes: 5)) {
+      _cekUpdateOtomatis();
+    }
   }
 
   Future<void> _loadData() async {
@@ -318,6 +339,10 @@ class _HomeShellState extends State<HomeShell> {
       _ready = true;
       _syncStatus = _cloudAktif ? StatusSinkron.tersinkron : StatusSinkron.belumDiatur;
     });
+    // Meta pembaruan: versi tertinggi yang sudah pernah
+    // ditawarkan otomatis (tawaran hanya sekali per versi).
+    final metaUpdate = await LocalStore.loadUpdateMeta();
+    _kodeTawaranTerakhir = (metaUpdate['tawaranKode'] as num?)?.toInt() ?? 0;
     // Meta sinkron tersimpan (menunggu + laporan terakhir).
     final meta = await LocalStore.loadSyncMeta();
     if (mounted) {
@@ -350,6 +375,8 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _timerTawaran?.cancel();
     _syncDebounce?.cancel();
     _syncPeriodik?.cancel();
     _syncTimeoutTimer?.cancel();
@@ -467,24 +494,73 @@ class _HomeShellState extends State<HomeShell> {
   /// Beranda.
   InfoUpdate? _infoUpdate;
 
+  /// Kode tertinggi yang sudah pernah DITAWARKAN OTOMATIS
+  /// lewat dialog (v0.10.12) + penanda dialog sedang tampil +
+  /// cap waktu cek terakhir (untuk cek saat aplikasi kembali
+  /// ke depan).
+  int _kodeTawaranTerakhir = 0;
+  bool _tawaranSedangTampil = false;
+  DateTime? _cekUpdateTerakhir;
+  Timer? _timerTawaran;
+
   /// v0.10.8: kata cari Stok Bahan yang dipasang dari ketukan
   /// pemberitahuan stok (+ nomor urut pemicunya).
   String? _stokQueryAwal;
   int _stokFokusKode = 0;
 
-  /// Cek diam-diam sekali saat aplikasi dibuka. Ada versi
-  /// lebih baru → banner Beranda + pemberitahuan tersimpan
-  /// (kunci per versi, tidak banjir). Gagal cek = diam saja.
+  /// Cek diam-diam saat aplikasi dibuka + saat kembali ke
+  /// depan. Ada versi lebih baru → dialog tawaran otomatis
+  /// (sekali per versi) + banner Beranda + pemberitahuan
+  /// tersimpan (kunci per versi, tidak banjir). Gagal cek =
+  /// diam saja.
   Future<void> _cekUpdateOtomatis() async {
+    _cekUpdateTerakhir = DateTime.now();
     final info = await ambilInfoUpdate();
     if (info == null || info.kode <= appBuild || !mounted) return;
     setState(() => _infoUpdate = info);
     _tambahNotifikasi(
       jenis: 'info',
       judul: 'Pembaruan tersedia',
-      isi: 'Avoera POS v${info.nama} siap dipasang. Buka Beranda, lalu ketuk banner pembaruan.',
+      isi: 'Avoera POS v${info.nama} siap dipasang. Ketuk pemberitahuan ini untuk memasangnya.',
       kunci: 'update-${info.kode}',
     );
+    _tawarkanUpdate();
+  }
+
+  /// Tawarkan pembaruan lewat DIALOG YANG MUNCUL SENDIRI
+  /// (permintaan Adnan 2026-11-16 00:43: "harusnya muncul
+  /// otomatis kalau ada pembaruan, ga harus masuk ke
+  /// pengaturan dulu"). Syaratnya dijaga ketat supaya tidak
+  /// mengganggu: splash sudah lewat, pengguna sedang di
+  /// Beranda, wizard awal sudah selesai, tidak ada dialog
+  /// tawaran lain, dan versi ini belum pernah ditawarkan.
+  /// Mengetuk 'Nanti' tidak menawarkannya lagi untuk versi
+  /// yang sama — banner tetap tinggal sebagai pengingat.
+  void _tawarkanUpdate() {
+    final info = _infoUpdate;
+    if (!mounted || info == null || _tawaranSedangTampil) return;
+    if (!_splashSelesai || !_ready || _index != 0 || !_settings.onboarded) return;
+    if (!perluTawaranUpdate(kodeTersedia: info.kode, buildSaatIni: appBuild, kodeTawaranTerakhir: _kodeTawaranTerakhir)) return;
+    _kodeTawaranTerakhir = info.kode;
+    LocalStore.saveUpdateMeta({'tawaranKode': info.kode});
+    _tawaranSedangTampil = true;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Ada versi baru — v${info.nama}'),
+        content: Text(info.catatan.isNotEmpty ? info.catatan : 'Versi terbaru Avoera POS sudah tersedia.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Nanti')),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _mulaiUpdate(info);
+            },
+            child: const Text('Perbarui'),
+          ),
+        ],
+      ),
+    ).whenComplete(() => _tawaranSedangTampil = false);
   }
 
   /// Cek atas permintaan dari Pengaturan → umpan balik selalu

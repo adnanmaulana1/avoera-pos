@@ -30,6 +30,7 @@ class LocalStore {
   static const _kNotif = 'avoera.notifications.v1';
   static const _kMutasi = 'avoera.mutasi.v1';
   static const _kSyncMeta = 'avoera.syncmeta.v1';
+  static const _kUpdateMeta = 'avoera.updatemeta.v1';
 
   static Future<AppData> load() async {
     try {
@@ -99,4 +100,20 @@ class LocalStore {
   }
 
   static Future<void> saveSyncMeta(Map<String, dynamic> meta) => _save(_kSyncMeta, meta);
+
+  /// Meta pembaruan dalam aplikasi: kode tertinggi yang sudah
+  /// pernah DITAWARKAN OTOMATIS lewat dialog (v0.10.12) —
+  /// supaya tawaran hanya muncul sekali per versi.
+  static Future<Map<String, dynamic>> loadUpdateMeta() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kUpdateMeta);
+      if (raw == null) return <String, dynamic>{};
+      return (jsonDecode(raw) as Map).cast<String, dynamic>();
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }
+
+  static Future<void> saveUpdateMeta(Map<String, dynamic> meta) => _save(_kUpdateMeta, meta);
 }

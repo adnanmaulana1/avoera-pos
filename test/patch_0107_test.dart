@@ -108,18 +108,22 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(kanal, null);
     });
 
-    test('pasangApk true saat kanal menjawab true', () async {
+    test('pasangApk meneruskan jawaban kanal (v0.10.12: dibuka / perlu-izin / warisan true)', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(kanal, (call) async {
         expect(call.method, 'install');
         expect((call.arguments as Map)['path'], '/tmp/x.apk');
-        return true;
+        return 'dibuka';
       });
-      expect(await pasangApk(File('/tmp/x.apk')), isTrue);
+      expect(await pasangApk(File('/tmp/x.apk')), 'dibuka');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(kanal, (call) async => 'perlu-izin');
+      expect(await pasangApk(File('/tmp/x.apk')), 'perlu-izin');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(kanal, (call) async => true);
+      expect(await pasangApk(File('/tmp/x.apk')), 'dibuka', reason: 'jawaban bool sisi Android lama tetap dimengerti');
     });
 
-    test('pasangApk false saat kanal tidak terdaftar', () async {
+    test('pasangApk gagal saat kanal tidak terdaftar', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(kanal, null);
-      expect(await pasangApk(File('/tmp/x.apk')), isFalse);
+      expect(await pasangApk(File('/tmp/x.apk')), 'gagal');
     });
   });
 

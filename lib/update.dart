@@ -20,11 +20,17 @@ import 'widgets.dart';
 ///    berkas pembaruan TIDAK lagi tinggal di server Adnan —
 ///    keputusan Adnan 2026-11-15: servernya sering kena
 ///    suspend, pembaruan tidak boleh ikut mati.
-/// 2. Nomor build terbaru > nomor build aplikasi → banner di
-///    Beranda + pemberitahuan tersimpan.
-/// 3. Ketuk banner → dialog unduh berprogress → pemasang
-///    Android dibuka lewat kanal native 'avoera/installer'
-///    (MainActivity + FileProvider).
+/// 2. Nomor build terbaru > nomor build aplikasi → dialog
+///    tawaran muncul SENDIRI sekali per versi (v0.10.12,
+///    permintaan Adnan: jangan menunggu pengguna sadar /
+///    membuka Pengaturan) + banner di Beranda + pemberitahuan
+///    tersimpan.
+/// 3. Ketuk Perbarui / banner → dialog unduh berprogress →
+///    pemasang Android dibuka lewat kanal native
+///    'avoera/installer' (MainActivity + FileProvider). Izin
+///    "pasang aplikasi tidak dikenal" belum ada → sisi
+///    Android membuka halaman izinya dan dialog memandu
+///    memasang ulang tanpa unduh ulang.
 const urlInfoUpdate = 'https://raw.githubusercontent.com/adnanmaulana1/avoera-releases/main/version.json';
 
 /// Info rilis terbaru sebagaimana tertulis di version.json:
@@ -110,14 +116,34 @@ const _kanalPasang = MethodChannel('avoera/installer');
 
 /// Minta Android membuka pemasang untuk APK ini (pengguna
 /// tetap menekan "Pasang" di jendela sistem — itu aturan
-/// Android). False = kanal tidak tersedia / gagal, mis. saat
-/// berjalan di tes atau di luar Android.
-Future<bool> pasangApk(File file) async {
+/// Android). Hasilnya (v0.10.12):
+/// - 'dibuka': jendela pemasang tampil.
+/// - 'perlu-izin': izin "pasang aplikasi tidak dikenal" belum
+///   diberikan; sisi Android SUDAH membuka halaman izinya —
+///   pengguna mengaktifkan sekali, lalu memasang ulang.
+/// - 'gagal': kanal tidak tersedia / gagal lain, mis. saat
+///   berjalan di tes atau di luar Android.
+/// (Jawaban bool dari sisi Android lama diperlakukan sebagai
+/// 'dibuka' bila true.)
+Future<String> pasangApk(File file) async {
   try {
-    return await _kanalPasang.invokeMethod<bool>('install', {'path': file.path}) ?? false;
+    final hasil = await _kanalPasang.invokeMethod<dynamic>('install', {'path': file.path});
+    if (hasil == 'perlu-izin') return 'perlu-izin';
+    if (hasil == 'dibuka' || hasil == true) return 'dibuka';
+    return 'gagal';
   } catch (_) {
-    return false;
+    return 'gagal';
   }
+}
+
+/// Apakah versi ini perlu DITAWARKAN OTOMATIS lewat dialog
+/// saat aplikasi dibuka (permintaan Adnan 2026-11-16 00:43:
+/// pembaruan harus muncul sendiri, jangan menunggu pengguna
+/// membuka Pengaturan / menyadari banner). Sekali per versi:
+/// [kodeTawaranTerakhir] = kode tertinggi yang sudah pernah
+/// ditawarkan otomatis; rilis yang lebih baru ditawarkan lagi.
+bool perluTawaranUpdate({required int kodeTersedia, required int buildSaatIni, required int kodeTawaranTerakhir}) {
+  return kodeTersedia > buildSaatIni && kodeTersedia > kodeTawaranTerakhir;
 }
 
 /// Banner pembaruan di puncak Beranda.
@@ -162,12 +188,22 @@ class BannerUpdate extends StatelessWidget {
 }
 
 /// Dialog unduh APK dengan penunjuk kemajuan. Sesudah unduhan
-/// selesai, pemasang Android langsung dibuka dan dialog
-/// menutup. Gagal → pesan + tombol Tutup.
+/// selesai, pemasang Android langsung diminta membuka. Tiga
+/// ujung (v0.10.12 — dialog lama cuma bisa bilang "gagal,
+/// coba dari Pengaturan", yang dikeluhkan Adnan):
+/// - pemasang terbuka → dialog menutup;
+/// - izin pasang belum ada → penjelasan + tombol 'Pasang'
+///   untuk mencoba lagi SESUDAH pengguna mengaktifkan izin
+///   (berkas yang sama, tanpa mengunduh ulang);
+/// - gagal lain → pesan + 'Coba Lagi' (juga tanpa unduh ulang).
 class DialogUnduhUpdate extends StatefulWidget {
-  const DialogUnduhUpdate({super.key, required this.info});
+  const DialogUnduhUpdate({super.key, required this.info, this.unduhFn, this.pasangFn});
 
   final InfoUpdate info;
+
+  /// Jahitan uji: pengganti pengunduh / pemasang bawaan.
+  final Future<File?> Function(InfoUpdate info, void Function(double?) onProgres)? unduhFn;
+  final Future<String> Function(File file)? pasangFn;
 
   @override
   State<DialogUnduhUpdate> createState() => _DialogUnduhUpdateState();
@@ -175,7 +211,10 @@ class DialogUnduhUpdate extends StatefulWidget {
 
 class _DialogUnduhUpdateState extends State<DialogUnduhUpdate> {
   double? _progres;
-  String? _galat;
+  File? _file;
+
+  /// 'unduh' | 'unduh-gagal' | 'izin' | 'gagal'
+  String _fase = 'unduh';
 
   @override
   void initState() {
@@ -184,47 +223,68 @@ class _DialogUnduhUpdateState extends State<DialogUnduhUpdate> {
   }
 
   Future<void> _jalankan() async {
-    final file = await unduhApk(widget.info, onProgres: (p) {
+    final unduh = widget.unduhFn ?? (InfoUpdate i, void Function(double?) cb) => unduhApk(i, onProgres: cb);
+    final file = await unduh(widget.info, (p) {
       if (mounted) setState(() => _progres = p);
     });
     if (!mounted) return;
     if (file == null) {
-      setState(() => _galat = 'Unduhan gagal. Periksa koneksi internet, lalu coba lagi.');
+      setState(() => _fase = 'unduh-gagal');
       return;
     }
-    final dibuka = await pasangApk(file);
+    _file = file;
+    await _cobaPasang();
+  }
+
+  Future<void> _cobaPasang() async {
+    final pasang = widget.pasangFn ?? pasangApk;
+    final hasil = await pasang(_file!);
     if (!mounted) return;
-    if (dibuka) {
-      Navigator.of(context).pop();
-    } else {
-      setState(() => _galat = 'Unduhan selesai, tetapi pemasang tidak bisa dibuka. Coba lagi dari Pengaturan.');
+    switch (hasil) {
+      case 'dibuka':
+        Navigator.of(context).pop();
+      case 'perlu-izin':
+        setState(() => _fase = 'izin');
+      default:
+        setState(() => _fase = 'gagal');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final sedangUnduh = _fase == 'unduh';
     return PopScope(
-      canPop: _galat != null,
+      canPop: !sedangUnduh,
       child: AlertDialog(
         title: Text('Memperbarui ke v${widget.info.nama}'),
-        content: _galat != null
-            ? Text(_galat!, style: AppText.body)
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _progres == null ? 'Mengunduh…' : 'Mengunduh… ${(_progres! * 100).round()}%',
-                    style: AppText.body,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  LinearProgressIndicator(value: _progres),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text('Sesudah unduhan selesai, tekan "Pasang" di jendela Android.', style: AppText.caption.copyWith(color: AppColors.muted)),
-                ],
-              ),
+        content: switch (_fase) {
+          'unduh-gagal' => Text('Unduhan gagal. Periksa koneksi internet, lalu coba lagi.', style: AppText.body),
+          'izin' => Text(
+              'Unduhan selesai. Android meminta izin sekali saja agar Avoera boleh memasang pembaruannya sendiri — halaman izin sudah dibuka. Aktifkan "Izinkan dari sumber ini", kembali ke sini, lalu ketuk Pasang.',
+              style: AppText.body,
+            ),
+          'gagal' => Text('Unduhan selesai, tetapi pemasang tidak bisa dibuka.', style: AppText.body),
+          _ => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _progres == null ? 'Mengunduh…' : 'Mengunduh… ${(_progres! * 100).round()}%',
+                  style: AppText.body,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                LinearProgressIndicator(value: _progres),
+                const SizedBox(height: AppSpacing.sm),
+                Text('Sesudah unduhan selesai, tekan "Pasang" di jendela Android.', style: AppText.caption.copyWith(color: AppColors.muted)),
+              ],
+            ),
+        },
         actions: [
-          if (_galat != null) TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Tutup')),
+          if (_fase == 'unduh-gagal') TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Tutup')),
+          if (_fase == 'izin' || _fase == 'gagal') ...[
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Tutup')),
+            FilledButton(onPressed: _cobaPasang, child: Text(_fase == 'izin' ? 'Pasang' : 'Coba Lagi')),
+          ],
         ],
       ),
     );

@@ -127,10 +127,6 @@ class _BerandaScreenState extends State<BerandaScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.lg),
       children: [
-        if (widget.infoUpdate != null && widget.onTapUpdate != null) ...[
-          BannerUpdate(info: widget.infoUpdate!, onTap: widget.onTapUpdate!),
-          const SizedBox(height: AppSpacing.lg),
-        ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -211,6 +207,15 @@ class _BerandaScreenState extends State<BerandaScreen> {
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
+        // Banner pembaruan tinggal DI BAWAH sapaan + cabang
+        // (v0.10.12 — Adnan mempertanyakan posisi lamanya di
+        // paling atas, mendahului sapaan). Tawaran utamanya
+        // kini dialog yang muncul sendiri; banner ini
+        // pengingat tenangnya.
+        if (widget.infoUpdate != null && widget.onTapUpdate != null) ...[
+          BannerUpdate(info: widget.infoUpdate!, onTap: widget.onTapUpdate!),
+          const SizedBox(height: AppSpacing.lg),
+        ],
         // Kartu penjualan: emerald pekat satu warna (bukan gradasi),
         // satu-satunya elemen berbayangan di aplikasi + tekstur dua
         // lingkaran sewarna.
