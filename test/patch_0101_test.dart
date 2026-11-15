@@ -216,6 +216,24 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
+  // Keluhan Adnan 2026-11-15 21:49: "belum sampai bawah sudah
+  // kerefresh" — penyegaran kini HANYA jalan saat jari dilepas
+  // sesudah tarikan mencapai ambang penuh, bukan di tengah
+  // tarikan.
+  testWidgets('Tarikan jauh belum menyegar sebelum jari dilepas', (tester) async {
+    await pumpApp(tester, size: const Size(390, 844));
+    final gestur = await tester.startGesture(tester.getCenter(find.byType(ListView).first));
+    for (var i = 0; i < 6; i++) {
+      await gestur.moveBy(const Offset(0, 60));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(find.byType(ShimmerSkeleton), findsNothing, reason: 'Jari masih menahan: penyegaran tidak boleh jalan di tengah tarikan');
+    await gestur.up();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(ShimmerSkeleton), findsOneWidget, reason: 'Sesudah dilepas dalam keadaan siap, penyegaran jalan');
+    await tester.pump(const Duration(seconds: 2));
+  });
+
   // Keputusan Adnan 2026-11-15 12:04: shimmer HANYA untuk
   // tarikan jauh yang disengaja — tarikan kecil saat menggulir
   // biasa tidak boleh menyalakan apa-apa.

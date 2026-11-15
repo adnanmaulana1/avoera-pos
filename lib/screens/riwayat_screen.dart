@@ -4,14 +4,27 @@ import '../data.dart';
 import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'detail_transaksi_screen.dart';
+
+/// Apakah waktu transaksi masuk rentang tanggal inklusif
+/// (hari terakhir dihitung penuh sampai 23:59). Rentang null
+/// = semua waktu.
+bool txDalamRentang(DateTime at, DateTimeRange? r) {
+  if (r == null) return true;
+  return !at.isBefore(r.start) && at.isBefore(r.end.add(const Duration(days: 1)));
+}
 
 /// Riwayat Transaksi = Laporan Transaksi: semua pembayaran yang
 /// tercatat, bisa disaring per periode. Dibuka dari Beranda
 /// (Lihat Semua) dan dari hub Laporan.
 class RiwayatScreen extends StatefulWidget {
-  const RiwayatScreen({super.key, required this.transactions, required this.branchId});
+  const RiwayatScreen({super.key, required this.transactions, required this.branchId, this.branchName = ''});
   final List<TxRecord> transactions;
   final String branchId;
+
+  /// Nama cabang aktif — diteruskan ke halaman Detail
+  /// Transaksi. Kosong = tidak ditampilkan.
+  final String branchName;
 
   @override
   State<RiwayatScreen> createState() => _RiwayatScreenState();
@@ -21,13 +34,37 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   int _filter = 0; // 0 semua, 1 hari ini, 2 minggu ini, 3 bulan ini
   String _metode = 'Semua'; // Semua / Tunai / QRIS
 
+  /// Rentang tanggal pilihan sendiri (filter tanggal, diminta
+  /// Adnan 2026-11-15). Selama terisi, saringan periode di
+  /// atasnya tidak dipakai; memilih chip periode menghapusnya.
+  DateTimeRange? _rentang;
+
+  Future<void> _pilihTanggal() async {
+    final now = DateTime.now();
+    final hasil = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2025),
+      lastDate: DateTime(now.year, now.month, now.day),
+      initialDateRange: _rentang,
+    );
+    if (hasil != null && mounted) setState(() => _rentang = hasil);
+  }
+
+  String _labelRentang() {
+    final r = _rentang!;
+    String f(DateTime d) => '${d.day} ${_bulanSingkat[d.month - 1]}';
+    return r.start == r.end ? '${f(r.start)} ${r.start.year}' : '${f(r.start)} – ${f(r.end)} ${r.end.year}';
+  }
+
   static const _bulanSingkat = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     var list = widget.transactions.where((t) => t.branchId.isEmpty || t.branchId == widget.branchId).toList();
-    if (_filter == 1) {
+    if (_rentang != null) {
+      list = list.where((t) => txDalamRentang(t.at, _rentang)).toList();
+    } else if (_filter == 1) {
       list = list.where((t) => t.at.year == now.year && t.at.month == now.month && t.at.day == now.day).toList();
     } else if (_filter == 2) {
       final start = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
@@ -84,7 +121,14 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             child: FilterChipRow(
               children: [
                 for (final (i, label) in [(0, 'Semua'), (1, 'Hari Ini'), (2, 'Minggu Ini'), (3, 'Bulan Ini')])
-                  AppChip(label: label, selected: _filter == i, onSelected: (_) => setState(() => _filter = i)),
+                  AppChip(
+                    label: label,
+                    selected: _rentang == null && _filter == i,
+                    onSelected: (_) => setState(() {
+                      _filter = i;
+                      _rentang = null;
+                    }),
+                  ),
               ],
             ),
           ),
@@ -94,6 +138,20 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               children: [
                 for (final m in ['Semua', 'Tunai', 'QRIS'])
                   AppChip(label: m == 'Semua' ? 'Semua Metode' : m, selected: _metode == m, onSelected: (_) => setState(() => _metode = m)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+            child: FilterChipRow(
+              children: [
+                AppChip(
+                  label: _rentang == null ? 'Pilih Tanggal' : _labelRentang(),
+                  selected: _rentang != null,
+                  onSelected: (_) => _pilihTanggal(),
+                ),
+                if (_rentang != null)
+                  AppChip(label: 'Hapus Tanggal', selected: false, onSelected: (_) => setState(() => _rentang = null)),
               ],
             ),
           ),
@@ -128,6 +186,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       final tgl = '${t.at.day} ${_bulanSingkat[t.at.month - 1]} ${t.at.year}';
                       return AppCard(
                         margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => DetailTransaksiScreen(tx: t, branchName: widget.branchName)),
+                        ),
                         child: Row(
                           children: [
                             Container(
@@ -147,6 +208,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                               ),
                             ),
                             Text(rupiah(t.total), style: AppText.body.copyWith(fontWeight: FontWeight.w800)),
+                            const SizedBox(width: AppSpacing.xs),
+                            Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
                           ],
                         ),
                       );

@@ -353,6 +353,7 @@ class _HomeShellState extends State<HomeShell> {
     _syncTimeoutTimer?.cancel();
     _penandaSinkron.dispose();
     _tarikProgres.dispose();
+    _tarikSiap.dispose();
     super.dispose();
   }
 
@@ -397,22 +398,33 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   /// Akumulasi jarak tarikan melewati tepi atas pada gestur
-  /// yang sedang berjalan + kunci pemicu per gestur.
+  /// yang sedang berjalan.
   double _tarikJarak = 0;
-  bool _tarikTerpicu = false;
   bool _gesturDiPuncak = false;
 
   /// Kemajuan tarikan 0..1 untuk indikator lingkaran di puncak
-  /// layar — pengguna melihat seberapa jauh lagi harus menarik
-  /// (di versi pertama tidak ada tanda sama sekali).
+  /// layar — pengguna melihat seberapa jauh lagi harus menarik.
   final _tarikProgres = ValueNotifier<double>(0);
+
+  /// Tarikan sudah mencapai ambang ("siap"): lingkaran
+  /// indikator berubah hijau penuh. Penyegaran BARU jalan saat
+  /// jari DILEPAS dalam keadaan siap — keluhan Adnan
+  /// 2026-11-15 21:49: versi sebelumnya menyegarkan di tengah
+  /// tarikan, sebelum lingkarannya terasa "sampai bawah".
+  final _tarikSiap = ValueNotifier<bool>(false);
+
+  /// Jarak tarikan melewati tepi atas (px) agar siap menyegar.
+  static const double _tarikAmbang = 110;
 
   /// Detektor tarik-untuk-segar yang DISENGAJA: RefreshIndicator
   /// bawaan memicu hanya dari tarikan ±40px di puncak daftar,
   /// jadi menggulir biasa pun sering menyalakan shimmer (keluhan
   /// Adnan 2026-11-15 12:03). Kini jarak tarikan jari melewati
-  /// tepi atas diakumulasi; shimmer + sinkron hanya jalan bila
-  /// tarikannya jauh (≥120px) dalam satu gestur.
+  /// tepi atas diakumulasi dari OverscrollNotification
+  /// (ScrollUpdateNotification kelaparan di tepi yang mentok —
+  /// posisi tidak berubah jadi tidak ada update), gestur WAJIB
+  /// mulai di puncak, dan penyegaran hanya jalan saat jari
+  /// dilepas sesudah tarikan mencapai ambang penuh.
   bool _padaNotifikasiGulir(ScrollNotification n) {
     if (n.metrics.axis != Axis.vertical) return false;
     if (n is ScrollStartNotification) {
@@ -422,34 +434,26 @@ class _HomeShellState extends State<HomeShell> {
       // itulah tarikan "tidak sengaja" yang dikeluhkan Adnan.
       _gesturDiPuncak = n.dragDetails != null && n.metrics.pixels <= n.metrics.minScrollExtent + 1;
       _tarikJarak = 0;
-      _tarikTerpicu = false;
-      return false;
-    }
-    if (n is ScrollEndNotification) {
-      _tarikJarak = 0;
-      _tarikTerpicu = false;
-      _gesturDiPuncak = false;
+      _tarikSiap.value = false;
       _tarikProgres.value = 0;
       return false;
     }
-    if (_menyegarkan || _tarikTerpicu || !_gesturDiPuncak) return false;
-    // Sinyal tarikan melewati tepi atas = OverscrollNotification
-    // (overscroll negatif di tepi awal). ScrollUpdateNotification
-    // tidak bisa dipakai: saat posisi sudah mentok di puncak,
-    // posisi tidak berubah jadi notifikasi update berhenti —
-    // akumulasi dari sana selalu kelaparan (terbukti di tes).
-    // Ambang 72px (v0.10.4): versi pertama 120px terasa seperti
-    // "tidak ada tarik-untuk-segar" di HP asli karena sebagian
-    // gerak jari habis untuk menggulir balik ke puncak dulu.
+    if (n is ScrollEndNotification) {
+      final siap = _tarikSiap.value;
+      _tarikJarak = 0;
+      _gesturDiPuncak = false;
+      _tarikSiap.value = false;
+      _tarikProgres.value = 0;
+      // Segar hanya saat dilepas dalam keadaan siap — bukan di
+      // tengah tarikan.
+      if (siap && !_menyegarkan) _segarkan();
+      return false;
+    }
+    if (_menyegarkan || !_gesturDiPuncak) return false;
     if (n is OverscrollNotification && n.dragDetails != null && n.overscroll < 0) {
       _tarikJarak += -n.overscroll;
-      _tarikProgres.value = (_tarikJarak / 72).clamp(0.0, 1.0);
-      if (_tarikJarak >= 72) {
-        _tarikTerpicu = true;
-        _tarikJarak = 0;
-        _tarikProgres.value = 0;
-        _segarkan();
-      }
+      _tarikProgres.value = (_tarikJarak / _tarikAmbang).clamp(0.0, 1.0);
+      if (_tarikJarak >= _tarikAmbang) _tarikSiap.value = true;
     }
     return false;
   }
@@ -688,7 +692,13 @@ class _HomeShellState extends State<HomeShell> {
 
   // ---------- Laporan & pemberitahuan ----------
   void _openRiwayat() => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => RiwayatScreen(transactions: _transactions, branchId: _settings.activeBranchId)),
+        MaterialPageRoute(
+          builder: (_) => RiwayatScreen(
+            transactions: _transactions,
+            branchId: _settings.activeBranchId,
+            branchName: _settings.activeBranch.name,
+          ),
+        ),
       );
 
   void _openBulanan() => Navigator.of(context).push(
@@ -1044,6 +1054,21 @@ class _HomeShellState extends State<HomeShell> {
         tax: taxAmt,
         branchId: _settings.activeBranchId,
         uuid: 'u${DateTime.now().millisecondsSinceEpoch}-$_orderCounter',
+        // Rincian item disimpan sejak v0.10.6 supaya halaman
+        // Detail Transaksi bisa menampilkan pesanan aslinya
+        // (dulu hanya jumlah item yang tercatat).
+        lines: [
+          for (final c in _cart)
+            TxLine(
+              nama: c.menu.name,
+              keterangan: [
+                if (c.variant.isNotEmpty && c.variant != 'Reguler') c.variant,
+                if (c.note.isNotEmpty) c.note,
+              ].join(' · '),
+              qty: c.qty,
+              total: c.total,
+            ),
+        ],
       ));
       // Potong stok bahan dari resep (permintaan Adnan
       // 2026-11-15): menu beresep mengurangi bahan per porsi;
@@ -1137,18 +1162,24 @@ class _HomeShellState extends State<HomeShell> {
                     offset: Offset(0, -40 + 54 * p),
                     child: Opacity(
                       opacity: p.clamp(0.15, 1.0),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.border),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 2))],
-                        ),
-                        child: Transform.rotate(
-                          angle: p * 3.5,
-                          child: Icon(Icons.refresh, size: 20, color: AppColors.accent),
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: _tarikSiap,
+                        builder: (_, siap, _) => Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            // Siap (ambang tercapai): lingkaran
+                            // hijau penuh = "lepas sekarang,
+                            // aplikasi akan menyegar".
+                            color: siap ? AppColors.accent : AppColors.card,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: siap ? AppColors.accent : AppColors.border),
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 2))],
+                          ),
+                          child: Transform.rotate(
+                            angle: p * 3.5,
+                            child: Icon(Icons.refresh, size: 20, color: siap ? Colors.white : AppColors.accent),
+                          ),
                         ),
                       ),
                     ),

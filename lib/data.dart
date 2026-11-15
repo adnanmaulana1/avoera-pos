@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.10.5';
+const appVersion = '0.10.6';
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -577,6 +577,28 @@ List<Ingredient> seedIngredients() => <Ingredient>[
 /// Satu pembayaran yang selesai di kasir. Dicatat permanen supaya
 /// Beranda & Laporan menampilkan penjualan ASLI hasil jualan —
 /// bukan angka contoh.
+/// Satu baris item di dalam transaksi (nama, keterangan
+/// varian/catatan, jumlah, total baris). Disimpan sejak
+/// v0.10.6 supaya halaman Detail Transaksi bisa menampilkan
+/// rincian pesanan; transaksi lama tidak punya baris ini.
+class TxLine {
+  TxLine({required this.nama, this.keterangan = '', required this.qty, required this.total});
+
+  final String nama;
+  final String keterangan;
+  final int qty;
+  final int total;
+
+  Map<String, dynamic> toJson() => {'nama': nama, 'keterangan': keterangan, 'qty': qty, 'total': total};
+
+  factory TxLine.fromJson(Map<String, dynamic> j) => TxLine(
+        nama: j['nama'] as String? ?? 'Item',
+        keterangan: j['keterangan'] as String? ?? '',
+        qty: (j['qty'] as num?)?.toInt() ?? 1,
+        total: (j['total'] as num?)?.toInt() ?? 0,
+      );
+}
+
 class TxRecord {
   TxRecord({
     required this.id,
@@ -589,6 +611,7 @@ class TxRecord {
     this.tax = 0,
     this.branchId = '',
     this.uuid = '',
+    this.lines = const [],
   });
   final String id;
 
@@ -608,6 +631,10 @@ class TxRecord {
   final int tax;
   final String branchId;
 
+  /// Rincian item transaksi (kosong untuk transaksi lama
+  /// sebelum v0.10.6).
+  final List<TxLine> lines;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'total': total,
@@ -619,6 +646,7 @@ class TxRecord {
         'tax': tax,
         'branchId': branchId,
         'uuid': uuid.isEmpty ? id : uuid,
+        'lines': lines.map((l) => l.toJson()).toList(),
       };
 
   factory TxRecord.fromJson(Map<String, dynamic> j) => TxRecord(
@@ -632,6 +660,9 @@ class TxRecord {
         tax: (j['tax'] as num?)?.toInt() ?? 0,
         branchId: j['branchId'] as String? ?? '',
         uuid: j['uuid'] as String? ?? (j['id'] as String? ?? ''),
+        lines: (j['lines'] as List<dynamic>? ?? const [])
+            .map((e) => TxLine.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList(),
       );
 }
 
