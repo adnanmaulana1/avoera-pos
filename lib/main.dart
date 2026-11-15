@@ -467,6 +467,11 @@ class _HomeShellState extends State<HomeShell> {
   /// Beranda.
   InfoUpdate? _infoUpdate;
 
+  /// v0.10.8: kata cari Stok Bahan yang dipasang dari ketukan
+  /// pemberitahuan stok (+ nomor urut pemicunya).
+  String? _stokQueryAwal;
+  int _stokFokusKode = 0;
+
   /// Cek diam-diam sekali saat aplikasi dibuka. Ada versi
   /// lebih baru → banner Beranda + pemberitahuan tersimpan
   /// (kunci per versi, tidak banjir). Gagal cek = diam saja.
@@ -839,8 +844,51 @@ class _HomeShellState extends State<HomeShell> {
 
   void _openNotices() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => NotifikasiScreen(notifications: _notifications, onTandaiSemuaDibaca: _tandaiSemuaDibaca)),
+      MaterialPageRoute(
+        builder: (_) => NotifikasiScreen(notifications: _notifications, onTandaiSemuaDibaca: _tandaiSemuaDibaca, onTapNotification: _bukaDariNotifikasi),
+      ),
     );
+  }
+
+  /// v0.10.8 (permintaan Adnan 2026-11-15 22:38): ketukan pada
+  /// pemberitahuan MEMBUKA tujuannya — stok → halaman Stok
+  /// Bahan tersaring ke bahan itu, sinkron → Status
+  /// Sinkronisasi, info pembaruan → mulai memperbarui.
+  /// Pemberitahuan yang diketuk ditandai terbaca.
+  void _bukaDariNotifikasi(AppNotification n) {
+    if (!n.dibaca) {
+      n.dibaca = true;
+      LocalStore.saveNotifications(_notifications);
+      setState(() {});
+    }
+    if (n.jenis == 'stok') {
+      var id = n.kunci;
+      if (id.startsWith('stok-')) id = id.substring(5);
+      if (id.endsWith('-habis')) id = id.substring(0, id.length - 6);
+      if (id.endsWith('-kritis')) id = id.substring(0, id.length - 7);
+      Ingredient? bahan;
+      for (final i in _ingredients) {
+        if (i.id == id) {
+          bahan = i;
+          break;
+        }
+      }
+      Navigator.of(context).pop();
+      setState(() {
+        _index = 6;
+        if (bahan != null) {
+          _stokQueryAwal = bahan.name;
+          _stokFokusKode++;
+        }
+      });
+    } else if (n.jenis == 'sinkron') {
+      Navigator.of(context).pop();
+      _openSyncStatus();
+    } else if (n.jenis == 'info' && n.kunci.startsWith('update-')) {
+      Navigator.of(context).pop();
+      final info = _infoUpdate;
+      if (info != null) _mulaiUpdate(info);
+    }
   }
 
   /// v0.10.1: menandai dibaca kini eksplisit lewat tombol di
@@ -1377,6 +1425,8 @@ class _HomeShellState extends State<HomeShell> {
         onAdd: _addIngredient,
         onChanged: _ingredientChanged,
         onDelete: _deleteIngredient,
+        queryAwal: _stokQueryAwal,
+        queryAwalKode: _stokFokusKode,
         onBarangMasuk: _barangMasuk,
         onOpname: _opname,
         onBukaRiwayat: () => Navigator.of(context).push(

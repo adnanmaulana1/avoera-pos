@@ -21,12 +21,21 @@ class StokScreen extends StatefulWidget {
     this.onBarangMasuk,
     this.onOpname,
     this.onBukaRiwayat,
+    this.queryAwal,
+    this.queryAwalKode = 0,
   });
 
   final List<Ingredient> ingredients;
   final ValueChanged<Ingredient> onAdd;
   final VoidCallback onChanged;
   final ValueChanged<Ingredient> onDelete;
+
+  /// v0.10.8: kata cari yang dipasang dari luar (ketukan
+  /// pemberitahuan stok) — diterapkan sekali tiap [queryAwalKode]
+  /// berubah: kotak cari terisi nama bahan & daftar tersaring
+  /// ke bahan itu.
+  final String? queryAwal;
+  final int queryAwalKode;
 
   /// Modul Gudang (v0.10.0): barang masuk, opname, riwayat mutasi.
   final void Function(Ingredient bahan, double jumlah, int hargaBeli, String catatan)? onBarangMasuk;
@@ -40,6 +49,35 @@ class StokScreen extends StatefulWidget {
 class _StokScreenState extends State<StokScreen> {
   String _filter = 'Semua';
   String _query = '';
+  final _cariController = TextEditingController();
+  int _kodeQueryTerapan = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _terapkanQueryAwal();
+  }
+
+  @override
+  void didUpdateWidget(StokScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _terapkanQueryAwal();
+  }
+
+  void _terapkanQueryAwal() {
+    final q = widget.queryAwal;
+    if (q == null || widget.queryAwalKode == _kodeQueryTerapan) return;
+    _kodeQueryTerapan = widget.queryAwalKode;
+    _filter = 'Semua';
+    _query = q;
+    _cariController.text = q;
+  }
+
+  @override
+  void dispose() {
+    _cariController.dispose();
+    super.dispose();
+  }
 
   List<Ingredient> get _list => widget.ingredients.where((i) {
         final cocokFilter = switch (_filter) {
@@ -125,6 +163,7 @@ class _StokScreenState extends State<StokScreen> {
             ],
             const SizedBox(height: AppSpacing.md),
             TextField(
+              controller: _cariController,
               decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari bahan…'),
               onChanged: (v) => setState(() => _query = v),
             ),

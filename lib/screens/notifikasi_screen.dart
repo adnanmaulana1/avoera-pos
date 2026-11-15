@@ -14,9 +14,15 @@ import '../widgets.dart';
 /// membuka halaman tidak lagi menandai otomatis, supaya titik
 /// belum-dibaca tidak hilang tanpa tindakan pengguna.
 class NotifikasiScreen extends StatefulWidget {
-  const NotifikasiScreen({super.key, required this.notifications, this.onTandaiSemuaDibaca});
+  const NotifikasiScreen({super.key, required this.notifications, this.onTandaiSemuaDibaca, this.onTapNotification});
   final List<AppNotification> notifications;
   final VoidCallback? onTandaiSemuaDibaca;
+
+  /// v0.10.8 (permintaan Adnan 2026-11-15 22:38): pemberitahuan
+  /// yang punya TUJUAN bisa diketuk — stok membuka Stok Bahan,
+  /// sinkron membuka Status Sinkronisasi, info pembaruan
+  /// memulai pembaruan. Induk yang menavigasi.
+  final ValueChanged<AppNotification>? onTapNotification;
 
   @override
   State<NotifikasiScreen> createState() => _NotifikasiScreenState();
@@ -30,6 +36,12 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
   List<AppNotification> get _list => _kategori == 'Semua' ? widget.notifications : widget.notifications.where((n) => n.jenis == _kategori).toList();
 
   bool get _adaBelumDibaca => widget.notifications.any((n) => !n.dibaca);
+
+  /// Pemberitahuan ini punya halaman tujuan bila diketuk?
+  bool _bisaDibuka(AppNotification n) {
+    if (n.jenis == 'stok' || n.jenis == 'sinkron') return true;
+    return n.jenis == 'info' && n.kunci.startsWith('update-');
+  }
 
   (IconData, Color) _gaya(AppNotification n) {
     switch (n.jenis) {
@@ -95,8 +107,10 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                           itemBuilder: (_, i) {
                             final n = list[i];
                             final (icon, color) = _gaya(n);
+                            final bisaDibuka = _bisaDibuka(n) && widget.onTapNotification != null;
                             return AppCard(
                               margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                              onTap: bisaDibuka ? () => widget.onTapNotification!(n) : null,
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -134,6 +148,11 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                                       ],
                                     ),
                                   ),
+                                  if (bisaDibuka)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: AppSpacing.sm, top: 12),
+                                      child: Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
+                                    ),
                                 ],
                               ),
                             );
