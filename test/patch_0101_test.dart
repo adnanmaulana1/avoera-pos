@@ -226,4 +226,21 @@ void main() {
     expect(find.byType(ShimmerSkeleton), findsNothing, reason: 'Tarikan 60px tidak boleh memicu penyegaran');
     await tester.pump(const Duration(seconds: 2));
   });
+
+  // v0.10.4: gestur harus DIMULAI di puncak. Menggulir dari
+  // tengah lalu jari kelewat menarik melewati puncak dalam
+  // gestur yang sama TIDAK boleh memicu — itu tarikan tidak
+  // sengaja saat menggulir biasa.
+  testWidgets('Tarikan mulai dari tengah TIDAK menampilkan shimmer', (tester) async {
+    await pumpApp(tester, size: const Size(390, 844));
+    // Gulir turun dulu (konten bergerak, posisi tidak di puncak).
+    await tester.timedDrag(find.byType(ListView).first, const Offset(0, -300), const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 300));
+    // Gestur baru mulai dari tengah: kembali ke puncak lalu
+    // kelewat jauh — tetap tidak boleh memicu.
+    await tester.timedDrag(find.byType(ListView).first, const Offset(0, 520), const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(ShimmerSkeleton), findsNothing, reason: 'Gestur mulai dari tengah tidak boleh memicu walau kelewat jauh');
+    await tester.pump(const Duration(seconds: 2));
+  });
 }

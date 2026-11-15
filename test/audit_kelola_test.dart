@@ -221,7 +221,7 @@ void main() {
     await tester.tap(find.text('Info Aplikasi'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsOneWidget);
-    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.10.3')), findsOneWidget);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.10.4')), findsOneWidget);
     await tester.tap(find.text('Tutup'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsNothing, reason: 'Popup harus tertutup');

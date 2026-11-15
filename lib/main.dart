@@ -352,6 +352,7 @@ class _HomeShellState extends State<HomeShell> {
     _syncPeriodik?.cancel();
     _syncTimeoutTimer?.cancel();
     _penandaSinkron.dispose();
+    _tarikProgres.dispose();
     super.dispose();
   }
 
@@ -399,6 +400,12 @@ class _HomeShellState extends State<HomeShell> {
   /// yang sedang berjalan + kunci pemicu per gestur.
   double _tarikJarak = 0;
   bool _tarikTerpicu = false;
+  bool _gesturDiPuncak = false;
+
+  /// Kemajuan tarikan 0..1 untuk indikator lingkaran di puncak
+  /// layar — pengguna melihat seberapa jauh lagi harus menarik
+  /// (di versi pertama tidak ada tanda sama sekali).
+  final _tarikProgres = ValueNotifier<double>(0);
 
   /// Detektor tarik-untuk-segar yang DISENGAJA: RefreshIndicator
   /// bawaan memicu hanya dari tarikan ±40px di puncak daftar,
@@ -408,22 +415,39 @@ class _HomeShellState extends State<HomeShell> {
   /// tarikannya jauh (≥120px) dalam satu gestur.
   bool _padaNotifikasiGulir(ScrollNotification n) {
     if (n.metrics.axis != Axis.vertical) return false;
-    if (n is ScrollEndNotification) {
+    if (n is ScrollStartNotification) {
+      // Penjaga utama: gestur harus DIMULAI saat daftar sudah di
+      // puncak. Tarikan yang mulai dari tengah (menggulir naik
+      // lalu jarinya kelewat di atas) tidak pernah dihitung —
+      // itulah tarikan "tidak sengaja" yang dikeluhkan Adnan.
+      _gesturDiPuncak = n.dragDetails != null && n.metrics.pixels <= n.metrics.minScrollExtent + 1;
       _tarikJarak = 0;
       _tarikTerpicu = false;
       return false;
     }
-    if (_menyegarkan || _tarikTerpicu) return false;
+    if (n is ScrollEndNotification) {
+      _tarikJarak = 0;
+      _tarikTerpicu = false;
+      _gesturDiPuncak = false;
+      _tarikProgres.value = 0;
+      return false;
+    }
+    if (_menyegarkan || _tarikTerpicu || !_gesturDiPuncak) return false;
     // Sinyal tarikan melewati tepi atas = OverscrollNotification
     // (overscroll negatif di tepi awal). ScrollUpdateNotification
     // tidak bisa dipakai: saat posisi sudah mentok di puncak,
     // posisi tidak berubah jadi notifikasi update berhenti —
     // akumulasi dari sana selalu kelaparan (terbukti di tes).
+    // Ambang 72px (v0.10.4): versi pertama 120px terasa seperti
+    // "tidak ada tarik-untuk-segar" di HP asli karena sebagian
+    // gerak jari habis untuk menggulir balik ke puncak dulu.
     if (n is OverscrollNotification && n.dragDetails != null && n.overscroll < 0) {
       _tarikJarak += -n.overscroll;
-      if (_tarikJarak >= 120) {
+      _tarikProgres.value = (_tarikJarak / 72).clamp(0.0, 1.0);
+      if (_tarikJarak >= 72) {
         _tarikTerpicu = true;
         _tarikJarak = 0;
+        _tarikProgres.value = 0;
         _segarkan();
       }
     }
@@ -1094,6 +1118,44 @@ class _HomeShellState extends State<HomeShell> {
           child: NotificationListener<ScrollNotification>(
             onNotification: _padaNotifikasiGulir,
             child: IndexedStack(index: _index, children: screens),
+          ),
+        ),
+        // Indikator tarikan: lingkaran panah segar meluncur
+        // turun & berputar mengikuti jauhnya tarikan.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ValueListenableBuilder<double>(
+            valueListenable: _tarikProgres,
+            builder: (_, p, _) {
+              if (p <= 0) return const SizedBox.shrink();
+              return IgnorePointer(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Transform.translate(
+                    offset: Offset(0, -40 + 54 * p),
+                    child: Opacity(
+                      opacity: p.clamp(0.15, 1.0),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.card,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.border),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 2))],
+                        ),
+                        child: Transform.rotate(
+                          angle: p * 3.5,
+                          child: Icon(Icons.refresh, size: 20, color: AppColors.accent),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
         // Lapisan shimmer selama penyegaran tarik-ke-bawah.
