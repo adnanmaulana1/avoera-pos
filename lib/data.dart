@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.10.10';
+const appVersion = '0.10.11';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 36;
+const appBuild = 37;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -618,6 +618,7 @@ class TxRecord {
     this.branchId = '',
     this.uuid = '',
     this.lines = const [],
+    this.status = 'Lunas',
   });
   final String id;
 
@@ -641,6 +642,14 @@ class TxRecord {
   /// sebelum v0.10.6).
   final List<TxLine> lines;
 
+  /// Status transaksi: 'Lunas' (bawaan, semua transaksi yang
+  /// tercatat aplikasi sampai v0.10.11) | 'Batal' | 'Refund' |
+  /// 'Belum bayar'. Belum ada alur yang menulis status selain
+  /// Lunas — kolomnya disiapkan v0.10.11 supaya Riwayat bisa
+  /// menandai status luar biasa dengan badge (permintaan
+  /// Adnan: baris biasa TANPA badge).
+  final String status;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'total': total,
@@ -653,6 +662,7 @@ class TxRecord {
         'branchId': branchId,
         'uuid': uuid.isEmpty ? id : uuid,
         'lines': lines.map((l) => l.toJson()).toList(),
+        'status': status,
       };
 
   factory TxRecord.fromJson(Map<String, dynamic> j) => TxRecord(
@@ -669,6 +679,7 @@ class TxRecord {
         lines: (j['lines'] as List<dynamic>? ?? const [])
             .map((e) => TxLine.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList(),
+        status: j['status'] as String? ?? 'Lunas',
       );
 }
 

@@ -368,3 +368,13 @@ untuk hasil akhir.
 - **codemagic.yaml dibersihkan:** langkah "Unggah APK untuk pembaruan dalam aplikasi" + impor grup AVOERA dicabut — build sekarang murni membangun; penerbitan urusan Muse dari luar. Token AVOERA_UPLOAD_TOKEN di Codemagic tidak dipakai lagi.
 - **Harga yang jujur:** repo publik = APK bisa diunduh siapa pun yang tahu alamatnya (aplikasi tetap buta tanpa Kode Usaha untuk sinkron penuh; bawaan terbungkus memang kode usaha Avorea — risiko diterima Adnan demi jalur pembaruan yang tidak bisa kena suspend). Riwayat git repo bertambah ±61 MB per rilis; cukup untuk puluhan rilis.
 - v0.10.10 sendiri tetap dipasang manual SEKALI (aplikasi lama masih mengecek alamat server lama); sesudahnya semua rilis tiba lewat banner dari GitHub.
+
+## v0.10.11 (2026-11-16) — Perbaikan Riwayat #1 (7 poin Adnan 00:22, sekalian uji perdana pembaruan dalam aplikasi dari GitHub)
+- **App bar:** tombol kembali eksplisit (maybePop) + ikon kalender PINDAH ke app bar di sebelah ikon bagikan (bertinta aksen saat rentang aktif); tombol kalender di baris saringan dicabut, pil rentang aktif tetap di baris periode.
+- **Saringan metode DIPISAH** jadi baris chip sendiri di bawah baris periode (pilihan pertama Adnan; opsi tombol "Filter" berbadge tidak diambil — semua saringan tetap terlihat, ramah kasir).
+- **Kolom pencarian** di bawah chip: cocokkan nomor transaksi (tak peka huruf) ATAU nominal (angka dicocokkan polos — '52.900' = '52900'). Helper murni txCocokCari. Keadaan kosong saat mencari aktif berpesan khusus.
+- **Label total DINAMIS** (labelTotalRiwayat): 'Total semua transaksi', 'Total transaksi Tunai minggu ini', 'Total semua transaksi · 10 – 15 Nov 2026', dst.
+- **Badge status:** TxRecord kini punya kolom `status` (bawaan 'Lunas', JSON pulang-pergi aman, data lama terbaca Lunas). Baris biasa TANPA badge; badgeStatusTx hanya memberi lencana untuk Batal (merah), Refund (kuning), Belum bayar (abu). Belum ada alur penulis status — kolom disiapkan untuk fitur batal/refund kelak. Pil 'Lunas' di halaman Detail TIDAK berubah.
+- **Baris:** subjudul = 'A-1045 · 12:10' saja (metode dari ikon); '+N' (jumlahTambahanTx, menggantikan labelTambahanTx '+N lainnya') menempel di kanan nama produk sebagai teks redup terpisah.
+- **Lebih lembut:** AppCard/cardDecoration dapat parameter shadowAlpha opsional (bawaan tak berubah untuk layar lain); Riwayat memakai 0.03 terang/0.18 gelap + divider berwarna border alpha 0.55.
+- Tes: patch_0111 baru (5) + patch_0109/0106 disesuaikan. Bingkai 0111-riwayat.png diperiksa visual: ketujuh poin terbaca jelas.

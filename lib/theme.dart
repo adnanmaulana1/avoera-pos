@@ -324,6 +324,7 @@ BoxDecoration cardDecoration({
   Color? color,
   Color? borderColor,
   double radius = AppRadius.md,
+  double? shadowAlpha,
 }) {
   return BoxDecoration(
     color: color ?? AppColors.card,
@@ -331,9 +332,11 @@ BoxDecoration cardDecoration({
     border: Border.all(color: borderColor ?? AppColors.border),
     // Bayangan TIPIS di semua kartu (permintaan Adnan 23:50):
     // cukup untuk mengangkat kartu dari latar, tidak dekoratif.
+    // [shadowAlpha] menimpanya untuk layar yang diminta lebih
+    // lembut (Riwayat v0.10.11).
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withValues(alpha: AppColors.gelap ? 0.30 : 0.05),
+        color: Colors.black.withValues(alpha: shadowAlpha ?? (AppColors.gelap ? 0.30 : 0.05)),
         blurRadius: 12,
         offset: const Offset(0, 2),
       ),

@@ -54,6 +54,7 @@ class AppCard extends StatelessWidget {
     this.borderColor,
     this.margin,
     this.onTap,
+    this.shadowAlpha,
   });
 
   final Widget child;
@@ -62,6 +63,9 @@ class AppCard extends StatelessWidget {
   final Color? borderColor;
   final EdgeInsetsGeometry? margin;
 
+  /// Menimpa kekuatan bayangan kartu (bawaan: ikuti tema).
+  final double? shadowAlpha;
+
   /// Bila diisi, seluruh kartu bisa diketuk (ripple di dalam kartu).
   final VoidCallback? onTap;
 
@@ -69,7 +73,7 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isi = Container(
       margin: margin,
-      decoration: cardDecoration(color: color, borderColor: borderColor),
+      decoration: cardDecoration(color: color, borderColor: borderColor, shadowAlpha: shadowAlpha),
       padding: padding,
       child: child,
     );

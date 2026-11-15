@@ -26,13 +26,58 @@ String ringkasanProdukTx(TxRecord t) {
   return t.lines.first.nama;
 }
 
-/// Label "+N lainnya" untuk transaksi berproduk banyak —
-/// ditaruh di subjudul baris, BUKAN menempel di judul:
-/// menempel membuat judul panjang terpotong persis di
-/// bagian "+N lainnya"-nya (ketahuan dari render v0.10.9).
-String labelTambahanTx(TxRecord t) {
-  if (t.lines.length <= 1) return '';
-  return '+${t.lines.length - 1} lainnya';
+/// Jumlah produk LAIN sesudah produk pertama di baris ini
+/// (v0.10.11: tampil sebagai "+N" di sebelah nama produk,
+/// bukan lagi "+N lainnya" di subjudul — permintaan Adnan).
+int jumlahTambahanTx(TxRecord t) {
+  if (t.lines.length <= 1) return 0;
+  return t.lines.length - 1;
+}
+
+/// Pencarian Riwayat (v0.10.11, permintaan Adnan): cocok bila
+/// nomor transaksi mengandung teks cari (tak peka huruf),
+/// ATAU nominal transaksi mengandung urutan angka yang
+/// dicari (tanda titik dsb. diabaikan — '52.900' dan '52900'
+/// sama-sama menemukan total 52900).
+bool txCocokCari(TxRecord t, String cari) {
+  final q = cari.trim().toLowerCase();
+  if (q.isEmpty) return true;
+  if (t.id.toLowerCase().contains(q)) return true;
+  final angka = q.replaceAll(RegExp(r'[^0-9]'), '');
+  if (angka.isNotEmpty && t.total.toString().contains(angka)) return true;
+  return false;
+}
+
+/// Label kartu total yang DINAMIS mengikuti saringan
+/// (v0.10.11, permintaan Adnan — contohnya sendiri: "Total
+/// semua transaksi"): metode + periode/rentang yang aktif.
+String labelTotalRiwayat({required int filter, required String metode, String? labelRentang}) {
+  final benda = metode == 'Semua' ? 'semua transaksi' : 'transaksi $metode';
+  if (labelRentang != null) return 'Total $benda · $labelRentang';
+  final ekor = switch (filter) {
+    1 => ' hari ini',
+    2 => ' minggu ini',
+    3 => ' bulan ini',
+    _ => '',
+  };
+  return 'Total $benda$ekor';
+}
+
+/// Badge status baris (v0.10.11, permintaan Adnan): baris
+/// biasa (Lunas) TIDAK ber-badge; badge hanya untuk status
+/// luar biasa — Batal (merah), Refund (kuning), Belum bayar
+/// (abu). Null = tanpa badge.
+({String label, Color latar, Color teks})? badgeStatusTx(TxRecord t) {
+  switch (t.status) {
+    case 'Batal':
+      return (label: 'Batal', latar: AppColors.danger.withValues(alpha: AppColors.gelap ? 0.25 : 0.10), teks: AppColors.danger);
+    case 'Refund':
+      return (label: 'Refund', latar: AppColors.warningSoft, teks: AppColors.warning);
+    case 'Belum bayar':
+      return (label: 'Belum bayar', latar: AppColors.track, teks: AppColors.muted);
+    default:
+      return null;
+  }
 }
 
 /// Kelompokkan transaksi per hari kalender, urutan mengikuti
@@ -60,13 +105,18 @@ String labelHariTx(DateTime hari, DateTime sekarang) {
 /// tercatat, bisa disaring per periode. Dibuka dari Beranda
 /// (Lihat Semua) dan dari hub Laporan.
 ///
-/// v0.10.9 (permintaan Adnan 2026-11-15 23:17, dari screenshot
-/// HP-nya): saringan digabung SATU baris geser (periode +
-/// metode + ikon kalender untuk rentang tanggal), transaksi
-/// dikelompokkan per tanggal dengan header, judul baris =
-/// nama produk, ada badge 'Lunas', daftar lebih padat dengan
-/// garis pemisah tipis di dalam satu kartu per hari, dan
-/// kartu total memuat rincian Tunai/QRIS.
+/// v0.10.11 (permintaan Adnan 2026-11-16 00:22, 7 poin dari
+/// screenshot): gaya/struktur kartu v0.10.9 DIPERTAHANKAN,
+/// dengan perubahan — (1) app bar bertombol kembali + ikon
+/// kalender di sebelah ikon bagikan (kalender pindah dari
+/// baris saringan); (2) saringan metode DIPISAH dari baris
+/// periode jadi baris sendiri; (3) kolom pencarian nomor
+/// transaksi / nominal di bawah chip; (4) label kartu total
+/// dinamis mengikuti saringan; (5) badge 'Lunas' DIHAPUS dari
+/// baris biasa — badge hanya untuk Batal/Refund/Belum bayar;
+/// (6) subjudul baris = 'A-1045 · 12:10' (metode cukup dari
+/// ikon) dan '+N' pindah ke sebelah nama produk; (7) garis
+/// pemisah + bayangan kartu dilembutkan.
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key, required this.transactions, required this.branchId, this.branchName = ''});
   final List<TxRecord> transactions;
@@ -88,6 +138,16 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   /// Adnan 2026-11-15). Selama terisi, saringan periode di
   /// atasnya tidak dipakai; memilih chip periode menghapusnya.
   DateTimeRange? _rentang;
+
+  /// Kolom pencarian (v0.10.11): nomor transaksi atau nominal.
+  final _cariController = TextEditingController();
+  String _cari = '';
+
+  @override
+  void dispose() {
+    _cariController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pilihTanggal() async {
     final now = DateTime.now();
@@ -123,11 +183,17 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     if (_metode != 'Semua') {
       list = list.where((t) => t.method == _metode).toList();
     }
+    if (_cari.trim().isNotEmpty) {
+      list = list.where((t) => txCocokCari(t, _cari)).toList();
+    }
     list.sort((a, b) => b.at.compareTo(a.at));
     final total = list.fold(0, (a, t) => a + t.total);
     final totalTunai = list.where((t) => t.method == 'Tunai').fold(0, (a, t) => a + t.total);
     final totalQris = list.where((t) => t.method == 'QRIS').fold(0, (a, t) => a + t.total);
     final grup = kelompokTxPerHari(list);
+    // Bayangan lebih lembut khusus layar ini (poin 7 Adnan).
+    final bayanganLembut = AppColors.gelap ? 0.18 : 0.03;
+    final garisLembut = AppColors.border.withValues(alpha: 0.55);
 
     String dua(int n) => n.toString().padLeft(2, '0');
     Future<void> ekspor() {
@@ -161,39 +227,84 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        // Tombol kembali eksplisit (poin 1 Adnan) — layar ini
+        // selalu dibuka sebagai rute tumpuk dari shell.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Kembali',
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: const Text('Riwayat Transaksi'),
-        actions: [TombolEkspor(onPressed: ekspor)],
+        actions: [
+          // Kalender pindah ke app bar, di sebelah bagikan.
+          IconButton(
+            icon: Icon(Icons.calendar_month_outlined, color: _rentang != null ? AppColors.accent : null),
+            tooltip: 'Pilih tanggal',
+            onPressed: _pilihTanggal,
+          ),
+          TombolEkspor(onPressed: ekspor),
+        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // SATU baris saringan yang bisa digeser: periode,
-          // metode, lalu kalender untuk rentang tanggal.
           Padding(
             padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
-            child: FilterChipRow(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final (i, label) in [(0, 'Semua'), (1, 'Hari Ini'), (2, 'Minggu Ini'), (3, 'Bulan Ini')])
-                  AppChip(
-                    label: label,
-                    selected: _rentang == null && _filter == i,
-                    onSelected: (_) => setState(() {
-                      _filter = i;
-                      _rentang = null;
-                    }),
+                // Baris PERIODE (metode sudah pindah ke baris
+                // sendiri di bawah — poin 2 Adnan). Pil rentang
+                // aktif tetap tampil di ujung baris ini.
+                FilterChipRow(
+                  children: [
+                    for (final (i, label) in [(0, 'Semua'), (1, 'Hari Ini'), (2, 'Minggu Ini'), (3, 'Bulan Ini')])
+                      AppChip(
+                        label: label,
+                        selected: _rentang == null && _filter == i,
+                        onSelected: (_) => setState(() {
+                          _filter = i;
+                          _rentang = null;
+                        }),
+                      ),
+                    if (_rentang != null) _PilRentang(label: _labelRentang(), onTap: _pilihTanggal, onHapus: () => setState(() => _rentang = null)),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                // Baris METODE — terpisah dari periode.
+                FilterChipRow(
+                  children: [
+                    for (final m in ['Semua', 'Tunai', 'QRIS'])
+                      AppChip(label: m == 'Semua' ? 'Semua Metode' : m, selected: _metode == m, onSelected: (_) => setState(() => _metode = m)),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                // Kolom pencarian (poin 3 Adnan).
+                TextField(
+                  controller: _cariController,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Cari no. transaksi atau nominal',
+                    suffixIcon: _cari.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close),
+                            tooltip: 'Hapus pencarian',
+                            onPressed: () {
+                              _cariController.clear();
+                              setState(() => _cari = '');
+                            },
+                          ),
                   ),
-                for (final m in ['Semua', 'Tunai', 'QRIS'])
-                  AppChip(label: m == 'Semua' ? 'Semua Metode' : m, selected: _metode == m, onSelected: (_) => setState(() => _metode = m)),
-                if (_rentang == null)
-                  _TombolKalender(onTap: _pilihTanggal)
-                else
-                  _PilRentang(label: _labelRentang(), onTap: _pilihTanggal, onHapus: () => setState(() => _rentang = null)),
+                  onChanged: (v) => setState(() => _cari = v),
+                ),
               ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: AppCard(
+              shadowAlpha: bayanganLembut,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -203,7 +314,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Total periode ini', style: AppText.small.copyWith(color: AppColors.muted)),
+                            Text(
+                              labelTotalRiwayat(filter: _filter, metode: _metode, labelRentang: _rentang != null ? _labelRentang() : null),
+                              style: AppText.small.copyWith(color: AppColors.muted),
+                            ),
                             FitNumber(rupiah(total)),
                           ],
                         ),
@@ -212,7 +326,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  const Divider(height: 1),
+                  Divider(height: 1, color: garisLembut),
                   const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
@@ -226,7 +340,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ),
           Expanded(
             child: list.isEmpty
-                ? const EmptyState(message: 'Belum ada transaksi pada periode ini.', icon: Icons.receipt_long_outlined)
+                ? EmptyState(
+                    message: _cari.trim().isNotEmpty ? 'Tidak ada transaksi yang cocok dengan pencarian.' : 'Belum ada transaksi pada periode ini.',
+                    icon: Icons.receipt_long_outlined,
+                  )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
                     children: [
@@ -245,10 +362,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         AppCard(
                           padding: EdgeInsets.zero,
                           margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                          shadowAlpha: bayanganLembut,
                           child: Column(
                             children: [
                               for (var i = 0; i < entri.value.length; i++) ...[
-                                if (i > 0) const Divider(height: 1, indent: 68, endIndent: AppSpacing.lg),
+                                if (i > 0) Divider(height: 1, indent: 68, endIndent: AppSpacing.lg, color: garisLembut),
                                 _BarisTx(
                                   tx: entri.value[i],
                                   onTap: () => Navigator.of(context).push(
@@ -264,30 +382,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Tombol kalender di baris saringan (rentang belum dipilih):
-/// lingkaran berbingkai sejajar tinggi chip.
-class _TombolKalender extends StatelessWidget {
-  const _TombolKalender({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Pilih tanggal',
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.border)),
-          child: Icon(Icons.calendar_month_outlined, size: 20, color: AppColors.ink),
-        ),
       ),
     );
   }
@@ -374,7 +468,8 @@ class _BarisTx extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final jam = '${tx.at.hour.toString().padLeft(2, '0')}:${tx.at.minute.toString().padLeft(2, '0')}';
-    final adaRincian = tx.lines.isNotEmpty;
+    final tambahan = jumlahTambahanTx(tx);
+    final badge = badgeStatusTx(tx);
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -392,19 +487,27 @@ class _BarisTx extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    adaRincian ? ringkasanProdukTx(tx) : '${tx.id} · ${tx.method}',
-                    style: AppText.body.copyWith(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  // Nama produk + "+N" di sebelahnya (poin 6).
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          ringkasanProdukTx(tx),
+                          style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (tambahan > 0) ...[
+                        const SizedBox(width: AppSpacing.xs),
+                        Text('+$tambahan', style: AppText.body.copyWith(color: AppColors.muted, fontWeight: FontWeight.w600)),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    adaRincian
-                        ? '${tx.id} · ${tx.method} · $jam${labelTambahanTx(tx).isEmpty ? '' : ' · ${labelTambahanTx(tx)}'}'
-                        : '$jam · ${tx.items} item',
-                    style: AppText.caption.copyWith(color: AppColors.muted),
-                  ),
+                  // Subjudul ringkas: nomor + jam saja; metode
+                  // sudah terbaca dari ikon di kiri.
+                  Text('${tx.id} · $jam', style: AppText.caption.copyWith(color: AppColors.muted)),
                 ],
               ),
             ),
@@ -413,12 +516,15 @@ class _BarisTx extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(rupiah(tx.total), style: AppText.body.copyWith(fontWeight: FontWeight.w800)),
-                const SizedBox(height: AppSpacing.xs),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
-                  decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.pill)),
-                  child: Text('Lunas', style: AppText.caption.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
-                ),
+                // Badge HANYA untuk status luar biasa.
+                if (badge != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                    decoration: BoxDecoration(color: badge.latar, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                    child: Text(badge.label, style: AppText.caption.copyWith(color: badge.teks, fontWeight: FontWeight.w700)),
+                  ),
+                ],
               ],
             ),
             const SizedBox(width: AppSpacing.xs),

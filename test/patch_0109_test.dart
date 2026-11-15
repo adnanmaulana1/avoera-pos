@@ -3,6 +3,11 @@
 // kalender, kelompok per tanggal, nama produk sebagai judul,
 // badge Lunas, daftar padat berdivider, rincian Tunai/QRIS
 // di kartu total.
+//
+// Diperbarui v0.10.11 (permintaan Adnan 2026-11-16 00:22):
+// badge Lunas HILANG dari baris biasa, "+N lainnya" menjadi
+// "+N" di sebelah nama produk, subjudul = 'id · jam', label
+// kartu total dinamis, ada tombol kembali + kolom pencarian.
 import 'dart:io';
 
 import 'package:avoera_pos/data.dart';
@@ -51,8 +56,8 @@ void main() {
         lines: [TxLine(nama: 'Alpukat Kocok', qty: 1, total: 1000), TxLine(nama: 'Es Teh', qty: 1, total: 500), TxLine(nama: 'Roti Bakar', qty: 1, total: 500)],
       );
       expect(ringkasanProdukTx(banyak), 'Alpukat Kocok');
-      expect(labelTambahanTx(banyak), '+2 lainnya');
-      expect(labelTambahanTx(satu), '');
+      expect(jumlahTambahanTx(banyak), 2);
+      expect(jumlahTambahanTx(satu), 0);
       final lama = txContoh(id: 'A-3', total: 3000, method: 'Tunai', at: at, items: 4);
       expect(ringkasanProdukTx(lama), '4 item');
     });
@@ -72,7 +77,7 @@ void main() {
     });
   });
 
-  testWidgets('Riwayat baru: kelompok hari, nama produk, badge Lunas, rincian metode', (tester) async {
+  testWidgets('Riwayat baru: kelompok hari, nama produk, tanpa badge Lunas, rincian metode', (tester) async {
     tester.view.physicalSize = const Size(780, 1688);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
@@ -114,15 +119,23 @@ void main() {
     expect(find.textContaining('Kemarin ·'), findsOneWidget);
     expect(find.text('Rp122.475'), findsOneWidget, reason: 'subtotal hari ini di header kelompok');
 
-    // Judul baris = nama produk; "+N lainnya" di subjudul;
-    // data lama = id · metode.
+    // Judul baris = nama produk dengan "+N" di sebelahnya;
+    // subjudul = 'id · jam' (tanpa metode); data lama judul
+    // 'N item' + subjudul id-nya.
     expect(find.text('Alpukat Kocok Original'), findsOneWidget);
     expect(find.text('Alpukat Kocok Coklat'), findsOneWidget);
-    expect(find.textContaining('+1 lainnya'), findsOneWidget);
-    expect(find.text('A-0900 · Tunai'), findsOneWidget);
+    expect(find.text('+1'), findsOneWidget);
+    expect(find.text('A-1043 · 12:32'), findsOneWidget);
+    expect(find.text('2 item'), findsOneWidget);
+    expect(find.textContaining('A-0900 ·'), findsOneWidget);
 
-    // Badge Lunas di semua baris.
-    expect(find.text('Lunas'), findsNWidgets(3));
+    // v0.10.11: baris biasa TANPA badge 'Lunas' sama sekali.
+    expect(find.text('Lunas'), findsNothing);
+
+    // App bar: tombol kembali ada; label total dinamis.
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+    expect(find.text('Total semua transaksi'), findsOneWidget);
+    expect(find.text('Cari no. transaksi atau nominal'), findsOneWidget);
 
     // Kartu total: total + rincian per metode (dibatasi ke
     // kartu pertama supaya tidak tertukar jumlah baris).

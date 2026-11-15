@@ -102,7 +102,9 @@ void main() {
 
       await tester.pageBack();
       await tester.pumpAndSettle();
-      await tester.tap(find.text('A-1999 · Tunai'));
+      // Sejak v0.10.11 judul baris data lama = 'N item'
+      // (subjudulnya 'A-1999 · jam'); ketuk lewat judulnya.
+      await tester.tap(find.text('2 item'));
       await tester.pumpAndSettle();
       expect(find.byType(DetailTransaksiScreen), findsOneWidget);
       expect(find.textContaining('sebelum rincian item disimpan'), findsOneWidget);
@@ -116,13 +118,12 @@ void main() {
       final txHariIni = txContoh(id: 'A-BARU', at: now);
       final txLama = txContoh(id: 'A-LAMA', at: now.subtract(const Duration(days: 10)));
       await pumpRiwayat(tester, [txHariIni, txLama]);
-      expect(find.text('A-BARU · Tunai'), findsOneWidget);
-      expect(find.text('A-LAMA · Tunai'), findsOneWidget);
+      // Baris dikenali dari subjudul 'id · jam' (v0.10.11).
+      expect(find.textContaining('A-BARU ·'), findsOneWidget);
+      expect(find.textContaining('A-LAMA ·'), findsOneWidget);
 
-      // Sejak v0.10.9 "Pilih Tanggal" menjadi ikon kalender di
-      // ujung baris saringan geser — geser dulu sampai terlihat.
-      await tester.ensureVisible(find.byIcon(Icons.calendar_month_outlined));
-      await tester.pumpAndSettle();
+      // Sejak v0.10.11 ikon kalender ada di app bar, di
+      // sebelah ikon bagikan — selalu terlihat, tanpa geser.
       await tester.tap(find.byIcon(Icons.calendar_month_outlined));
       await tester.pumpAndSettle();
       expect(find.byType(DateRangePickerDialog), findsOneWidget);
@@ -136,8 +137,8 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
-      expect(find.text('A-BARU · Tunai'), findsOneWidget);
-      expect(find.text('A-LAMA · Tunai'), findsNothing, reason: 'Transaksi 10 hari lalu tersaring keluar oleh rentang hari ini');
+      expect(find.textContaining('A-BARU ·'), findsOneWidget);
+      expect(find.textContaining('A-LAMA ·'), findsNothing, reason: 'Transaksi 10 hari lalu tersaring keluar oleh rentang hari ini');
       // Pil rentang aktif: ada tombol silang untuk menghapus.
       expect(find.byIcon(Icons.close), findsOneWidget);
 
@@ -147,7 +148,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.close));
       await tester.pumpAndSettle();
-      expect(find.text('A-LAMA · Tunai'), findsOneWidget);
+      expect(find.textContaining('A-LAMA ·'), findsOneWidget);
     });
   });
 }
