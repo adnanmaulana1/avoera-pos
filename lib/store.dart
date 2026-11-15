@@ -6,13 +6,14 @@ import 'data.dart';
 
 /// Data aplikasi yang tersimpan permanen di perangkat.
 class AppData {
-  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings, this.transactions = const [], this.notifications = const []});
+  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings, this.transactions = const [], this.notifications = const [], this.mutasi = const []});
   final List<MenuItem> menus;
   final List<CafeTable> tables;
   final List<Ingredient> ingredients;
   final AppSettings settings;
   final List<TxRecord> transactions;
   final List<AppNotification> notifications;
+  final List<MutasiStok> mutasi;
 }
 
 /// Tempat simpan lokal (SharedPreferences + JSON).
@@ -27,6 +28,7 @@ class LocalStore {
   static const _kSettings = 'avoera.settings.v1';
   static const _kTx = 'avoera.tx.v1';
   static const _kNotif = 'avoera.notifications.v1';
+  static const _kMutasi = 'avoera.mutasi.v1';
   static const _kSyncMeta = 'avoera.syncmeta.v1';
 
   static Future<AppData> load() async {
@@ -39,6 +41,7 @@ class LocalStore {
         settings: _decodeSettings(prefs.getString(_kSettings)),
         transactions: _decodeList(prefs.getString(_kTx), TxRecord.fromJson) ?? <TxRecord>[],
         notifications: _decodeList(prefs.getString(_kNotif), AppNotification.fromJson) ?? <AppNotification>[],
+        mutasi: _decodeList(prefs.getString(_kMutasi), MutasiStok.fromJson) ?? <MutasiStok>[],
       );
     } catch (_) {
       // Penyimpanan tidak tersedia (mis. lingkungan tes) → data contoh.
@@ -80,6 +83,7 @@ class LocalStore {
   static Future<void> saveSettings(AppSettings settings) => _save(_kSettings, settings.toJson());
   static Future<void> saveTransactions(List<TxRecord> tx) => _save(_kTx, tx.map((t) => t.toJson()).toList());
   static Future<void> saveNotifications(List<AppNotification> n) => _save(_kNotif, n.map((e) => e.toJson()).toList());
+  static Future<void> saveMutasi(List<MutasiStok> m) => _save(_kMutasi, m.map((e) => e.toJson()).toList());
 
   /// Meta sinkron untuk halaman Status Sinkronisasi: jumlah
   /// perubahan yang menunggu per tabel + laporan sinkron terakhir.

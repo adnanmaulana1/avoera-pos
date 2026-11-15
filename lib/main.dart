@@ -32,6 +32,7 @@ import 'screens/branch_wizard_screen.dart';
 import 'screens/profil_usaha_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/status_sinkron_screen.dart';
+import 'screens/gudang_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -251,6 +252,8 @@ class _HomeShellState extends State<HomeShell> {
 
   // ---------- Pemberitahuan (tersimpan) ----------
   List<AppNotification> _notifications = [];
+  List<MutasiStok> _mutasi = [];
+  final Map<String, double> _stokDikenal = {};
   int get _belumDibaca => _notifications.where((n) => !n.dibaca).length;
 
   /// Layar sambut brand: tampil selama data dimuat + sekejap
@@ -299,6 +302,10 @@ class _HomeShellState extends State<HomeShell> {
       }
       _transactions = data.transactions;
       _notifications = data.notifications;
+      _mutasi = data.mutasi;
+      _stokDikenal
+        ..clear()
+        ..addAll({for (final i in _ingredients) i.id: i.stock});
       _ready = true;
       _syncStatus = _cloudAktif ? StatusSinkron.tersinkron : StatusSinkron.belumDiatur;
     });
@@ -471,9 +478,54 @@ class _HomeShellState extends State<HomeShell> {
     _jadwalkanSinkron();
   }
 
+  // ---------- Gudang: mutasi stok ----------
+  /// Catat satu pergerakan stok. [ing.stock] harus SUDAH berubah
+  /// sebelum dipanggil (stokSesudah dibaca darinya, kecuali diberi
+  /// [stokSesudah] eksplisit — mis. bahan yang dihapus).
+  void _catatMutasi(Ingredient ing, String jenis, double jumlah, {String catatan = '', double? stokSesudah}) {
+    _mutasi.insert(
+      0,
+      MutasiStok(
+        ingredientId: ing.id,
+        namaBahan: ing.name,
+        jenis: jenis,
+        jumlah: jumlah,
+        stokSesudah: stokSesudah ?? ing.stock,
+        satuan: ing.unit,
+        catatan: catatan,
+      ),
+    );
+    if (_mutasi.length > 800) _mutasi.removeRange(800, _mutasi.length);
+    _stokDikenal[ing.id] = stokSesudah ?? ing.stock;
+    LocalStore.saveMutasi(_mutasi);
+  }
+
+  void _barangMasuk(Ingredient ing, double qty, int hargaBeli, String catatan) {
+    setState(() {
+      ing.stock += qty;
+      if (hargaBeli > 0) ing.costPerUnit = hargaBeli;
+    });
+    _catatMutasi(ing, 'masuk', qty, catatan: catatan.isEmpty ? 'Barang masuk' : catatan);
+    LocalStore.saveIngredients(_ingredients);
+    _tandaiKotor('ingredients');
+    _jadwalkanSinkron();
+    tampilToast(context, '${ing.name} bertambah ${stockText(qty)} ${ing.unit}.', icon: Icons.add_box_outlined);
+  }
+
+  void _opname(Ingredient ing, double stokFisik, String catatan) {
+    final selisih = stokFisik - ing.stock;
+    setState(() => ing.stock = stokFisik);
+    _catatMutasi(ing, 'opname', selisih, catatan: catatan.isEmpty ? 'Opname stok' : catatan);
+    LocalStore.saveIngredients(_ingredients);
+    _tandaiKotor('ingredients');
+    _jadwalkanSinkron();
+    tampilToast(context, 'Opname ${ing.name} tersimpan.', icon: Icons.fact_check_outlined);
+  }
+
   // ---------- CRUD: Stok bahan ----------
   void _addIngredient(Ingredient i) {
     setState(() => _ingredients.add(i));
+    if (i.stock > 0) _catatMutasi(i, 'masuk', i.stock, catatan: 'Stok awal bahan baru');
     LocalStore.saveIngredients(_ingredients);
     _tandaiKotor('ingredients');
     _jadwalkanSinkron();
@@ -481,6 +533,14 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void _ingredientChanged() {
+    // Ubah jumlah stok lewat editor tercatat sebagai mutasi
+    // 'edit' — selisih dihitung dari stok terakhir yang dikenal.
+    for (final ing in _ingredients) {
+      final dikenal = _stokDikenal[ing.id];
+      if (dikenal != null && dikenal != ing.stock) {
+        _catatMutasi(ing, 'edit', ing.stock - dikenal, catatan: 'Ubah manual di editor');
+      }
+    }
     setState(() {});
     LocalStore.saveIngredients(_ingredients);
     _tandaiKotor('ingredients');
@@ -490,6 +550,7 @@ class _HomeShellState extends State<HomeShell> {
 
   void _deleteIngredient(Ingredient i) {
     setState(() => _ingredients.remove(i));
+    if (i.stock > 0) _catatMutasi(i, 'edit', -i.stock, catatan: 'Bahan dihapus', stokSesudah: 0);
     LocalStore.saveIngredients(_ingredients);
     _tandaiKotor('ingredients');
     _jadwalkanSinkron();
@@ -890,7 +951,11 @@ class _HomeShellState extends State<HomeShell> {
         for (final ing in _ingredients) {
           final pakai = kebutuhan[ing.id];
           if (pakai != null && pakai > 0) {
+            final sebelum = ing.stock;
             ing.stock = ing.stock - pakai < 0 ? 0 : ing.stock - pakai;
+            if (ing.stock != sebelum) {
+              _catatMutasi(ing, 'jual', ing.stock - sebelum, catatan: 'Terpotong penjualan');
+            }
           }
         }
       }
@@ -1033,7 +1098,17 @@ class _HomeShellState extends State<HomeShell> {
         onOpenPajak: _openPajak,
         onOpenPiutang: _openPiutang,
       ),
-      StokScreen(ingredients: _ingredients, onAdd: _addIngredient, onChanged: _ingredientChanged, onDelete: _deleteIngredient),
+      StokScreen(
+        ingredients: _ingredients,
+        onAdd: _addIngredient,
+        onChanged: _ingredientChanged,
+        onDelete: _deleteIngredient,
+        onBarangMasuk: _barangMasuk,
+        onOpname: _opname,
+        onBukaRiwayat: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => RiwayatMutasiScreen(mutasi: _mutasi, ingredients: _ingredients)),
+        ),
+      ),
       PengaturanScreen(
         businessName: _settings.businessName,
         businessAddress: _settings.businessAddress,

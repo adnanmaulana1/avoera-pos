@@ -5,18 +5,33 @@ import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_stok_screen.dart' show showIngredientEditor;
+import 'gudang_screen.dart' show showBarangMasukSheet, showOpnameSheet;
 
 /// Stok Bahan dengan CRUD LANGSUNG di layar ini (permintaan Adnan
 /// 2026-11-14): ketuk bahan untuk mengubah, tombol + untuk tambah —
 /// tidak perlu lagi mampir Pengaturan. Plus cari, filter pill
 /// standar (FilterChipRow), dan ekspor daftar stok.
 class StokScreen extends StatefulWidget {
-  const StokScreen({super.key, required this.ingredients, required this.onAdd, required this.onChanged, required this.onDelete});
+  const StokScreen({
+    super.key,
+    required this.ingredients,
+    required this.onAdd,
+    required this.onChanged,
+    required this.onDelete,
+    this.onBarangMasuk,
+    this.onOpname,
+    this.onBukaRiwayat,
+  });
 
   final List<Ingredient> ingredients;
   final ValueChanged<Ingredient> onAdd;
   final VoidCallback onChanged;
   final ValueChanged<Ingredient> onDelete;
+
+  /// Modul Gudang (v0.10.0): barang masuk, opname, riwayat mutasi.
+  final void Function(Ingredient bahan, double jumlah, int hargaBeli, String catatan)? onBarangMasuk;
+  final void Function(Ingredient bahan, double stokFisik, String catatan)? onOpname;
+  final VoidCallback? onBukaRiwayat;
 
   @override
   State<StokScreen> createState() => _StokScreenState();
@@ -72,6 +87,42 @@ class _StokScreenState extends State<StokScreen> {
               subtitle: '${widget.ingredients.length} bahan tersimpan. Ketuk bahan untuk mengubahnya.',
               trailing: TombolEkspor(onPressed: _ekspor),
             ),
+            if (widget.onBarangMasuk != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              // Ubin aksi: ikon di atas, label di bawah. Tombol
+              // sebaris ikon+teks MEMATAHKAN kata di tengah pada
+              // lebar HP ("Opnam/e") — ketahuan dari audit frame
+              // anti-slop 2026-11-15; ubin begini muat di semua
+              // lebar dan tetap rapi di tablet.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _UbinAksi(
+                      ikon: Icons.add_box_outlined,
+                      label: 'Barang Masuk',
+                      onTap: () => showBarangMasukSheet(context, ingredients: widget.ingredients, onSimpan: widget.onBarangMasuk!),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _UbinAksi(
+                      ikon: Icons.fact_check_outlined,
+                      label: 'Opname',
+                      onTap: () => showOpnameSheet(context, ingredients: widget.ingredients, onSimpan: widget.onOpname!),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _UbinAksi(
+                      ikon: Icons.history,
+                      label: 'Riwayat',
+                      onTap: widget.onBukaRiwayat,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             TextField(
               decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari bahan…'),
@@ -141,6 +192,45 @@ class _StokScreenState extends State<StokScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Ubin aksi gudang: ikon di atas label, rata tengah, bingkai
+/// tipis — pengganti tombol sebaris yang mematahkan kata di HP.
+class _UbinAksi extends StatelessWidget {
+  const _UbinAksi({required this.ikon, required this.label, required this.onTap});
+  final IconData ikon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // Daftarkan sebagai dependen Theme: warna AppColors statis
+    // bisa basi saat tema berganti di tengah sesi (pelajaran
+    // SectionTitle) — baris ini yang mencegahnya.
+    Theme.of(context);
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Column(
+            children: [
+              Icon(ikon, size: 22, color: AppColors.accentDark),
+              const SizedBox(height: AppSpacing.xs),
+              Text(label, textAlign: TextAlign.center, style: AppText.small.copyWith(fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

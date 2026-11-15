@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.9.2';
+const appVersion = '0.10.0';
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -701,5 +701,62 @@ class AppNotification {
         jenis: j['jenis'] as String? ?? 'info',
         kunci: j['kunci'] as String? ?? '',
         dibaca: j['dibaca'] as bool? ?? false,
+      );
+}
+
+/// Satu baris riwayat pergerakan stok (modul Gudang, v0.10.0):
+/// setiap perubahan jumlah bahan WAJIB lewat sini supaya ketahuan
+/// berubah karena apa — barang masuk, terpotong penjualan, opname,
+/// atau ubah manual. Nama bahan & satuan DISALIN (snapshot) supaya
+/// riwayat tetap utuh walau bahan diganti nama atau dihapus.
+/// [jumlah] bertanda: positif = stok bertambah, negatif = berkurang.
+class MutasiStok {
+  MutasiStok({
+    String? id,
+    required this.ingredientId,
+    required this.namaBahan,
+    required this.jenis,
+    required this.jumlah,
+    required this.stokSesudah,
+    required this.satuan,
+    this.catatan = '',
+    DateTime? waktu,
+  })  : id = id ?? 'm${DateTime.now().microsecondsSinceEpoch}',
+        waktu = waktu ?? DateTime.now();
+
+  final String id;
+  final String ingredientId;
+  final String namaBahan;
+
+  /// 'masuk' | 'jual' | 'opname' | 'edit'
+  final String jenis;
+  final double jumlah;
+  final double stokSesudah;
+  final String satuan;
+  final String catatan;
+  final DateTime waktu;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'ingredientId': ingredientId,
+        'namaBahan': namaBahan,
+        'jenis': jenis,
+        'jumlah': jumlah,
+        'stokSesudah': stokSesudah,
+        'satuan': satuan,
+        'catatan': catatan,
+        'waktu': waktu.toIso8601String(),
+      };
+
+  factory MutasiStok.fromJson(Map<String, dynamic> j) => MutasiStok(
+        id: j['id'] as String?,
+        ingredientId: j['ingredientId'] as String? ?? '',
+        namaBahan: j['namaBahan'] as String? ?? '',
+        jenis: j['jenis'] as String? ?? 'edit',
+        jumlah: (j['jumlah'] as num?)?.toDouble() ?? 0,
+        stokSesudah: (j['stokSesudah'] as num?)?.toDouble() ?? 0,
+        satuan: j['satuan'] as String? ?? '',
+        catatan: j['catatan'] as String? ?? '',
+        waktu: DateTime.tryParse(j['waktu'] as String? ?? ''),
       );
 }
