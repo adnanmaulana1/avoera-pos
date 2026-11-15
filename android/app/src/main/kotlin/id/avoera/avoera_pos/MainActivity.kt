@@ -54,7 +54,18 @@ class MainActivity : FlutterActivity() {
                         )
                         result.success("perlu-izin")
                     } catch (e: Exception) {
-                        result.error("GAGAL", e.message, null)
+                        // Sebagian ROM tidak mengenal intent
+                        // spesifik per-paket — coba bentuk
+                        // umumnya (daftar sumber tidak dikenal).
+                        try {
+                            startActivity(
+                                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                            result.success("perlu-izin")
+                        } catch (e2: Exception) {
+                            result.error("GAGAL", e2.message, null)
+                        }
                     }
                     return@setMethodCallHandler
                 }

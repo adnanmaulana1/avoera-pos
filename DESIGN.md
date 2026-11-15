@@ -387,3 +387,12 @@ untuk hasil akhir.
 - **Banner Beranda pindah** ke bawah sapaan + baris cabang (posisi lamanya di paling atas dipertanyakan Adnan) — kini pengingat tenang di bawah kepala halaman, di atas kartu Penjualan.
 - Konsekuensi jujur: aplikasi Adnan yang terpasang (0.10.10) memuat pemasang LAMA yang rusak → 0.10.12 tetap harus dipasang manual sekali dari tautan; perilaku baru terasa mulai pembaruan sesudahnya.
 - Tes: patch_0112 baru (6: helper tawaran, 3 fase dialog, posisi banner) + patch_0107 disesuaikan ke kontrak baru. Bingkai 0112-beranda.png diperiksa: banner di bawah sapaan ✓.
+
+## v0.10.13 (2026-11-16) — Unduhan pembaruan ringan: split per ABI (perintah Adnan 01:11, "lambat ya kalo download via github")
+- **Sebab lambat:** APK universal 61 MB membawa TIGA mesin (arm64 19 MB + arm32 17 MB + x86_64 21 MB, ukuran tak-terkompresi) — tiap HP hanya butuh satu. GitHub bukan biang utama; ukuran berkasnya.
+- **Build:** codemagic.yaml android-release kini `flutter build apk --release --split-per-abi` → 3 artefak ±25 MB. Kode versi per ABI dari Flutter (1000×build + penanda) tidak mengganggu: perbandingan versi memakai konstanta appBuild.
+- **Terbit:** avoera.apk = arm64 (berkas utama di version.json urlApk — aplikasi LAMA 0.10.12 di HP arm64 Adnan langsung ikut ringan), avoera-32.apk = arm32 (urlApk32 baru). x86_64 tidak diterbitkan (bukan HP).
+- **Aplikasi:** InfoUpdate.urlApk32 (JSON lama aman) + urlApkUntukPerangkat(info, Abi) — unduhApk memilih lewat Abi.current(): androidArm → urlApk32 bila ada; selain itu urlApk.
+- **Cadangan izin:** intent halaman izin per-paket gagal di suatu ROM → coba intent umum ACTION_MANAGE_UNKNOWN_APP_SOURCES sebelum menyerah (di MainActivity).
+- Rilis ini sekaligus panggung uji penuh alur baru: dialog tawaran otomatis di aplikasi 0.10.12 Adnan → unduh arm64 → halaman izin sekali → Pasang.
+- Tes: patch_0113 baru (2).

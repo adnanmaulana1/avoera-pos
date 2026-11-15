@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -34,16 +35,23 @@ import 'widgets.dart';
 const urlInfoUpdate = 'https://raw.githubusercontent.com/adnanmaulana1/avoera-releases/main/version.json';
 
 /// Info rilis terbaru sebagaimana tertulis di version.json:
-/// {kode, nama, urlApk, catatan}.
+/// {kode, nama, urlApk, urlApk32, catatan}.
 class InfoUpdate {
-  InfoUpdate({required this.kode, required this.nama, required this.urlApk, this.catatan = ''});
+  InfoUpdate({required this.kode, required this.nama, required this.urlApk, this.catatan = '', this.urlApk32 = ''});
 
   /// Nomor build (angka sesudah '+' pada versi).
   final int kode;
 
   /// Nama versi tampil, mis. '0.10.8'.
   final String nama;
+
+  /// APK utama — sejak v0.10.13 ini berkas KHUSUS arm64
+  /// (±25 MB), bukan lagi universal 61 MB.
   final String urlApk;
+
+  /// APK untuk HP 32-bit lama (armeabi-v7a). Kosong = tidak
+  /// diterbitkan; perangkat 32-bit jatuh ke [urlApk].
+  final String urlApk32;
   final String catatan;
 
   factory InfoUpdate.fromJson(Map<String, dynamic> j) => InfoUpdate(
@@ -51,7 +59,18 @@ class InfoUpdate {
         nama: j['nama'] as String,
         urlApk: j['urlApk'] as String,
         catatan: j['catatan'] as String? ?? '',
+        urlApk32: j['urlApk32'] as String? ?? '',
       );
+}
+
+/// Alamat APK yang cocok untuk mesin perangkat ini
+/// (v0.10.13 — unduhan ringan per jenis HP): HP 32-bit memakai
+/// berkas 32-bit bila diterbitkan; sisanya berkas utama
+/// (arm64). Perangkat lain (mis. emulator x86) juga jatuh ke
+/// berkas utama.
+String urlApkUntukPerangkat(InfoUpdate info, Abi abi) {
+  if (abi == Abi.androidArm && info.urlApk32.isNotEmpty) return info.urlApk32;
+  return info.urlApk;
 }
 
 /// Jahitan uji: pengambil teks HTTP bisa diganti di tes.
@@ -91,7 +110,7 @@ Future<InfoUpdate?> ambilInfoUpdate({AmbilTeks? ambil, Uri? url}) async {
 Future<File?> unduhApk(InfoUpdate info, {required void Function(double?) onProgres, HttpClient? client}) async {
   final c = client ?? HttpClient();
   try {
-    final req = await c.getUrl(Uri.parse(info.urlApk));
+    final req = await c.getUrl(Uri.parse(urlApkUntukPerangkat(info, Abi.current())));
     final resp = await req.close();
     if (resp.statusCode != 200) return null;
     final file = File('${Directory.systemTemp.path}/avoera-${info.kode}.apk');

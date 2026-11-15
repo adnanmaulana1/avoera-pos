@@ -2,8 +2,17 @@
 #
 # Dua workflow, KEDUANYA manual (tidak ada trigger otomatis) supaya tidak ada
 # build yang jalan tanpa disadari:
-#   - android-release : flutter pub get + flutter build apk --release
+#   - android-release : flutter pub get + flutter build apk --release --split-per-abi
 #   - android-debug   : flutter pub get + flutter build apk --debug
+#
+# Split per ABI (sejak v0.10.13, permintaan Adnan: unduhan
+# pembaruan 61 MB terlalu lambat): rilis menghasilkan tiga APK
+# (arm64-v8a / armeabi-v7a / x86_64, masing-masing ±25 MB).
+# Yang diterbitkan ke avoera-releases: arm64 sebagai avoera.apk
+# + arm32 sebagai avoera-32.apk; aplikasi memilih sendiri.
+# Catatan: Flutter memberi kode versi per ABI (1000×build +
+# penanda ABI) — perbandingan versi aplikasi memakai konstanta
+# appBuild di data.dart, jadi skema itu tidak mengganggu.
 #
 # Project Flutter ada di ROOT repo ini (bukan subfolder mobile/),
 # jadi artifacts ada di build/app/outputs/flutter-apk/*.apk.
@@ -44,7 +53,7 @@ workflows:
       - name: Ambil dependencies
         script: flutter pub get
       - name: Build release APK
-        script: flutter build apk --release
+        script: flutter build apk --release --split-per-abi
       # Pembaruan dalam aplikasi: sejak v0.10.10 TIDAK ada lagi
       # langkah unggah di sini. Berkas pembaruan (version.json +
       # APK) diterbitkan Muse ke repo GitHub publik
