@@ -254,7 +254,7 @@ class _HomeShellState extends State<HomeShell> {
   int get _belumDibaca => _notifications.where((n) => !n.dibaca).length;
 
   /// Layar sambut brand: tampil selama data dimuat + sekejap
-  /// sesudahnya (500 mdtk) supaya logo sempat terlihat.
+  /// sesudahnya (1500 mdtk) supaya logo sempat terlihat.
   bool _splashSelesai = false;
 
   /// Tekan-kembali ganda untuk keluar (hanya di Beranda).
@@ -272,7 +272,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(milliseconds: 500), () {
+    Timer(const Duration(milliseconds: 1500), () {
       if (mounted) setState(() => _splashSelesai = true);
     });
     _loadData();

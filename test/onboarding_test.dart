@@ -37,8 +37,8 @@ void main() {
     // Animasi melayang onboarding berjalan terus — di fase ini
     // pakai pump berdurasi, bukan pumpAndSettle (tidak akan diam).
     Future<void> langkah() async {
-      await tester.pump(const Duration(milliseconds: 350));
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump(const Duration(milliseconds: 800));
     }
 
     await tester.pumpWidget(const KasirFnbApp());

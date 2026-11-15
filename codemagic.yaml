@@ -11,10 +11,13 @@
 # Mesin mac_mini_m2 mengikuti pola WeLaundry: build memakai kuota gratis
 # Codemagic 500 menit macOS/bulan.
 #
-# Catatan keystore: belum ada keystore rilis sendiri, jadi APK release
-# ditandatangani dengan keystore DEBUG bawaan (default Flutter/Codemagic).
-# Cukup untuk uji internal. Untuk rilis ke pelanggan/Play Store nanti,
-# buat keystore rilis dan daftarkan di Codemagic (Environment / Code signing).
+# Keystore rilis TETAP (sejak 2026-11-15): referensi avoera_release,
+# diunggah sekali ke Codemagic (Team settings > codemagic.yaml settings
+# > Code signing identities > Android keystores). build.gradle.kts
+# membaca CM_KEYSTORE_* sehingga SEMUA build bertanda tangan sama ->
+# update berikutnya bisa langsung ditimpa TANPA uninstall. Sebelumnya
+# APK memakai kunci debug mesin build yang berganti tiap build, jadi
+# tiap update ditolak Android dan wajib uninstall dulu.
 #
 # Cache (ditambah 2026-11-14 atas permintaan Adnan supaya build lebih
 # cepat): pub-cache + gradle disimpan antar-build, jadi build berikutnya
@@ -33,6 +36,8 @@ workflows:
         - $HOME/Library/Caches/CocoaPods
     environment:
       flutter: 3.47.9
+      android_signing:
+        - avoera_release
     scripts:
       - name: Cek versi Java
         script: java -version

@@ -29,11 +29,32 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("rilisTetap") {
+            // Keystore rilis TETAP dari Codemagic (diunggah sekali ke
+            // Code signing identities, referensi avoera_release).
+            // Codemagic menyediakan jalurnya lewat variabel CM_*.
+            // Tanpa ini APK memakai kunci debug mesin build yang
+            // BERGANTI tiap build -> tiap update wajib uninstall.
+            val jalur = System.getenv("CM_KEYSTORE_PATH")
+            if (jalur != null) {
+                storeFile = file(jalur)
+                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CM_KEY_ALIAS")
+                keyPassword = System.getenv("CM_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Di Codemagic: tanda tangan rilis tetap. Di luar itu
+            // (build lokal): tetap kunci debug supaya bisa dipasang.
+            signingConfig = if (System.getenv("CM_KEYSTORE_PATH") != null) {
+                signingConfigs.getByName("rilisTetap")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
