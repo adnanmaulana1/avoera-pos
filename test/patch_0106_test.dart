@@ -88,7 +88,9 @@ void main() {
       final txLama = txContoh(id: 'A-1999', at: DateTime.now());
       await pumpRiwayat(tester, [txBaru, txLama]);
 
-      await tester.tap(find.text('A-2001 · Tunai'));
+      // Sejak v0.10.9 judul baris = nama produk (bukan lagi
+      // id · metode); ketuk lewat judul produknya.
+      await tester.tap(find.text('Alpukat Kocok'));
       await tester.pumpAndSettle();
       expect(find.byType(DetailTransaksiScreen), findsOneWidget);
       expect(find.text('Alpukat Kocok'), findsOneWidget);
@@ -117,7 +119,11 @@ void main() {
       expect(find.text('A-BARU · Tunai'), findsOneWidget);
       expect(find.text('A-LAMA · Tunai'), findsOneWidget);
 
-      await tester.tap(find.text('Pilih Tanggal'));
+      // Sejak v0.10.9 "Pilih Tanggal" menjadi ikon kalender di
+      // ujung baris saringan geser — geser dulu sampai terlihat.
+      await tester.ensureVisible(find.byIcon(Icons.calendar_month_outlined));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.calendar_month_outlined));
       await tester.pumpAndSettle();
       expect(find.byType(DateRangePickerDialog), findsOneWidget);
 
@@ -132,10 +138,14 @@ void main() {
 
       expect(find.text('A-BARU · Tunai'), findsOneWidget);
       expect(find.text('A-LAMA · Tunai'), findsNothing, reason: 'Transaksi 10 hari lalu tersaring keluar oleh rentang hari ini');
-      expect(find.text('Hapus Tanggal'), findsOneWidget);
+      // Pil rentang aktif: ada tombol silang untuk menghapus.
+      expect(find.byIcon(Icons.close), findsOneWidget);
 
-      // Hapus saringan → semua tampil lagi.
-      await tester.tap(find.text('Hapus Tanggal'));
+      // Hapus saringan → semua tampil lagi. (Pil rentang juga
+      // di ujung baris geser — pastikan terlihat dulu.)
+      await tester.ensureVisible(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.close));
       await tester.pumpAndSettle();
       expect(find.text('A-LAMA · Tunai'), findsOneWidget);
     });
