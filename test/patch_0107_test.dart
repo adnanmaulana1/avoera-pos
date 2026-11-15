@@ -79,7 +79,9 @@ void main() {
 
   group('Unduh APK', () {
     test('Berkas tertulis utuh & progres mencapai 1', () async {
-      final bytes = List<int>.generate(5000, (i) => i % 251);
+      // Diawali 'PK' seperti APK asli (v0.10.15 memeriksa tanda
+      // ZIP di kepala berkas).
+      final bytes = List<int>.generate(5000, (i) => i % 251)..[0] = 0x50..[1] = 0x4B;
       double? terakhir;
       final file = await unduhApk(
         InfoUpdate(kode: 99, nama: '9.9.9', urlApk: 'https://x/avoera.apk'),

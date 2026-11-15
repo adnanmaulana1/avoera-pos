@@ -123,6 +123,20 @@ Future<File?> unduhApk(InfoUpdate info, {required void Function(double?) onProgr
       onProgres(total > 0 ? diterima / total : null);
     }
     await sink.close();
+    // Utuh? (v0.10.15) Aliran yang putus di tengah tanpa
+    // melempar bisa meninggalkan APK terpotong yang lolos
+    // sebagai "selesai" — pemasang lalu gagal tanpa sebab
+    // jelas. Ukuran wajib sama dengan yang dijanjikan server
+    // dan berkas wajib diawali tanda ZIP 'PK' (APK = ZIP).
+    if (total > 0 && diterima != total) {
+      await file.delete().catchError((_) => file);
+      return null;
+    }
+    final kepala = await file.openRead(0, 2).first;
+    if (kepala.length < 2 || kepala[0] != 0x50 || kepala[1] != 0x4B) {
+      await file.delete().catchError((_) => file);
+      return null;
+    }
     return file;
   } catch (_) {
     return null;
@@ -142,6 +156,11 @@ const _kanalPasang = MethodChannel('avoera/installer');
 ///   pengguna mengaktifkan sekali, lalu memasang ulang.
 /// - 'gagal': kanal tidak tersedia / gagal lain, mis. saat
 ///   berjalan di tes atau di luar Android.
+/// - `gagal|<kode>: <pesan>`: sisi Android melaporkan langkah
+///   yang gagal + pengecualiannya (v0.10.15 — versi lama
+///   menelan pesan ini sehingga kegagalan pemasang di HP
+///   Adnan tidak pernah ketahuan sebabnya; kini dialog
+///   menampilkannya).
 /// (Jawaban bool dari sisi Android lama diperlakukan sebagai
 /// 'dibuka' bila true.)
 Future<String> pasangApk(File file) async {
@@ -150,6 +169,8 @@ Future<String> pasangApk(File file) async {
     if (hasil == 'perlu-izin') return 'perlu-izin';
     if (hasil == 'dibuka' || hasil == true) return 'dibuka';
     return 'gagal';
+  } on PlatformException catch (e) {
+    return 'gagal|${e.code}: ${e.message ?? '(tanpa pesan)'}';
   } catch (_) {
     return 'gagal';
   }
@@ -235,6 +256,10 @@ class _DialogUnduhUpdateState extends State<DialogUnduhUpdate> {
   /// 'unduh' | 'unduh-gagal' | 'izin' | 'gagal'
   String _fase = 'unduh';
 
+  /// Alasan gagal asli dari sisi Android (v0.10.15), ditampilkan
+  /// kecil di fase 'gagal' supaya terbaca di tangkapan layar.
+  String? _detailGagal;
+
   @override
   void initState() {
     super.initState();
@@ -265,7 +290,10 @@ class _DialogUnduhUpdateState extends State<DialogUnduhUpdate> {
       case 'perlu-izin':
         setState(() => _fase = 'izin');
       default:
-        setState(() => _fase = 'gagal');
+        setState(() {
+          _fase = 'gagal';
+          _detailGagal = hasil.startsWith('gagal|') ? hasil.substring(6) : null;
+        });
     }
   }
 
@@ -282,7 +310,17 @@ class _DialogUnduhUpdateState extends State<DialogUnduhUpdate> {
               'Unduhan selesai. Android meminta izin sekali saja agar Avoera boleh memasang pembaruannya sendiri — halaman izin sudah dibuka. Aktifkan "Izinkan dari sumber ini", kembali ke sini, lalu ketuk Pasang.',
               style: AppText.body,
             ),
-          'gagal' => Text('Unduhan selesai, tetapi pemasang tidak bisa dibuka.', style: AppText.body),
+          'gagal' => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Unduhan selesai, tetapi pemasang tidak bisa dibuka.', style: AppText.body),
+                if (_detailGagal != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(_detailGagal!, style: AppText.caption.copyWith(color: AppColors.muted)),
+                ],
+              ],
+            ),
           _ => Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,5 +1,6 @@
 package id.avoera.avoera_pos
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -18,17 +19,24 @@ import java.io.File
 ///
 /// Hasil untuk Dart: 'dibuka' (pemasang tampil), 'perlu-izin'
 /// (halaman izin sudah dibuka — pengguna mengaktifkan sekali,
-/// lalu Dart menawarkan tombol Pasang lagi), atau error.
+/// lalu Dart menawarkan tombol Pasang lagi), atau error dengan
+/// kode bertahap supaya penyebab asli TERLIHAT di dialog
+/// (v0.10.15): 'IZIN' (kedua intent halaman izin gagal),
+/// 'PROVIDER' (FileProvider menolak jalur berkas), 'BUKA'
+/// (intent pemasang gagal dibuka — pesan membawa nama
+/// pengecualiannya).
 ///
-/// PERBAIKAN v0.10.12: sejak Android 8, memasang APK dari luar
-/// Play Store butuh izin per-aplikasi "pasang aplikasi tidak
-/// dikenal" (canRequestPackageInstalls). Versi lama langsung
-/// startActivity tanpa memeriksa izin ini → di HP Xiaomi
-/// Adnan startActivity melempar pengecualian, unduhan 61 MB
-/// sukses tapi pemasang gagal dibuka (ketahuan dari uji
-/// langsung Adnan 2026-11-16 00:43 WITA). Kini izin diperiksa
-/// dulu dan pengguna diarahkan ke halaman izinya.
+/// Riwayat: v0.10.12 menambah pemeriksaan izin
+/// canRequestPackageInstalls (tanpanya startActivity melempar
+/// di Xiaomi Adnan). Uji v0.10.13/v0.10.14 di HP yang sama
+/// TETAP gagal di langkah yang belum diketahui — pesan
+/// pengecualian versi lama ditelan Dart ('gagal' polos), jadi
+/// v0.10.15 membuka alasannya + menambah jalur cadangan
+/// ACTION_INSTALL_PACKAGE bila ACTION_VIEW tidak dikenal ROM.
 class MainActivity : FlutterActivity() {
+    private fun deskripsi(e: Exception): String =
+        "${e.javaClass.simpleName}: ${e.message ?: "(tanpa pesan)"}"
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "avoera/installer")
@@ -64,26 +72,46 @@ class MainActivity : FlutterActivity() {
                             )
                             result.success("perlu-izin")
                         } catch (e2: Exception) {
-                            result.error("GAGAL", e2.message, null)
+                            result.error("IZIN", "${deskripsi(e)} | ${deskripsi(e2)}", null)
                         }
                     }
                     return@setMethodCallHandler
                 }
-                try {
-                    val uri = FileProvider.getUriForFile(
+                val uri = try {
+                    FileProvider.getUriForFile(
                         this,
                         "${applicationContext.packageName}.fileprovider",
                         File(path)
                     )
+                } catch (e: Exception) {
+                    result.error("PROVIDER", deskripsi(e), null)
+                    return@setMethodCallHandler
+                }
+                try {
                     val intent = Intent(Intent.ACTION_VIEW).apply {
                         setDataAndType(uri, "application/vnd.android.package-archive")
+                        addCategory(Intent.CATEGORY_DEFAULT)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     startActivity(intent)
                     result.success("dibuka")
+                } catch (e: ActivityNotFoundException) {
+                    // ROM tanpa penangan ACTION_VIEW untuk APK:
+                    // coba intent khusus pemasangan.
+                    try {
+                        val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                            setDataAndType(uri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success("dibuka")
+                    } catch (e2: Exception) {
+                        result.error("BUKA", "${deskripsi(e)} | ${deskripsi(e2)}", null)
+                    }
                 } catch (e: Exception) {
-                    result.error("GAGAL", e.message, null)
+                    result.error("BUKA", deskripsi(e), null)
                 }
             }
     }

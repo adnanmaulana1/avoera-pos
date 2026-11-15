@@ -401,3 +401,10 @@ untuk hasil akhir.
 - "Padat Bawah" (v0.10.5) ditolak Adnan 03:15 ("perbarui tampilannya aku ga suka"). Tiga varian dirender sebagai golden (A Hijau Berani / B Bersih Tengah / C Kartu Padat); Adnan memilih **B** pukul 05:45.
 - PinGateScreen: semua isi di tengah — ubin logo 54, nama usaha, 'Kasir Terkunci', titik 14 polos TANPA pil abu (jarak 16), keterangan/kesalahan di bawah titik, papan angka LINGKARAN 72 tanpa kotak (angka 28 w500; ditekan = lingkaran accentSoft), petunjuk di bawah. Medali gembok + panel putih bawah HILANG. Perilaku utuh: titik memantul, goyang+merah saat salah, getar, tekan lama hapus = kosongkan, cek PIN 4–6 sama.
 - Catatan alat: render frame kini lewat golden (matchesGoldenFile + --update-goldens); jalur toImage manual macet di VM sesudah restart (lihat AGENTS.md).
+
+## v0.10.15 (2026-11-16) — Pemasang: sebab gagal DIBUKA + unduhan diverifikasi utuh
+- Uji Adnan 07:10 atas alur baru (aplikasinya kini ≥0.10.12 — dialog fase baru terbukti): tawaran otomatis ✓, unduhan ✓, tapi pasangApk tetap 'gagal'. Sebab tak terbaca: Dart menelan pesan PlatformException dan Kotlin tidak menandai langkah yang gagal.
+- **Kotlin:** kesalahan kini berkode tahap — IZIN (dua intent izin gagal), PROVIDER (FileProvider menolak), BUKA (intent pemasang gagal) — pesan membawa nama pengecualian. Intent VIEW dapat CATEGORY_DEFAULT; ActivityNotFoundException → cadangan ACTION_INSTALL_PACKAGE.
+- **Dart:** pasangApk meneruskan 'gagal|<kode>: <pesan>'; DialogUnduhUpdate fase gagal MENAMPILKAN alasan itu (teks kecil) supaya terbaca di tangkapan layar.
+- **unduhApk memverifikasi keutuhan:** ukuran diterima wajib sama dengan contentLength + kepala berkas wajib 'PK'; terpotong/bukan APK → berkas dihapus, hasil null (fase unduh-gagal, bisa diulang) — menutup lubang aliran putus diam-diam (pola terpotong yang sama terlihat di unduhan artefak VM malam ini).
+- Tes: patch_0115 baru (4); patch_0107 bytes uji kini diawali 'PK'.
