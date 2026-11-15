@@ -33,6 +33,7 @@ import 'screens/branch_wizard_screen.dart';
 import 'screens/profil_usaha_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/status_sinkron_screen.dart';
+import 'screens/laba_rugi_screen.dart';
 import 'screens/gudang_screen.dart';
 
 void main() {
@@ -262,6 +263,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   // ---------- Pemberitahuan (tersimpan) ----------
   List<AppNotification> _notifications = [];
   List<MutasiStok> _mutasi = [];
+
+  // ---------- Pengeluaran operasional (Laba Rugi) ----------
+  List<Pengeluaran> _expenses = [];
   final Map<String, double> _stokDikenal = {};
   int get _belumDibaca => _notifications.where((n) => !n.dibaca).length;
 
@@ -333,6 +337,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _transactions = data.transactions;
       _notifications = data.notifications;
       _mutasi = data.mutasi;
+      _expenses = data.expenses;
       _stokDikenal
         ..clear()
         ..addAll({for (final i in _ingredients) i.id: i.stock});
@@ -874,6 +879,37 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void _openPiutang() => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => LaporanPiutangScreen(tables: _tables)),
       );
+
+  void _openLabaRugi() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LabaRugiScreen(
+            transactions: _transactions,
+            menus: _menus,
+            ingredients: _ingredients,
+            expenses: _expenses,
+            branchId: _settings.activeBranchId,
+            branchName: _settings.activeBranch.name,
+            onAddExpense: _addExpense,
+            onEditExpense: _editExpense,
+            onDeleteExpense: _deleteExpense,
+          ),
+        ),
+      );
+
+  void _addExpense(Pengeluaran e) {
+    setState(() => _expenses = [e, ..._expenses]);
+    LocalStore.saveExpenses(_expenses);
+  }
+
+  void _editExpense(Pengeluaran e) {
+    setState(() => _expenses = [for (final x in _expenses) x.id == e.id ? e : x]);
+    LocalStore.saveExpenses(_expenses);
+  }
+
+  void _deleteExpense(Pengeluaran e) {
+    setState(() => _expenses = _expenses.where((x) => x.id != e.id).toList());
+    LocalStore.saveExpenses(_expenses);
+  }
 
   /// Tambah pemberitahuan tersimpan. Kunci yang sama & belum
   /// dibaca = tidak ditambah lagi (mencegah banjir duplikat untuk
@@ -1495,6 +1531,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onOpenBulanan: _openBulanan,
         onOpenPajak: _openPajak,
         onOpenPiutang: _openPiutang,
+        onOpenLabaRugi: _openLabaRugi,
       ),
       StokScreen(
         ingredients: _ingredients,

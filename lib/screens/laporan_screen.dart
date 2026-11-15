@@ -19,6 +19,7 @@ class LaporanScreen extends StatelessWidget {
     required this.onOpenBulanan,
     required this.onOpenPajak,
     required this.onOpenPiutang,
+    this.onOpenLabaRugi,
   });
 
   final List<TxRecord> transactions;
@@ -28,6 +29,9 @@ class LaporanScreen extends StatelessWidget {
   final VoidCallback onOpenBulanan;
   final VoidCallback onOpenPajak;
   final VoidCallback onOpenPiutang;
+
+  /// Opsional supaya konstruksi lama (tes) tetap sah.
+  final VoidCallback? onOpenLabaRugi;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +47,7 @@ class LaporanScreen extends StatelessWidget {
       (Icons.calendar_month_outlined, 'Laporan Bulanan', 'Total penjualan 6 bulan terakhir + hari terbaik.', onOpenBulanan),
       (Icons.account_balance_outlined, 'Laporan Pajak', 'Pajak & biaya layanan yang terkumpul per bulan.', onOpenPajak),
       (Icons.person_outline, 'Laporan Piutang', 'Tagihan meja yang belum dibayar.', onOpenPiutang),
-      (Icons.trending_up_outlined, 'Laporan Laba Rugi', 'Butuh data pembelian & biaya operasional — tahap berikutnya.', null),
+      (Icons.trending_up_outlined, 'Laporan Laba Rugi', 'Pendapatan, HPP, biaya operasional & laba bersih per periode.', onOpenLabaRugi),
       (Icons.scale_outlined, 'Neraca', 'Butuh data aset, hutang & modal — tahap berikutnya.', null),
       (Icons.payments_outlined, 'Arus Kas', 'Butuh catatan uang masuk/keluar di luar kasir — tahap berikutnya.', null),
       (Icons.swap_horiz_outlined, 'Arus Stok', 'Butuh catatan keluar-masuk bahan — tahap berikutnya.', null),

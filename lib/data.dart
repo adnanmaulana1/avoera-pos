@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.10.15';
+const appVersion = '0.10.16';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 41;
+const appBuild = 42;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -140,8 +140,11 @@ class AppSettings {
 }
 
 String rupiah(int value) {
-  final s = value.toString();
-  final buf = StringBuffer('Rp');
+  // Negatif (laba rugi bisa minus) ditulis -Rp di depan, bukan
+  // Rp- — pola yang sama dengan AnimatedRupiah.
+  final neg = value < 0;
+  final s = value.abs().toString();
+  final buf = StringBuffer(neg ? '-Rp' : 'Rp');
   for (var i = 0; i < s.length; i++) {
     if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
     buf.write(s[i]);
@@ -681,6 +684,167 @@ class TxRecord {
             .toList(),
         status: j['status'] as String? ?? 'Lunas',
       );
+}
+
+// ---------- Pengeluaran & Laba Rugi ----------
+
+/// Kategori pengeluaran bawaan yang ditawarkan formulir
+/// (nilainya disimpan sebagai teks biasa; kategori di luar
+/// daftar ini dari data lama tetap tampil apa adanya).
+const kategoriPengeluaran = ['Sewa', 'Gaji', 'Listrik & Air', 'Bahan Tambahan', 'Kemasan', 'Transport', 'Perawatan', 'Lainnya'];
+
+/// Satu catatan pengeluaran operasional (fitur Laporan Laba
+/// Rugi, diminta Adnan 2026-11-16): sewa, gaji, listrik, dll —
+/// uang keluar di LUAR pembelian bahan lewat kasir. Tersimpan
+/// LOKAL di perangkat (belum ikut sinkron, seperti mutasi &
+/// pemberitahuan) dan tercatat per cabang.
+class Pengeluaran {
+  Pengeluaran({
+    String? id,
+    required this.tanggal,
+    required this.kategori,
+    this.keterangan = '',
+    required this.jumlah,
+    this.branchId = '',
+  }) : id = id ?? 'p${DateTime.now().microsecondsSinceEpoch}';
+
+  final String id;
+  final DateTime tanggal;
+  final String kategori;
+  final String keterangan;
+
+  /// Jumlah keluar (Rp, selalu positif).
+  final int jumlah;
+  final String branchId;
+
+  Pengeluaran salin({DateTime? tanggal, String? kategori, String? keterangan, int? jumlah, String? branchId}) => Pengeluaran(
+        id: id,
+        tanggal: tanggal ?? this.tanggal,
+        kategori: kategori ?? this.kategori,
+        keterangan: keterangan ?? this.keterangan,
+        jumlah: jumlah ?? this.jumlah,
+        branchId: branchId ?? this.branchId,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'tanggal': tanggal.toIso8601String(),
+        'kategori': kategori,
+        'keterangan': keterangan,
+        'jumlah': jumlah,
+        'branchId': branchId,
+      };
+
+  factory Pengeluaran.fromJson(Map<String, dynamic> j) => Pengeluaran(
+        id: j['id'] as String? ?? '',
+        tanggal: DateTime.tryParse(j['tanggal'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+        kategori: j['kategori'] as String? ?? 'Lainnya',
+        keterangan: j['keterangan'] as String? ?? '',
+        jumlah: (j['jumlah'] as num?)?.toInt() ?? 0,
+        branchId: j['branchId'] as String? ?? '',
+      );
+}
+
+/// Hasil hitung Laporan Laba Rugi satu periode & cabang.
+/// HPP dihitung dari resep menu & harga beli bahan SAAT INI
+/// (bukan saat transaksi terjadi — aplikasi tidak menyimpan
+/// potret HPP per penjualan). Baris penjualan yang menunya
+/// sudah dihapus / belum punya resep tidak bisa dihitung
+/// modalnya: dihitung di [barisTakDikenal] supaya layar bisa
+/// memperingatkan bahwa laba sebenarnya lebih kecil.
+class HasilLabaRugi {
+  HasilLabaRugi({
+    required this.pendapatan,
+    required this.jumlahTx,
+    required this.hpp,
+    required this.totalBiaya,
+    required this.rincianBiaya,
+    required this.barisTakDikenal,
+    required this.adaTxTanpaRincian,
+  });
+
+  final int pendapatan;
+  final int jumlahTx;
+  final int hpp;
+  final int totalBiaya;
+
+  /// (kategori, total) terurut terbesar dulu.
+  final List<(String, int)> rincianBiaya;
+  final int barisTakDikenal;
+  final bool adaTxTanpaRincian;
+
+  int get labaKotor => pendapatan - hpp;
+  int get labaBersih => labaKotor - totalBiaya;
+
+  /// Margin laba kotor terhadap pendapatan (0..1); 0 bila
+  /// belum ada pendapatan.
+  double get marginKotor => pendapatan <= 0 ? 0 : labaKotor / pendapatan;
+}
+
+/// Hitung laba rugi murni dari data yang ada. [dari]/[sampai]
+/// inklusif per hari kalender. Hanya transaksi 'Lunas' yang
+/// dihitung sebagai pendapatan. Cabang mengikuti pola aplikasi:
+/// catatan bercabang kosong (data lama) ikut di semua cabang.
+HasilLabaRugi hitungLabaRugi({
+  required List<TxRecord> transactions,
+  required List<MenuItem> menus,
+  required List<Ingredient> ingredients,
+  required List<Pengeluaran> expenses,
+  required String branchId,
+  required DateTime dari,
+  required DateTime sampai,
+}) {
+  final awal = DateTime(dari.year, dari.month, dari.day);
+  final akhir = DateTime(sampai.year, sampai.month, sampai.day).add(const Duration(days: 1));
+  bool diRentang(DateTime t) => !t.isBefore(awal) && t.isBefore(akhir);
+  bool diCabang(String b) => b.isEmpty || b == branchId;
+
+  final menuPerNama = <String, MenuItem>{};
+  for (final m in menus) {
+    menuPerNama.putIfAbsent(m.name, () => m);
+  }
+
+  var pendapatan = 0;
+  var jumlahTx = 0;
+  var hpp = 0;
+  var takDikenal = 0;
+  var adaTxLama = false;
+  for (final t in transactions) {
+    if (t.status != 'Lunas' || !diCabang(t.branchId) || !diRentang(t.at)) continue;
+    pendapatan += t.total;
+    jumlahTx++;
+    if (t.lines.isEmpty) {
+      adaTxLama = true;
+      continue;
+    }
+    for (final l in t.lines) {
+      final m = menuPerNama[l.nama];
+      if (m == null || kebutuhanBahan(m, menus).isEmpty) {
+        takDikenal++;
+        continue;
+      }
+      hpp += hppMenu(m, menus, ingredients) * l.qty;
+    }
+  }
+
+  var totalBiaya = 0;
+  final perKategori = <String, int>{};
+  for (final e in expenses) {
+    if (!diCabang(e.branchId) || !diRentang(e.tanggal)) continue;
+    totalBiaya += e.jumlah;
+    perKategori[e.kategori] = (perKategori[e.kategori] ?? 0) + e.jumlah;
+  }
+  final rincian = perKategori.entries.map((e) => (e.key, e.value)).toList()..sort((a, b) => b.$2.compareTo(a.$2));
+
+  return HasilLabaRugi(
+    pendapatan: pendapatan,
+    jumlahTx: jumlahTx,
+    hpp: hpp,
+    totalBiaya: totalBiaya,
+    rincianBiaya: rincian,
+    barisTakDikenal: takDikenal,
+    adaTxTanpaRincian: adaTxLama,
+  );
 }
 
 // ---------- Cabang ----------

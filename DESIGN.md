@@ -408,3 +408,10 @@ untuk hasil akhir.
 - **Dart:** pasangApk meneruskan 'gagal|<kode>: <pesan>'; DialogUnduhUpdate fase gagal MENAMPILKAN alasan itu (teks kecil) supaya terbaca di tangkapan layar.
 - **unduhApk memverifikasi keutuhan:** ukuran diterima wajib sama dengan contentLength + kepala berkas wajib 'PK'; terpotong/bukan APK → berkas dihapus, hasil null (fase unduh-gagal, bisa diulang) — menutup lubang aliran putus diam-diam (pola terpotong yang sama terlihat di unduhan artefak VM malam ini).
 - Tes: patch_0115 baru (4); patch_0107 bytes uji kini diawali 'PK'.
+
+## v0.10.16 (2026-11-16) — Laporan Laba Rugi (diminta Adnan)
+- Baris 'Laporan Laba Rugi' di hub Laporan yang dulu 'Segera' kini hidup: layar LabaRugiScreen (periode Bulan Ini/Bulan Lalu/Hari Ini/Pilih Tanggal; per cabang aktif; ekspor pratinjau seperti laporan lain).
+- Hitungan murni `hitungLabaRugi` (data.dart): pendapatan = transaksi LUNAS dalam rentang; HPP = Σ resep menu (dicocokkan per NAMA dari TxLine) × qty dengan harga beli bahan SAAT INI; laba kotor; biaya operasional; laba bersih. Kejujuran: baris yang menunya terhapus/tanpa resep + transaksi lama tanpa rincian TIDAK ditebak modalnya — dihitung & diperingatkan di layar ('laba sebenarnya bisa lebih kecil').
+- Model Pengeluaran baru (kategori bawaan 8, keterangan, jumlah, tanggal, cabang) tersimpan LOKAL (avoera.expenses.v1; belum sinkron — seperti mutasi/notifikasi). CRUD lewat sheet pola Gudang dari layar laporan: tombol Tambah Pengeluaran + ketuk catatan untuk edit/hapus.
+- rupiah() kini aman untuk nilai negatif (-Rp...) — dipakai label rugi.
+- Tes: patch_0116 baru (8).
