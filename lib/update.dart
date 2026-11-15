@@ -14,17 +14,21 @@ import 'widgets.dart';
 /// lalu membuka pemasang Android; pengguna menekan "Pasang"
 /// satu kali. Alurnya:
 ///
-/// 1. Aplikasi membaca [urlInfoUpdate] (version.json di server,
-///    ditulis langkah unggah Codemagic sesudah build rilis).
-/// 2. Nomor build server > nomor build aplikasi → banner di
+/// 1. Aplikasi membaca [urlInfoUpdate] (version.json di repo
+///    GitHub publik avoera-releases, diterbitkan Muse sesudah
+///    tiap build rilis Codemagic selesai). Sejak v0.10.10
+///    berkas pembaruan TIDAK lagi tinggal di server Adnan —
+///    keputusan Adnan 2026-11-15: servernya sering kena
+///    suspend, pembaruan tidak boleh ikut mati.
+/// 2. Nomor build terbaru > nomor build aplikasi → banner di
 ///    Beranda + pemberitahuan tersimpan.
 /// 3. Ketuk banner → dialog unduh berprogress → pemasang
 ///    Android dibuka lewat kanal native 'avoera/installer'
 ///    (MainActivity + FileProvider).
-const urlInfoUpdate = 'https://webtales.my.id/avoera/version.json';
+const urlInfoUpdate = 'https://raw.githubusercontent.com/adnanmaulana1/avoera-releases/main/version.json';
 
-/// Info rilis terbaru sebagaimana tertulis di version.json
-/// server: {kode, nama, urlApk, catatan}.
+/// Info rilis terbaru sebagaimana tertulis di version.json:
+/// {kode, nama, urlApk, catatan}.
 class InfoUpdate {
   InfoUpdate({required this.kode, required this.nama, required this.urlApk, this.catatan = ''});
 

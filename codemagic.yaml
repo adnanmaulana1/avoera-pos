@@ -36,14 +36,6 @@ workflows:
         - $HOME/Library/Caches/CocoaPods
     environment:
       flutter: 3.47.9
-      # Grup variable AVOERA WAJIB diimpor: AVOERA_UPLOAD_TOKEN
-      # disimpan Adnan di dalam grup itu (2026-11-15). Tanpa
-      # impor ini variable-nya KOSONG saat build — kejadian
-      # 2026-11-15 22:56: token sudah diisi sebelum build tapi
-      # langkah unggah terlewati diam-diam karena grup belum
-      # diimpor, server tetap berisi versi lama.
-      groups:
-        - AVOERA
       android_signing:
         - avoera_release
     scripts:
@@ -53,29 +45,12 @@ workflows:
         script: flutter pub get
       - name: Build release APK
         script: flutter build apk --release
-      # Pembaruan dalam aplikasi (v0.10.7): unggah APK jadi ke
-      # server supaya aplikasi yang terpasang bisa mengecek,
-      # mengunduh, dan menawarkannya sendiri. Butuh SATU variable
-      # di Codemagic (App settings > Environment variables):
-      # AVOERA_UPLOAD_TOKEN. Belum diatur -> langkah ini dilewati
-      # dengan aman, build tetap berhasil.
-      - name: Unggah APK untuk pembaruan dalam aplikasi
-        script: |
-          if [ -z "$AVOERA_UPLOAD_TOKEN" ]; then
-            echo "AVOERA_UPLOAD_TOKEN belum diatur — unggah dilewati."
-            exit 0
-          fi
-          APK=$(ls build/app/outputs/flutter-apk/app-release.apk)
-          KODE=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
-          NAMA=$(grep '^version:' pubspec.yaml | sed 's/^version: //' | sed 's/+.*//')
-          CATATAN=$(git log -1 --pretty=%s | tr -cd '[:print:]' | cut -c1-200)
-          curl -f -X POST "https://webtales.my.id/avoera/upload" \
-            -H "X-Upload-Token: $AVOERA_UPLOAD_TOKEN" \
-            -H "X-Version-Code: $KODE" \
-            -H "X-Version-Name: $NAMA" \
-            -H "X-Notes: $CATATAN" \
-            --data-binary @"$APK"
-          echo "APK v$NAMA (build $KODE) terunggah untuk pembaruan dalam aplikasi."
+      # Pembaruan dalam aplikasi: sejak v0.10.10 TIDAK ada lagi
+      # langkah unggah di sini. Berkas pembaruan (version.json +
+      # APK) diterbitkan Muse ke repo GitHub publik
+      # avoera-releases sesudah build selesai — keputusan Adnan
+      # 2026-11-15: jangan pakai server miliknya (sering kena
+      # suspend). Langkah unggah lama ke webtales.my.id dicabut.
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
 
