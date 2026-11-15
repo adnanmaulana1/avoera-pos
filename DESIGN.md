@@ -396,3 +396,8 @@ untuk hasil akhir.
 - **Cadangan izin:** intent halaman izin per-paket gagal di suatu ROM → coba intent umum ACTION_MANAGE_UNKNOWN_APP_SOURCES sebelum menyerah (di MainActivity).
 - Rilis ini sekaligus panggung uji penuh alur baru: dialog tawaran otomatis di aplikasi 0.10.12 Adnan → unduh arm64 → halaman izin sekali → Pasang.
 - Tes: patch_0113 baru (2).
+
+## v0.10.14 (2026-11-16) — Gerbang PIN "Bersih Tengah" (pilihan Adnan dari 3 varian)
+- "Padat Bawah" (v0.10.5) ditolak Adnan 03:15 ("perbarui tampilannya aku ga suka"). Tiga varian dirender sebagai golden (A Hijau Berani / B Bersih Tengah / C Kartu Padat); Adnan memilih **B** pukul 05:45.
+- PinGateScreen: semua isi di tengah — ubin logo 54, nama usaha, 'Kasir Terkunci', titik 14 polos TANPA pil abu (jarak 16), keterangan/kesalahan di bawah titik, papan angka LINGKARAN 72 tanpa kotak (angka 28 w500; ditekan = lingkaran accentSoft), petunjuk di bawah. Medali gembok + panel putih bawah HILANG. Perilaku utuh: titik memantul, goyang+merah saat salah, getar, tekan lama hapus = kosongkan, cek PIN 4–6 sama.
+- Catatan alat: render frame kini lewat golden (matchesGoldenFile + --update-goldens); jalur toImage manual macet di VM sesudah restart (lihat AGENTS.md).

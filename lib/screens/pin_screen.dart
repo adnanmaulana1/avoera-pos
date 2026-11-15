@@ -87,8 +87,8 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
     final gagal = _error != null;
     final isi = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
-      width: 15,
-      height: 15,
+      width: 14,
+      height: 14,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: terisi ? (gagal ? AppColors.danger : AppColors.accent) : Colors.transparent,
@@ -110,13 +110,14 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    // Tata letak "Padat Bawah" — dipilih Adnan 2026-11-15 dari 4
-    // varian (paling nyaman di jari: papan tombol menempel di
-    // bawah, pas jangkauan jempol). Kepala ringkas kiri-atas,
-    // titik PIN dalam pil abu, medali gembok di tengah, panel
-    // tombol putih di bawah. Semua perilaku lama dipertahankan:
-    // titik memantul, goyang + merah saat salah, getar, tekan
-    // lama hapus = kosongkan.
+    // Tata letak "Bersih Tengah" — dipilih Adnan 2026-11-16 dari
+    // 3 varian, MENGGANTIKAN "Padat Bawah" yang tidak lagi
+    // disukai. Semua isi berkumpul di tengah: logo, nama usaha,
+    // titik PIN polos tanpa pil, keterangan, lalu papan angka
+    // lingkaran tanpa kotak. Petunjuk tinggal di bawah. Semua
+    // perilaku lama dipertahankan: titik memantul, goyang +
+    // merah saat salah, getar, tekan lama hapus = kosongkan.
+    final gagal = _error != null;
     return LayoutBuilder(
       builder: (context, c) => SingleChildScrollView(
         child: ConstrainedBox(
@@ -128,127 +129,89 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
             child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, 0),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                          child: const Icon(Icons.storefront, color: Colors.white, size: 24),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(widget.businessName, style: AppText.subtitle, overflow: TextOverflow.ellipsis),
-                              Text('Kasir Terkunci', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ),
-                      ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Expanded(flex: 2, child: SizedBox()),
+                    Center(
+                      child: Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                        child: const Icon(Icons.storefront, color: Colors.white, size: 27),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Center(
-                    child: AnimatedBuilder(
+                    const SizedBox(height: AppSpacing.md),
+                    Text(widget.businessName, textAlign: TextAlign.center, style: AppText.subtitle.copyWith(color: AppColors.ink), overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text('Kasir Terkunci', textAlign: TextAlign.center, style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 26),
+                    AnimatedBuilder(
                       animation: _goyang,
                       builder: (_, child) {
                         final v = _goyang.value;
                         final geser = _goyang.isAnimating ? math.sin(v * math.pi * 4) * 9 * (1 - v) : 0.0;
                         return Transform.translate(offset: Offset(geser, 0), child: child);
                       },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                        decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.pill)),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (var i = 0; i < 6; i++)
-                              Padding(
-                                padding: EdgeInsets.only(left: i == 0 ? 0 : AppSpacing.md),
-                                child: _titik(i),
-                              ),
-                          ],
-                        ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          for (var i = 0; i < 6; i++)
+                            Padding(
+                              padding: EdgeInsets.only(left: i == 0 ? 0 : AppSpacing.lg),
+                              child: _titik(i),
+                            ),
+                        ],
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 76,
-                          height: 76,
-                          decoration: BoxDecoration(
-                            color: _error != null ? AppColors.danger.withValues(alpha: 0.10) : AppColors.accentSoft,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.lock_outline, size: 34, color: _error != null ? AppColors.danger : AppColors.accentDark),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                          child: Text(
-                            _error ?? 'Masukkan PIN untuk membuka kasir',
-                            textAlign: TextAlign.center,
-                            style: AppText.small.copyWith(
-                              color: _error != null ? AppColors.danger : AppColors.muted,
-                              fontWeight: _error != null ? FontWeight.w600 : FontWeight.w400,
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      _error ?? 'Masukkan PIN untuk membuka kasir',
+                      textAlign: TextAlign.center,
+                      style: AppText.small.copyWith(
+                        color: gagal ? AppColors.danger : AppColors.muted,
+                        fontWeight: gagal ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    for (final baris in [
+                      ['1', '2', '3'],
+                      ['4', '5', '6'],
+                      ['7', '8', '9'],
+                      ['', '0', '<'],
+                    ]) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          for (var j = 0; j < baris.length; j++) ...[
+                            if (j > 0) const SizedBox(width: 28),
+                            SizedBox(
+                              width: 72,
+                              height: 72,
+                              child: baris[j].isEmpty
+                                  ? null
+                                  : _TombolPin(
+                                      label: baris[j],
+                                      onTap: () => baris[j] == '<' ? _hapus() : _tekan(baris[j]),
+                                      onLongPress: baris[j] == '<' ? _hapusSemua : null,
+                                    ),
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      children: [
-                        for (final baris in [
-                          ['1', '2', '3'],
-                          ['4', '5', '6'],
-                          ['7', '8', '9'],
-                          ['', '0', '<'],
-                        ]) ...[
-                          Row(
-                            children: [
-                              for (var j = 0; j < baris.length; j++) ...[
-                                if (j > 0) const SizedBox(width: AppSpacing.md),
-                                Expanded(
-                                  child: baris[j].isEmpty
-                                      ? const SizedBox(height: 60)
-                                      : _TombolPin(
-                                          label: baris[j],
-                                          onTap: () => baris[j] == '<' ? _hapus() : _tekan(baris[j]),
-                                          onLongPress: baris[j] == '<' ? _hapusSemua : null,
-                                        ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.md),
+                          ],
                         ],
-                        Text(
-                          'PIN diatur pemilik di Pengaturan → Keamanan → PIN Kasir. Tekan lama tombol hapus untuk mengosongkan PIN.',
-                          textAlign: TextAlign.center,
-                          style: AppText.caption.copyWith(color: AppColors.muted),
-                        ),
-                      ],
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    const Expanded(flex: 3, child: SizedBox()),
+                    Text(
+                      'PIN diatur pemilik di Pengaturan → Keamanan → PIN Kasir. Tekan lama tombol hapus untuk mengosongkan PIN.',
+                      textAlign: TextAlign.center,
+                      style: AppText.caption.copyWith(color: AppColors.muted),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+                ),
               ),
             ),
             ),
@@ -259,9 +222,10 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
   }
 }
 
-/// Satu tombol papan angka PIN: kotak membulat bergaris tepi,
-/// menyala hijau lembut selama ditekan — papan terasa hidup,
-/// bukan teks diam.
+/// Satu tombol papan angka PIN gaya "Bersih Tengah": lingkaran
+/// polos tanpa kotak/garis; selama ditekan muncul lingkaran
+/// hijau lembut di belakang angka — papan terasa hidup, bukan
+/// teks diam.
 class _TombolPin extends StatefulWidget {
   const _TombolPin({required this.label, required this.onTap, this.onLongPress});
   final String label;
@@ -277,6 +241,7 @@ class _TombolPinState extends State<_TombolPin> {
 
   @override
   Widget build(BuildContext context) {
+    final _ = Theme.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _ditekan = true),
@@ -286,16 +251,16 @@ class _TombolPinState extends State<_TombolPin> {
       onLongPress: widget.onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        height: 60,
+        width: 72,
+        height: 72,
         decoration: BoxDecoration(
-          color: _ditekan ? AppColors.accentSoft : AppColors.card,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: _ditekan ? AppColors.accent : AppColors.border, width: _ditekan ? 1.5 : 1),
+          shape: BoxShape.circle,
+          color: _ditekan ? AppColors.accentSoft : Colors.transparent,
         ),
         child: Center(
           child: widget.label == '<'
-              ? Icon(Icons.backspace_outlined, size: 24, color: _ditekan ? AppColors.accentDark : AppColors.ink)
-              : Text(widget.label, style: AppText.number.copyWith(color: _ditekan ? AppColors.accentDark : AppColors.ink)),
+              ? Icon(Icons.backspace_outlined, size: 26, color: AppColors.ink)
+              : Text(widget.label, style: AppText.number.copyWith(fontSize: 28, fontWeight: FontWeight.w500, color: AppColors.ink)),
         ),
       ),
     );
