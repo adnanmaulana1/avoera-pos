@@ -91,7 +91,7 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
       height: 15,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: terisi ? (gagal ? AppColors.danger : AppColors.accent) : AppColors.card,
+        color: terisi ? (gagal ? AppColors.danger : AppColors.accent) : Colors.transparent,
         border: Border.all(color: gagal ? AppColors.danger : (terisi ? AppColors.accent : AppColors.border), width: 1.5),
       ),
     );
@@ -110,117 +110,158 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      children: [
-        const SizedBox(height: AppSpacing.xl),
-        // Kepala bergaya brand (rombak tampilan kunci kasir,
-        // permintaan Adnan 2026-11-15): logo Avorea di kartu krem,
-        // nama usaha besar, lencana gembok 'Kasir Terkunci'.
-        Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7F8F2),
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 14, offset: Offset(0, 5))],
-            ),
-            child: Image.asset(
-              'assets/branding/avorea-logo.png',
-              width: 168,
-              height: 77,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => const SizedBox(
-                height: 77,
-                child: Center(child: Text('AVOREA', style: TextStyle(color: Color(0xFF1E3A2A), fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 2))),
+    // Tata letak "Padat Bawah" — dipilih Adnan 2026-11-15 dari 4
+    // varian (paling nyaman di jari: papan tombol menempel di
+    // bawah, pas jangkauan jempol). Kepala ringkas kiri-atas,
+    // titik PIN dalam pil abu, medali gembok di tengah, panel
+    // tombol putih di bawah. Semua perilaku lama dipertahankan:
+    // titik memantul, goyang + merah saat salah, getar, tekan
+    // lama hapus = kosongkan.
+    return LayoutBuilder(
+      builder: (context, c) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: c.maxHeight),
+          // IntrinsicHeight WAJIB: tanpa ini Column ber-Expanded di
+          // dalam scroll view menerima tinggi tak terbatas dan
+          // meledak ("non-zero flex but incoming height unbounded").
+          child: IntrinsicHeight(
+            child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, 0),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                          child: const Icon(Icons.storefront, color: Colors.white, size: 24),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(widget.businessName, style: AppText.subtitle, overflow: TextOverflow.ellipsis),
+                              Text('Kasir Terkunci', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Center(
+                    child: AnimatedBuilder(
+                      animation: _goyang,
+                      builder: (_, child) {
+                        final v = _goyang.value;
+                        final geser = _goyang.isAnimating ? math.sin(v * math.pi * 4) * 9 * (1 - v) : 0.0;
+                        return Transform.translate(offset: Offset(geser, 0), child: child);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                        decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (var i = 0; i < 6; i++)
+                              Padding(
+                                padding: EdgeInsets.only(left: i == 0 ? 0 : AppSpacing.md),
+                                child: _titik(i),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 76,
+                          height: 76,
+                          decoration: BoxDecoration(
+                            color: _error != null ? AppColors.danger.withValues(alpha: 0.10) : AppColors.accentSoft,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.lock_outline, size: 34, color: _error != null ? AppColors.danger : AppColors.accentDark),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                          child: Text(
+                            _error ?? 'Masukkan PIN untuk membuka kasir',
+                            textAlign: TextAlign.center,
+                            style: AppText.small.copyWith(
+                              color: _error != null ? AppColors.danger : AppColors.muted,
+                              fontWeight: _error != null ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      children: [
+                        for (final baris in [
+                          ['1', '2', '3'],
+                          ['4', '5', '6'],
+                          ['7', '8', '9'],
+                          ['', '0', '<'],
+                        ]) ...[
+                          Row(
+                            children: [
+                              for (var j = 0; j < baris.length; j++) ...[
+                                if (j > 0) const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: baris[j].isEmpty
+                                      ? const SizedBox(height: 60)
+                                      : _TombolPin(
+                                          label: baris[j],
+                                          onTap: () => baris[j] == '<' ? _hapus() : _tekan(baris[j]),
+                                          onLongPress: baris[j] == '<' ? _hapusSemua : null,
+                                        ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                        ],
+                        Text(
+                          'PIN diatur pemilik di Pengaturan → Keamanan → PIN Kasir. Tekan lama tombol hapus untuk mengosongkan PIN.',
+                          textAlign: TextAlign.center,
+                          style: AppText.caption.copyWith(color: AppColors.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Text(widget.businessName, textAlign: TextAlign.center, style: AppText.pageTitle),
-        const SizedBox(height: AppSpacing.sm),
-        Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs + 2),
-            decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.pill)),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.lock_outline, size: 15, color: AppColors.accentDark),
-                const SizedBox(width: AppSpacing.xs),
-                Text('Kasir Terkunci', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
-              ],
             ),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          'Masukkan PIN kasir untuk membuka kasir.',
-          textAlign: TextAlign.center,
-          style: AppText.small.copyWith(color: AppColors.muted),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        AnimatedBuilder(
-          animation: _goyang,
-          builder: (_, child) {
-            final v = _goyang.value;
-            final geser = _goyang.isAnimating ? math.sin(v * math.pi * 4) * 9 * (1 - v) : 0.0;
-            return Transform.translate(offset: Offset(geser, 0), child: child);
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < 6; i++)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: _titik(i),
-                ),
-            ],
-          ),
-        ),
-        SizedBox(height: _error == null ? AppSpacing.xl : AppSpacing.sm),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Text(_error!, textAlign: TextAlign.center, style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w600)),
-          ),
-        for (final baris in [
-          ['1', '2', '3'],
-          ['4', '5', '6'],
-          ['7', '8', '9'],
-          ['', '0', '<'],
-        ])
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (final d in baris)
-                SizedBox(
-                  width: 88,
-                  height: 88,
-                  child: d.isEmpty
-                      ? const SizedBox.shrink()
-                      : _TombolPin(
-                          label: d,
-                          onTap: () => d == '<' ? _hapus() : _tekan(d),
-                          onLongPress: d == '<' ? _hapusSemua : null,
-                        ),
-                ),
-            ],
-          ),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          'PIN diatur pemilik di Pengaturan → Keamanan → PIN Kasir. Tekan lama tombol hapus untuk mengosongkan PIN.',
-          textAlign: TextAlign.center,
-          style: AppText.caption.copyWith(color: AppColors.muted),
-        ),
-      ],
+      ),
     );
   }
 }
 
-/// Satu tombol papan angka PIN: lingkaran tombol menyala lembut
-/// selama ditekan — papan terasa hidup, bukan teks diam.
+/// Satu tombol papan angka PIN: kotak membulat bergaris tepi,
+/// menyala hijau lembut selama ditekan — papan terasa hidup,
+/// bukan teks diam.
 class _TombolPin extends StatefulWidget {
   const _TombolPin({required this.label, required this.onTap, this.onLongPress});
   final String label;
@@ -243,21 +284,18 @@ class _TombolPinState extends State<_TombolPin> {
       onTapCancel: () => setState(() => _ditekan = false),
       onTap: widget.onTap,
       onLongPress: widget.onLongPress,
-      child: Center(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _ditekan ? AppColors.accentSoft : AppColors.track,
-            border: Border.all(color: _ditekan ? AppColors.accent : AppColors.border),
-          ),
-          child: Center(
-            child: widget.label == '<'
-                ? Icon(Icons.backspace_outlined, size: 24, color: _ditekan ? AppColors.accentDark : AppColors.ink)
-                : Text(widget.label, style: AppText.hero.copyWith(fontWeight: FontWeight.w600, color: _ditekan ? AppColors.accentDark : AppColors.ink)),
-          ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        height: 60,
+        decoration: BoxDecoration(
+          color: _ditekan ? AppColors.accentSoft : AppColors.card,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: _ditekan ? AppColors.accent : AppColors.border, width: _ditekan ? 1.5 : 1),
+        ),
+        child: Center(
+          child: widget.label == '<'
+              ? Icon(Icons.backspace_outlined, size: 24, color: _ditekan ? AppColors.accentDark : AppColors.ink)
+              : Text(widget.label, style: AppText.number.copyWith(color: _ditekan ? AppColors.accentDark : AppColors.ink)),
         ),
       ),
     );
