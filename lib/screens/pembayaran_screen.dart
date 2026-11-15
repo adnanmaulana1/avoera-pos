@@ -4,13 +4,27 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
+/// Satu baris pesanan yang ditampilkan di halaman Pembayaran
+/// (nama, keterangan varian/catatan, jumlah, total baris).
+class BarisBayar {
+  const BarisBayar({required this.nama, this.keterangan = '', required this.qty, required this.total});
+
+  final String nama;
+  final String keterangan;
+  final int qty;
+  final int total;
+}
+
 /// Halaman Pembayaran PENUH (v0.10.1, permintaan Adnan
 /// 2026-11-15): dulu dialog melayang — sempit, tombol Proses
-/// Bayar menimpa kolom saat keyboard naik. Kini halaman
-/// tersendiri: rincian di kartu, pilihan uang diterima, status
-/// kurang/kembalian + tombol Proses Bayar menempel di bawah.
-/// Mengembalikan nama metode ('Tunai'/'QRIS') saat dibayar,
-/// null bila dibatalkan (tombol kembali).
+/// Bayar menimpa kolom saat keyboard naik. v0.10.2: tampilan
+/// diperkaya atas keluhan Adnan "terlalu sederhana" — kartu
+/// total emerald besar (bahasa visual yang sama dengan kartu
+/// penjualan Beranda), rincian pesanan asli dari keranjang,
+/// metode sebagai kartu pilih bergambar, nominal sebagai ubin
+/// besar, dan kartu status kembalian/kurang. Perilaku tidak
+/// berubah: mengembalikan nama metode ('Tunai'/'QRIS') saat
+/// dibayar, null bila dibatalkan (tombol kembali).
 class PembayaranScreen extends StatefulWidget {
   const PembayaranScreen({
     super.key,
@@ -20,6 +34,7 @@ class PembayaranScreen extends StatefulWidget {
     required this.grandTotal,
     required this.servicePercent,
     required this.taxPercent,
+    this.items = const [],
   });
 
   final int subtotal;
@@ -28,6 +43,7 @@ class PembayaranScreen extends StatefulWidget {
   final int grandTotal;
   final int servicePercent;
   final int taxPercent;
+  final List<BarisBayar> items;
 
   @override
   State<PembayaranScreen> createState() => _PembayaranScreenState();
@@ -36,8 +52,8 @@ class PembayaranScreen extends StatefulWidget {
 class _PembayaranScreenState extends State<PembayaranScreen> {
   String _method = 'Tunai';
   int? _paid;
-  // Kolom nominal & chip berbagi satu nilai: memilih chip
-  // mengisi kolom (berformat titik), mengetik memperbarui chip.
+  // Kolom nominal & ubin berbagi satu nilai: memilih ubin
+  // mengisi kolom (berformat titik), mengetik memperbarui ubin.
   final _amountCtrl = TextEditingController();
 
   @override
@@ -48,67 +64,114 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
 
   bool get _bisaProses => _method != 'Tunai' || (_paid != null && _paid! >= widget.grandTotal);
 
+  void _pilihNominal(int amt) => setState(() {
+        _paid = amt;
+        _amountCtrl.text = ThousandsFormatter.format(amt);
+      });
+
   @override
   Widget build(BuildContext context) {
     final change = (_paid ?? 0) - widget.grandTotal;
+    final totalQty = widget.items.fold<int>(0, (a, b) => a + b.qty);
     return Scaffold(
       appBar: AppBar(title: const Text('Pembayaran')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
+          // ===== Kartu total: angka terpenting halaman ini =====
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Total bayar', style: AppText.body.copyWith(color: Colors.white.withValues(alpha: 0.85), fontWeight: FontWeight.w600)),
+                    if (widget.items.isNotEmpty)
+                      Text('$totalQty item', style: AppText.small.copyWith(color: Colors.white.withValues(alpha: 0.75))),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(rupiah(widget.grandTotal), style: AppText.display.copyWith(color: Colors.white)),
+                const SizedBox(height: AppSpacing.md),
+                Divider(color: Colors.white.withValues(alpha: 0.3), height: 1),
+                const SizedBox(height: AppSpacing.sm),
+                _totalRow('Subtotal', widget.subtotal),
+                _totalRow('Biaya layanan (${widget.servicePercent}%)', widget.service),
+                _totalRow('Pajak (${widget.taxPercent}%)', widget.tax),
+              ],
+            ),
+          ),
+          // ===== Rincian pesanan dari keranjang =====
+          if (widget.items.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xl),
+            const Text('Rincian pesanan', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: AppSpacing.sm),
+            AppCard(
+              child: Column(
+                children: [
+                  for (var i = 0; i < widget.items.length; i++) ...[
+                    if (i > 0) const Divider(height: AppSpacing.lg),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                          decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                          child: Text('×${widget.items[i].qty}', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(widget.items[i].nama, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                              if (widget.items[i].keterangan.isNotEmpty)
+                                Text(widget.items[i].keterangan, style: AppText.small.copyWith(color: AppColors.muted)),
+                            ],
+                          ),
+                        ),
+                        Text(rupiah(widget.items[i].total), style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          // ===== Metode pembayaran: kartu pilih =====
+          const SizedBox(height: AppSpacing.xl),
           const Text('Metode pembayaran', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              for (final m in ['Tunai', 'QRIS'])
-                Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.sm),
-                  child: AppChip(
-                    label: m,
-                    selected: _method == m,
-                    onSelected: (_) => setState(() => _method = m),
-                  ),
-                ),
+              Expanded(child: _kartuMetode('Tunai', Icons.payments_outlined)),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: _kartuMetode('QRIS', Icons.qr_code_2)),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _payRow('Subtotal', widget.subtotal),
-                _payRow('Biaya layanan (${widget.servicePercent}%)', widget.service),
-                _payRow('Pajak (${widget.taxPercent}%)', widget.tax),
-                const Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Total bayar'),
-                    Text(rupiah(widget.grandTotal), style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
-                  ],
-                ),
-              ],
-            ),
-          ),
           if (_method == 'Tunai') ...[
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
             const Text('Uang diterima', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
+            Row(
               children: [
-                for (final amt in [widget.grandTotal, 50000, 100000, 200000])
-                  AppChip(
-                    label: amt == widget.grandTotal ? 'Uang pas' : rupiah(amt),
-                    selected: _paid == amt,
-                    onSelected: amt >= widget.grandTotal
-                        ? (_) => setState(() {
-                              _paid = amt;
-                              _amountCtrl.text = ThousandsFormatter.format(amt);
-                            })
-                        : null,
-                  ),
+                Expanded(child: _ubinNominal(widget.grandTotal, 'Uang pas', caption: rupiah(widget.grandTotal))),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: _ubinNominal(50000, rupiah(50000))),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(child: _ubinNominal(100000, rupiah(100000))),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: _ubinNominal(200000, rupiah(200000))),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -119,21 +182,61 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
               decoration: const InputDecoration(prefixText: 'Rp ', hintText: 'atau ketik nominal sendiri'),
               onChanged: (v) => setState(() => _paid = int.tryParse(v.replaceAll('.', ''))),
             ),
+            if (_paid != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              if (_paid! < widget.grandTotal)
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningSoft,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: AppColors.warningBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: AppColors.warning, size: 20),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text('Masih kurang ${rupiah(widget.grandTotal - _paid!)}', style: AppText.body.copyWith(color: AppColors.warning, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.savings_outlined, color: AppColors.accentDark, size: 20),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text('Kembalian: ${rupiah(change)}', style: AppText.body.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+            ],
           ] else ...[
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.xl),
               decoration: cardDecoration(),
               child: Column(
                 children: [
-                  Icon(Icons.qr_code_2, size: 96, color: AppColors.ink),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.md)),
+                    child: Icon(Icons.qr_code_2, size: 120, color: AppColors.ink),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('Tampilkan QR ini ke pelanggan', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text('Pelanggan memindai kode untuk membayar ${rupiah(widget.grandTotal)}.', style: AppText.small.copyWith(color: AppColors.muted), textAlign: TextAlign.center),
                   const SizedBox(height: AppSpacing.sm),
-                  Text('Tampilkan QR ini ke pelanggan', style: AppText.small.copyWith(color: AppColors.muted)),
+                  Text('Kode QR asli muncul saat QRIS SoraPay aktif.', style: AppText.caption.copyWith(color: AppColors.muted)),
                 ],
               ),
             ),
           ],
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -143,13 +246,8 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_method == 'Tunai') ...[
-                if (_paid == null)
-                  Text('Pilih nominal atau ketik jumlah uang diterima.', style: AppText.small.copyWith(color: AppColors.muted))
-                else if (_paid! < widget.grandTotal)
-                  Text('Masih kurang ${rupiah(widget.grandTotal - _paid!)}', style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w700))
-                else
-                  Text('Kembalian: ${rupiah(change)}', style: AppText.body.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w800)),
+              if (_method == 'Tunai' && _paid == null) ...[
+                Text('Pilih nominal atau ketik jumlah uang diterima.', style: AppText.small.copyWith(color: AppColors.muted)),
                 const SizedBox(height: AppSpacing.sm),
               ],
               PrimaryButton(
@@ -162,16 +260,73 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
       ),
     );
   }
-}
 
-/// Baris ringkasan kecil (Subtotal dsb) di kartu rincian.
-Widget _payRow(String label, int value) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
-          Text(rupiah(value), style: AppText.small),
-        ],
+  /// Baris rincian di dalam kartu total (di atas latar emerald).
+  Widget _totalRow(String label, int value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: AppText.small.copyWith(color: Colors.white.withValues(alpha: 0.8))),
+            Text(rupiah(value), style: AppText.small.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      );
+
+  /// Kartu pilih metode: terpilih = latar emerald lembut +
+  /// garis emerald; tanpa ikon centang (aturan permanen).
+  Widget _kartuMetode(String method, IconData icon) {
+    final aktif = _method == method;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: () => setState(() => _method = method),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: aktif ? AppColors.accentSoft : AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: aktif ? AppColors.accent : AppColors.border, width: aktif ? 1.5 : 1),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 28, color: aktif ? AppColors.accentDark : AppColors.muted),
+              const SizedBox(height: AppSpacing.sm),
+              Text(method, style: AppText.body.copyWith(fontWeight: FontWeight.w700, color: aktif ? AppColors.accentDark : AppColors.ink)),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  /// Ubin nominal besar: terpilih seperti kartu metode;
+  /// nominal di bawah total (selain Uang pas) redup & mati.
+  Widget _ubinNominal(int amt, String label, {String? caption}) {
+    final aktif = _paid == amt;
+    final bisa = amt >= widget.grandTotal;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: bisa ? () => _pilihNominal(amt) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          decoration: BoxDecoration(
+            color: !bisa ? AppColors.track : (aktif ? AppColors.accentSoft : AppColors.card),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: aktif ? AppColors.accent : AppColors.border, width: aktif ? 1.5 : 1),
+          ),
+          child: Column(
+            children: [
+              Text(label, style: AppText.body.copyWith(fontWeight: FontWeight.w700, color: !bisa ? AppColors.muted : (aktif ? AppColors.accentDark : AppColors.ink))),
+              if (caption != null)
+                Text(caption, style: AppText.caption.copyWith(color: aktif ? AppColors.accentDark : AppColors.muted)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

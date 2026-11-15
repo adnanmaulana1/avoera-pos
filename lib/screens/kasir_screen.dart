@@ -398,6 +398,17 @@ class _KasirScreenState extends State<KasirScreen> {
           grandTotal: _grandTotal,
           servicePercent: widget.servicePercent,
           taxPercent: widget.taxPercent,
+          items: widget.cart
+              .map((c) => BarisBayar(
+                    nama: c.menu.name,
+                    keterangan: [
+                      if (c.variant.isNotEmpty && c.variant != 'Reguler') c.variant,
+                      if (c.note.isNotEmpty) c.note,
+                    ].join(' · '),
+                    qty: c.qty,
+                    total: c.total,
+                  ))
+              .toList(),
         ),
       ),
     );
