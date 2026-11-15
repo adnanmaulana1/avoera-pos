@@ -150,14 +150,14 @@ String rupiah(int value) {
 }
 
 /// Format ringkas untuk sumbu grafik: 1500000 → '1,5 jt',
-/// 250000 → '250 rb', 0 → '0'. (Gaya Bisakasir di referensi Adnan.)
+/// 250000 → '250rb', 0 → '0'. Tanpa spasi sejak 2026-11-15: label di atas batang grafik sempit, spasi membuatnya membungkus & memotong.
 String ringkas(int v) {
   if (v >= 1000000) {
     final jt = v / 1000000;
     final t = jt == jt.roundToDouble() ? '${jt.round()}' : jt.toStringAsFixed(1).replaceAll('.', ',');
-    return '$t jt';
+    return '${t}jt';
   }
-  if (v >= 1000) return '${(v / 1000).round()} rb';
+  if (v >= 1000) return '${(v / 1000).round()}rb';
   return '$v';
 }
 

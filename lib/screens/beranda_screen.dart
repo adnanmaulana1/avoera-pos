@@ -584,7 +584,14 @@ class _ChartCard extends StatelessWidget {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                Text(ringkas(values[i]), style: AppText.caption.copyWith(color: AppColors.muted)),
+                                // softWrap mati: label seperti
+                                // '175 rb' TIDAK boleh membungkus
+                                // jadi 2 baris — kolom batang
+                                // sempit, bungkusan membuat kolom
+                                // meluap 6px dari kotak 150px
+                                // (ketahuan 2026-11-15 saat render
+                                // Beranda berdata penjualan asli).
+                                Text(ringkas(values[i]), style: AppText.caption.copyWith(color: AppColors.muted), softWrap: false),
                                 const SizedBox(height: AppSpacing.xs),
                                 Container(
                                   height: values[i] == 0 ? 3 : 8 + 92 * values[i] / scaleMax,
