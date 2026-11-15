@@ -395,6 +395,41 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
+  /// Akumulasi jarak tarikan melewati tepi atas pada gestur
+  /// yang sedang berjalan + kunci pemicu per gestur.
+  double _tarikJarak = 0;
+  bool _tarikTerpicu = false;
+
+  /// Detektor tarik-untuk-segar yang DISENGAJA: RefreshIndicator
+  /// bawaan memicu hanya dari tarikan ±40px di puncak daftar,
+  /// jadi menggulir biasa pun sering menyalakan shimmer (keluhan
+  /// Adnan 2026-11-15 12:03). Kini jarak tarikan jari melewati
+  /// tepi atas diakumulasi; shimmer + sinkron hanya jalan bila
+  /// tarikannya jauh (≥120px) dalam satu gestur.
+  bool _padaNotifikasiGulir(ScrollNotification n) {
+    if (n.metrics.axis != Axis.vertical) return false;
+    if (n is ScrollEndNotification) {
+      _tarikJarak = 0;
+      _tarikTerpicu = false;
+      return false;
+    }
+    if (_menyegarkan || _tarikTerpicu) return false;
+    // Sinyal tarikan melewati tepi atas = OverscrollNotification
+    // (overscroll negatif di tepi awal). ScrollUpdateNotification
+    // tidak bisa dipakai: saat posisi sudah mentok di puncak,
+    // posisi tidak berubah jadi notifikasi update berhenti —
+    // akumulasi dari sana selalu kelaparan (terbukti di tes).
+    if (n is OverscrollNotification && n.dragDetails != null && n.overscroll < 0) {
+      _tarikJarak += -n.overscroll;
+      if (_tarikJarak >= 120) {
+        _tarikTerpicu = true;
+        _tarikJarak = 0;
+        _segarkan();
+      }
+    }
+    return false;
+  }
+
   /// Ketuk ikon awan di Beranda: belum diatur → buka Pengaturan;
   /// sudah diatur → sinkron sekarang.
   void _syncTap() {
@@ -1053,15 +1088,11 @@ class _HomeShellState extends State<HomeShell> {
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
           builder: (_, v, child) => Opacity(opacity: v, child: child),
-          // Tarik ke bawah di halaman mana pun = sinkron Supabase
-          // (permintaan Adnan 23:51: data diambil dari internet,
-          // semua halaman harus bisa ditarik untuk menyegarkan).
-          child: RefreshIndicator(
-            // Putaran bawaan disembunyikan (transparan): yang tampil
-            // adalah shimmer _menyegarkan di atas seluruh halaman.
-            color: Colors.transparent,
-            backgroundColor: Colors.transparent,
-            onRefresh: _segarkan,
+          // Tarik jauh ke bawah di halaman mana pun = sinkron
+          // Supabase lewat detektor _padaNotifikasiGulir (bukan
+          // RefreshIndicator bawaan yang terlalu mudah terpicu).
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _padaNotifikasiGulir,
             child: IndexedStack(index: _index, children: screens),
           ),
         ),
@@ -1073,8 +1104,16 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready || !_splashSelesai) {
+    if (!_splashSelesai) {
       return const SplashScreen();
+    }
+    // Data lokal belum siap sesudah layar pembuka selesai:
+    // rangka shimmer. Shimmer HANYA tampil saat muat awal dan
+    // saat tarik jauh untuk menyegarkan (keputusan Adnan
+    // 2026-11-15 12:04) — tidak pernah dari sinkron otomatis
+    // atau tarikan kecil saat menggulir biasa.
+    if (!_ready) {
+      return const Scaffold(body: ShimmerSkeleton());
     }
     // Pemasangan pertama: onboarding + wizard cabang pertama dulu.
     if (!_settings.onboarded) {

@@ -215,4 +215,15 @@ void main() {
     expect(find.byType(ShimmerSkeleton), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
   });
+
+  // Keputusan Adnan 2026-11-15 12:04: shimmer HANYA untuk
+  // tarikan jauh yang disengaja — tarikan kecil saat menggulir
+  // biasa tidak boleh menyalakan apa-apa.
+  testWidgets('Tarikan kecil TIDAK menampilkan shimmer', (tester) async {
+    await pumpApp(tester, size: const Size(390, 844));
+    await tester.timedDrag(find.byType(ListView).first, const Offset(0, 60), const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(ShimmerSkeleton), findsNothing, reason: 'Tarikan 60px tidak boleh memicu penyegaran');
+    await tester.pump(const Duration(seconds: 2));
+  });
 }
