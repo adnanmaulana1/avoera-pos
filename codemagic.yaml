@@ -36,6 +36,14 @@ workflows:
         - $HOME/Library/Caches/CocoaPods
     environment:
       flutter: 3.47.9
+      # Grup variable AVOERA WAJIB diimpor: AVOERA_UPLOAD_TOKEN
+      # disimpan Adnan di dalam grup itu (2026-11-15). Tanpa
+      # impor ini variable-nya KOSONG saat build — kejadian
+      # 2026-11-15 22:56: token sudah diisi sebelum build tapi
+      # langkah unggah terlewati diam-diam karena grup belum
+      # diimpor, server tetap berisi versi lama.
+      groups:
+        - AVOERA
       android_signing:
         - avoera_release
     scripts:
