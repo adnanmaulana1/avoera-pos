@@ -134,6 +134,7 @@ Future<void> showIngredientEditor(
           dirty: () => snapshot() != awal,
           child: FormSheet(
             title: ing == null ? 'Tambah Bahan' : 'Ubah Bahan',
+            showClose: true,
             saveLabel: ing == null ? 'Simpan Bahan' : 'Simpan Perubahan',
             errorText: error,
             onDelete: ing == null

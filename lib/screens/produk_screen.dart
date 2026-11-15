@@ -112,6 +112,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
       for (final m in widget.menus.where((m) => _terpilih.contains(m.id)).toList()) {
         widget.onDelete(m);
       }
+      _fokusCari.unfocus();
       _keluarModePilih();
     }
   }
@@ -277,7 +278,13 @@ class _ProdukScreenState extends State<ProdukScreen> {
       ingredients: widget.ingredients,
       allMenus: widget.menus,
     );
-    if (mounted) setState(() {});
+    // Sesudah editor ditutup fokus jangan kembali ke kolom cari
+    // (permintaan Adnan 2026-11-15: keyboard muncul sendiri
+    // sesudah hapus produk).
+    if (mounted) {
+      _fokusCari.unfocus();
+      setState(() {});
+    }
   }
 
   void _aksiMenu(String aksi) {
@@ -321,160 +328,184 @@ class _ProdukScreenState extends State<ProdukScreen> {
   @override
   Widget build(BuildContext context) {
     final list = _list;
+    final tombolMenu = PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      tooltip: 'Pilihan produk',
+      onSelected: _aksiMenu,
+      itemBuilder: (_) => [
+        const PopupMenuItem(value: 'massal', child: Text('Edit Harga Massal')),
+        PopupMenuItem(
+          value: 'bahan',
+          // Keadaan nyala ditandai TEKS 'Aktif', bukan
+          // centang (aturan permanen Adnan).
+          child: Row(
+            children: [
+              const Expanded(child: Text('Tampilkan Bahan Baku')),
+              if (_tampilBahan)
+                Text('Aktif', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(value: 'pilih', child: Text('Pilih Produk')),
+        const PopupMenuDivider(),
+        const PopupMenuItem(value: 'ekspor', child: Text('Ekspor Data')),
+        const PopupMenuItem(value: 'impor', child: Text('Impor Data')),
+        const PopupMenuDivider(),
+        const PopupMenuItem(value: 'resep', child: Text('Resep')),
+        const PopupMenuItem(value: 'bundle', child: Text('Bundle')),
+        PopupMenuItem(
+          value: 'ojol',
+          child: Row(
+            children: [
+              const Expanded(child: Text('Tampilkan Harga Ojol')),
+              if (_tampilOjol)
+                Text('Aktif', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+        const PopupMenuItem(value: 'label', child: Text('Cetak Label Harga')),
+      ],
+    );
     return Stack(
       children: [
-        ListView(
+        // Kepala lengket yang MENYUSUT beranimasi mengikuti guliran
+        // (permintaan Adnan 2026-11-15): judul + kolom cari besar
+        // mengecil jadi baris ringkas, pill kategori tetap
+        // menempel di bawahnya.
+        CustomScrollView(
           controller: _gulirCtrl,
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 96),
           physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            PageHeader(
-              title: 'Produk',
-              subtitle: '${widget.menus.length} produk · ${widget.branchName}',
-              trailing: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                tooltip: 'Pilihan produk',
-                onSelected: _aksiMenu,
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'massal', child: Text('Edit Harga Massal')),
-                  PopupMenuItem(
-                    value: 'bahan',
-                    // Keadaan nyala ditandai TEKS 'Aktif', bukan
-                    // centang (aturan permanen Adnan).
-                    child: Row(
-                      children: [
-                        const Expanded(child: Text('Tampilkan Bahan Baku')),
-                        if (_tampilBahan)
-                          Text('Aktif', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(value: 'pilih', child: Text('Pilih Produk')),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(value: 'ekspor', child: Text('Ekspor Data')),
-                  const PopupMenuItem(value: 'impor', child: Text('Impor Data')),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(value: 'resep', child: Text('Resep')),
-                  const PopupMenuItem(value: 'bundle', child: Text('Bundle')),
-                  PopupMenuItem(
-                    value: 'ojol',
-                    child: Row(
-                      children: [
-                        const Expanded(child: Text('Tampilkan Harga Ojol')),
-                        if (_tampilOjol)
-                          Text('Aktif', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(value: 'label', child: Text('Cetak Label Harga')),
-                ],
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _KepalaProdukDelegate(
+                subjudul: '${widget.menus.length} produk · ${widget.branchName}',
+                cariCtrl: _cariCtrl,
+                fokusCari: _fokusCari,
+                onCari: (v) => setState(() => _query = v),
+                onRingkas: _lompatKeCari,
+                trailing: tombolMenu,
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: _cariCtrl,
-              focusNode: _fokusCari,
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari produk…'),
-              onChanged: (v) => setState(() => _query = v),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            FilterChipRow(
-              children: [
-                for (final c in categories)
-                  AppChip(label: c, selected: _kategori == c, onSelected: (_) => setState(() => _kategori = c)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            if (list.isEmpty)
-              const EmptyState(message: 'Tidak ada produk yang cocok.\nCoba kata cari atau kategori lain.', icon: Icons.restaurant_menu_outlined),
-            for (final m in list)
-              AppCard(
-                margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                padding: const EdgeInsets.all(AppSpacing.md),
-                onTap: () {
-                  if (_modePilih) {
-                    setState(() => _terpilih.contains(m.id) ? _terpilih.remove(m.id) : _terpilih.add(m.id));
-                  } else {
-                    _bukaEditor(m);
-                  }
-                },
-                child: Row(
-                  children: [
-                    if (_modePilih) ...[
-                      Checkbox(
-                        value: _terpilih.contains(m.id),
-                        onChanged: (v) => setState(() => v == true ? _terpilih.add(m.id) : _terpilih.remove(m.id)),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _KepalaTetapDelegate(
+                tinggi: 50,
+                child: Container(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.sm),
+                  child: FilterChipRow(
+                    children: [
+                      for (final c in categories)
+                        AppChip(label: c, selected: _kategori == c, onSelected: (_) => setState(() => _kategori = c)),
                     ],
-                    MenuThumb(menu: m, size: 52),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(m.name, style: AppText.body.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          const SizedBox(height: AppSpacing.xs),
-                          Row(
+                  ),
+                ),
+              ),
+            ),
+            if (list.isEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(top: AppSpacing.xxl),
+                  child: EmptyState(message: 'Tidak ada produk yang cocok.\nCoba kata cari atau kategori lain.', icon: Icons.restaurant_menu_outlined),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 96),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    for (final m in list)
+                      AppCard(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        onTap: () {
+                          if (_modePilih) {
+                            setState(() => _terpilih.contains(m.id) ? _terpilih.remove(m.id) : _terpilih.add(m.id));
+                          } else {
+                            _bukaEditor(m);
+                          }
+                        },
+                        child: Row(
+                          children: [
+                            if (_modePilih) ...[
+                              Checkbox(
+                                value: _terpilih.contains(m.id),
+                                onChanged: (v) => setState(() => v == true ? _terpilih.add(m.id) : _terpilih.remove(m.id)),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                            ],
+                            MenuThumb(menu: m, size: 52),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(m.name, style: AppText.body.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  const SizedBox(height: AppSpacing.xs),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                                        decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                                        child: Text(m.category, style: AppText.caption.copyWith(color: AppColors.muted, fontWeight: FontWeight.w600)),
+                                      ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      Text(skuOf(m), style: AppText.caption.copyWith(color: AppColors.muted)),
+                                      if (m.isBundle) ...[
+                                        const SizedBox(width: AppSpacing.sm),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                                          decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                                          child: Text('Bundle', style: AppText.caption.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(rupiah(m.price), style: AppText.body.copyWith(fontWeight: FontWeight.w800, color: AppColors.accentDark)),
+                                if (_tampilOjol)
+                                  Text('Ojol ${rupiah(m.hargaOjolEfektif)}', style: AppText.caption.copyWith(color: AppColors.muted)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_tampilBahan) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      const SectionTitle('Bahan Baku'),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text('Daftar bahan dari Stok Bahan (atur di layar Stok Bahan).', style: AppText.caption.copyWith(color: AppColors.muted)),
+                      const SizedBox(height: AppSpacing.md),
+                      for (final ing in widget.ingredients)
+                        AppCard(
+                          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
-                                decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.pill)),
-                                child: Text(m.category, style: AppText.caption.copyWith(color: AppColors.muted, fontWeight: FontWeight.w600)),
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                                child: Icon(Icons.inventory_2_outlined, color: AppColors.muted, size: 22),
                               ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Text(skuOf(m), style: AppText.caption.copyWith(color: AppColors.muted)),
-                              if (m.isBundle) ...[
-                                const SizedBox(width: AppSpacing.sm),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
-                                  decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.pill)),
-                                  child: Text('Bundle', style: AppText.caption.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
-                                ),
-                              ],
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(child: Text(ing.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600))),
+                              Text('${stockText(ing.stock)} ${ing.unit}', style: AppText.small.copyWith(color: AppColors.muted)),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(rupiah(m.price), style: AppText.body.copyWith(fontWeight: FontWeight.w800, color: AppColors.accentDark)),
-                        if (_tampilOjol)
-                          Text('Ojol ${rupiah(m.hargaOjolEfektif)}', style: AppText.caption.copyWith(color: AppColors.muted)),
-                      ],
-                    ),
-                  ],
+                        ),
+                    ],
+                    if (_modePilih) const SizedBox(height: 64),
+                  ]),
                 ),
               ),
-            if (_tampilBahan) ...[
-              const SizedBox(height: AppSpacing.lg),
-              const SectionTitle('Bahan Baku'),
-              const SizedBox(height: AppSpacing.sm),
-              Text('Daftar bahan dari Stok Bahan (atur di layar Stok Bahan).', style: AppText.caption.copyWith(color: AppColors.muted)),
-              const SizedBox(height: AppSpacing.md),
-              for (final ing in widget.ingredients)
-                AppCard(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                        child: Icon(Icons.inventory_2_outlined, color: AppColors.muted, size: 22),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(child: Text(ing.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600))),
-                      Text('${stockText(ing.stock)} ${ing.unit}', style: AppText.small.copyWith(color: AppColors.muted)),
-                    ],
-                  ),
-                ),
-            ],
-            if (_modePilih) const SizedBox(height: 64),
           ],
         ),
         if (_modePilih)
@@ -534,4 +565,130 @@ class _ProdukScreenState extends State<ProdukScreen> {
       ],
     );
   }
+}
+
+/// Kepala Produk yang menyusut mengikuti guliran: bentuk besar
+/// (judul + subjudul + kolom cari) memudar jadi baris ringkas
+/// (judul kecil + tombol cari + menu) — lengket di atas, animasi
+/// sebanding jarak gulir, bukan berubah seketika.
+class _KepalaProdukDelegate extends SliverPersistentHeaderDelegate {
+  _KepalaProdukDelegate({
+    required this.subjudul,
+    required this.cariCtrl,
+    required this.fokusCari,
+    required this.onCari,
+    required this.onRingkas,
+    required this.trailing,
+  });
+
+  final String subjudul;
+  final TextEditingController cariCtrl;
+  final FocusNode fokusCari;
+  final ValueChanged<String> onCari;
+  final VoidCallback onRingkas;
+  final Widget trailing;
+
+  @override
+  double get maxExtent => 168;
+
+  @override
+  double get minExtent => 58;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Stack(
+        children: [
+          Opacity(
+            opacity: 1 - t,
+            child: IgnorePointer(
+              ignoring: t > 0.5,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 48),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Produk', style: AppText.pageTitle),
+                          const SizedBox(height: 2),
+                          Text(subjudul, style: AppText.small.copyWith(color: AppColors.muted)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextField(
+                      controller: cariCtrl,
+                      focusNode: fokusCari,
+                      decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari produk…'),
+                      onChanged: onCari,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 16 - 11 * t,
+            right: AppSpacing.lg,
+            child: trailing,
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              height: minExtent,
+              child: Opacity(
+                opacity: t,
+                child: IgnorePointer(
+                  ignoring: t <= 0.5,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    child: Row(
+                      children: [
+                        Text('Produk', style: AppText.title),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(subjudul, style: AppText.small.copyWith(color: AppColors.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                        IconButton(icon: const Icon(Icons.search), tooltip: 'Cari produk', onPressed: onRingkas),
+                        const SizedBox(width: 48),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _KepalaProdukDelegate oldDelegate) => oldDelegate.subjudul != subjudul;
+}
+
+/// Kepala lengket setinggi tetap (untuk pill kategori).
+class _KepalaTetapDelegate extends SliverPersistentHeaderDelegate {
+  _KepalaTetapDelegate({required this.tinggi, required this.child});
+
+  final double tinggi;
+  final Widget child;
+
+  @override
+  double get maxExtent => tinggi;
+
+  @override
+  double get minExtent => tinggi;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => child;
+
+  @override
+  bool shouldRebuild(covariant _KepalaTetapDelegate oldDelegate) => oldDelegate.child != child;
 }

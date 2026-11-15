@@ -98,7 +98,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final avgToday = countToday == 0 ? 0 : (totalToday / countToday).round();
     final jam = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     int? pct;
-    if (yesterdayTotal > 0 && totalToday > 0) {
+    if (yesterdayTotal > 0) {
       pct = ((totalToday - yesterdayTotal) / yesterdayTotal * 100).round();
     }
     final latest = [...tx]..sort((a, b) => b.at.compareTo(a.at));
@@ -201,7 +201,10 @@ class _BerandaScreenState extends State<BerandaScreen> {
         // Kartu penjualan: emerald pekat satu warna (bukan gradasi),
         // satu-satunya elemen berbayangan di aplikasi + tekstur dua
         // lingkaran sewarna.
-        Container(
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onOpenRiwayat,
+          child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
             color: AppColors.accent,
@@ -251,13 +254,39 @@ class _BerandaScreenState extends State<BerandaScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
                               decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(AppRadius.pill)),
-                              child: Text(
-                                pct >= 0 ? '+$pct%' : '$pct%',
-                                style: AppText.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(pct >= 0 ? Icons.trending_up : Icons.trending_down, size: 14, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    pct >= 0 ? '+$pct%' : '$pct%',
+                                    style: AppText.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: AppSpacing.sm),
                             Text('dibanding kemarin', style: AppText.small.copyWith(color: Colors.white70)),
+                          ],
+                        )
+                      else if (totalToday > 0)
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(AppRadius.pill)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.show_chart, size: 14, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text('Mulai tercatat', style: AppText.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text('kemarin belum ada penjualan', style: AppText.small.copyWith(color: Colors.white70)),
                           ],
                         )
                       else
@@ -268,23 +297,31 @@ class _BerandaScreenState extends State<BerandaScreen> {
               ],
             ),
           ),
+          ),
         ),
         const SizedBox(height: AppSpacing.xl),
-        Row(
-          children: [
-            Expanded(child: _StatCard(label: 'Transaksi', value: '$countToday')),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(child: _StatCard(label: 'Rata-rata', value: rupiah(avgToday))),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: widget.kitchenEnabled
-                  ? _StatCard(label: 'Di Dapur', value: '${widget.kitchenActive}')
-                  : _StatCard(label: 'Menu Dijual', value: '${widget.menuCount}'),
-            ),
-          ],
+        // Tinggi dikunci + stretch: ketiga kartu DIJAMIN seukuran
+        // persis di semua HP (keluhan Adnan 2026-11-15: kartu
+        // terlihat tidak seukuran).
+        SizedBox(
+          height: 88,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _StatCard(label: 'Transaksi', value: '$countToday', onTap: widget.onOpenRiwayat)),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: _StatCard(label: 'Rata-rata', value: rupiah(avgToday), onTap: widget.onOpenRiwayat)),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: widget.kitchenEnabled
+                    ? _StatCard(label: 'Di Dapur', value: '${widget.kitchenActive}', onTap: () => widget.onNavigate(4))
+                    : _StatCard(label: 'Menu Dijual', value: '${widget.menuCount}', onTap: () => widget.onNavigate(2)),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        _ChartCard(tx: tx, bulanan: _bulanan, onToggle: (b) => setState(() => _bulanan = b), hariSingkat: _hariSingkat),
+        _ChartCard(tx: tx, bulanan: _bulanan, onToggle: (b) => setState(() => _bulanan = b), hariSingkat: _hariSingkat, onTap: () => widget.onNavigate(5)),
         const SizedBox(height: AppSpacing.lg),
         AppCard(
           child: Row(
@@ -393,7 +430,9 @@ class _BerandaScreenState extends State<BerandaScreen> {
             crossAxisCount: 4,
             crossAxisSpacing: AppSpacing.md,
             mainAxisSpacing: AppSpacing.md,
-            mainAxisExtent: 104,
+            // Persegi 1:1 persis (keluhan Adnan 2026-11-15: ubin
+            // menu cepat lebih tinggi daripada lebarnya).
+            childAspectRatio: 1,
           ),
           itemCount: tiles.length,
           itemBuilder: (_, i) {
@@ -406,17 +445,17 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 onTap: action,
                 child: Container(
                   decoration: cardDecoration(),
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.xs),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.xs),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        width: 44,
-                        height: 44,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
-                        child: Icon(icon, color: AppColors.accentDark, size: 22),
+                        child: Icon(icon, color: AppColors.accentDark, size: 20),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.small.copyWith(fontWeight: FontWeight.w600)),
                     ],
                   ),
@@ -431,13 +470,15 @@ class _BerandaScreenState extends State<BerandaScreen> {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value});
+  const _StatCard({required this.label, required this.value, this.onTap});
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +496,8 @@ class _StatCard extends StatelessWidget {
 /// Bulanan = 4 minggu terakhir (per minggu). Angka ASLI dari
 /// transaksi tercatat; hari ini / minggu ini disorot aksen.
 class _ChartCard extends StatelessWidget {
-  const _ChartCard({required this.tx, required this.bulanan, required this.onToggle, required this.hariSingkat});
+  const _ChartCard({required this.tx, required this.bulanan, required this.onToggle, required this.hariSingkat, this.onTap});
+  final VoidCallback? onTap;
   final List<TxRecord> tx;
   final bool bulanan;
   final ValueChanged<bool> onToggle;
@@ -488,6 +530,7 @@ class _ChartCard extends StatelessWidget {
     final scaleMax = maxV == 0 ? 100000 : maxV;
 
     return AppCard(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

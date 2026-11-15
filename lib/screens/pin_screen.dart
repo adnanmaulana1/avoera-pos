@@ -87,8 +87,8 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
     final gagal = _error != null;
     final isi = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
-      width: 14,
-      height: 14,
+      width: 15,
+      height: 15,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: terisi ? (gagal ? AppColors.danger : AppColors.accent) : AppColors.card,
@@ -113,7 +113,7 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
-        const SizedBox(height: AppSpacing.xxl),
+        const SizedBox(height: AppSpacing.xl),
         // Kepala bergaya brand (rombak tampilan kunci kasir,
         // permintaan Adnan 2026-11-15): logo Avorea di kartu krem,
         // nama usaha besar, lencana gembok 'Kasir Terkunci'.
@@ -173,7 +173,7 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
             children: [
               for (var i = 0; i < 6; i++)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: _titik(i),
                 ),
             ],
@@ -196,8 +196,8 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
             children: [
               for (final d in baris)
                 SizedBox(
-                  width: 76,
-                  height: 76,
+                  width: 88,
+                  height: 88,
                   child: d.isEmpty
                       ? const SizedBox.shrink()
                       : _TombolPin(
@@ -246,11 +246,12 @@ class _TombolPinState extends State<_TombolPin> {
       child: Center(
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          width: 64,
-          height: 64,
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: _ditekan ? AppColors.accentSoft : AppColors.track,
+            border: Border.all(color: _ditekan ? AppColors.accent : AppColors.border),
           ),
           child: Center(
             child: widget.label == '<'

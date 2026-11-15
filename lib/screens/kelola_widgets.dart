@@ -28,6 +28,7 @@ class FormSheet extends StatelessWidget {
     this.saveLabel = 'Simpan',
     this.onDelete,
     this.errorText,
+    this.showClose = false,
   });
 
   final String title;
@@ -36,6 +37,11 @@ class FormSheet extends StatelessWidget {
   final String saveLabel;
   final VoidCallback? onDelete;
   final String? errorText;
+
+  /// Tombol X di kanan judul (permintaan Adnan 2026-11-15 untuk
+  /// sheet Gudang). Sheet editor panjang TIDAK mengaktifkannya:
+  /// sheet itu dijaga GuardBack supaya isian tidak hilang senyap.
+  final bool showClose;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +56,7 @@ class FormSheet extends StatelessWidget {
     // piksel di luar tepi bawah layar — tidak terjangkau ketukan.
     // Judul + isi bergulir di atas, tombol selalu terlihat.
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.92),
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           AppSpacing.xl,
@@ -64,7 +70,21 @@ class FormSheet extends StatelessWidget {
           children: [
             const SheetHandle(),
             const SizedBox(height: AppSpacing.md),
-            Text(title, style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
+            Row(
+              children: [
+                Expanded(child: Text(title, style: AppText.title.copyWith(fontWeight: FontWeight.w800))),
+                if (showClose)
+                  IconButton(
+                    // maybePop, BUKAN pop: pop() paksa menembus
+                    // PopScope GuardBack (dialog buang perubahan
+                    // tidak muncul); maybePop menanyakannya dulu.
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Tutup',
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
             const SizedBox(height: AppSpacing.lg),
             Flexible(
               child: SingleChildScrollView(

@@ -97,6 +97,7 @@ class _KelolaMejaScreenState extends State<KelolaMejaScreen> {
             dirty: () => '${numberCtrl.text}|${capacityCtrl.text}' != awal,
             child: FormSheet(
             title: table == null ? 'Tambah Meja' : 'Ubah Meja ${table.number}',
+            showClose: true,
             saveLabel: table == null ? 'Simpan Meja' : 'Simpan Perubahan',
             errorText: error,
             onDelete: table == null

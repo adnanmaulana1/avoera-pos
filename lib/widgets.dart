@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -601,4 +602,77 @@ class _IrisTemaPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _IrisTemaPainter old) => old.radius != radius || old.gambar != gambar || old.pusat != pusat;
+}
+
+/// Kerangka shimmer selama penyegaran tarik-ke-bawah (permintaan
+/// Adnan 2026-11-15): balok-balok berbentuk halaman (judul, kolom
+/// cari, pill, kartu daftar) yang terangnya berdenyut bergelombang.
+/// Menutupi seluruh area halaman; ketukan terserap lapisannya.
+class ShimmerSkeleton extends StatefulWidget {
+  const ShimmerSkeleton({super.key});
+
+  @override
+  State<ShimmerSkeleton> createState() => _ShimmerSkeletonState();
+}
+
+class _ShimmerSkeletonState extends State<ShimmerSkeleton> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        var urut = 0;
+        Widget balok({double? lebar, required double tinggi, double radius = AppRadius.sm}) {
+          // Denyut terang berjalan dari balok ke balok.
+          final gelombang = 0.5 + 0.5 * math.sin(2 * math.pi * (_ctrl.value - urut++ * 0.07));
+          return Container(
+            width: lebar,
+            height: tinggi,
+            decoration: BoxDecoration(
+              color: Color.lerp(AppColors.track, AppColors.card, gelombang),
+              borderRadius: BorderRadius.circular(radius),
+            ),
+          );
+        }
+
+        return Container(
+          color: AppColors.bg,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              balok(lebar: 150, tinggi: 26),
+              const SizedBox(height: AppSpacing.sm),
+              balok(lebar: 210, tinggi: 14),
+              const SizedBox(height: AppSpacing.lg),
+              balok(tinggi: 52, radius: AppRadius.md),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  balok(lebar: 74, tinggi: 34, radius: AppRadius.pill),
+                  const SizedBox(width: AppSpacing.sm),
+                  balok(lebar: 74, tinggi: 34, radius: AppRadius.pill),
+                  const SizedBox(width: AppSpacing.sm),
+                  balok(lebar: 74, tinggi: 34, radius: AppRadius.pill),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              for (var i = 0; i < 5; i++) ...[
+                balok(tinggi: 76, radius: AppRadius.md),
+                const SizedBox(height: AppSpacing.md),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

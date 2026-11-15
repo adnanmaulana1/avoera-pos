@@ -198,7 +198,10 @@ ThemeData buildTheme() {
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: AppColors.card,
+      // Sewarna latar aplikasi (bukan putih kartu): bar bawah +
+      // area navbar Android menyatu tanpa pita putih terpisah
+      // (keluhan Adnan 2026-11-15).
+      backgroundColor: AppColors.bg,
       indicatorColor: AppColors.accentSoft,
       iconTheme: WidgetStateProperty.resolveWith(
         (s) => IconThemeData(

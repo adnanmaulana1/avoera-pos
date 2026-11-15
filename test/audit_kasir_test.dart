@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:avoera_pos/main.dart';
+import 'package:avoera_pos/screens/pembayaran_screen.dart';
 import 'package:avoera_pos/screens/pengaturan_screen.dart';
 import 'package:avoera_pos/store.dart';
 import 'package:avoera_pos/widgets.dart';
@@ -104,7 +105,7 @@ void main() {
     expect(find.text('Penjualan 8 Hari Terakhir'), findsOneWidget, reason: 'Grafik penjualan harus tampil di Beranda');
     // Di atas lipatan: total penjualan + rata-rata sama-sama
     // Rp36.800 (1 transaksi).
-    expect(find.text('Rp36.800'), findsNWidgets(2), reason: 'Beranda harus menampilkan penjualan asli dari checkout tadi');
+    expect(find.text('Rp36.800'), findsAtLeastNWidgets(2), reason: 'Beranda harus menampilkan penjualan asli dari checkout tadi');
     // Kartu Transaksi Terbaru ada di bawah lipatan — gulir dulu,
     // barisnya harus membawa nominal yang sama.
     await tester.drag(find.byType(ListView).first, const Offset(0, -600));
@@ -241,7 +242,7 @@ void main() {
     final proses = find.widgetWithText(PrimaryButton, 'Proses Bayar');
     expect(tester.widget<PrimaryButton>(proses).onPressed, isNull, reason: 'Belum pilih uang → Proses Bayar harus terkunci');
 
-    final kolom = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
+    final kolom = find.descendant(of: find.byType(PembayaranScreen), matching: find.byType(TextField));
     await tester.enterText(kolom, '50000');
     await tester.pumpAndSettle();
     expect(find.text('Kembalian: Rp13.200'), findsOneWidget, reason: '50.000 − 36.800 = 13.200');

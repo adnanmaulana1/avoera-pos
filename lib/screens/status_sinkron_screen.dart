@@ -133,7 +133,9 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Status Sinkronisasi')),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        // Bawah ditambah inset sistem: teks terakhir jangan
+        // tertutup navbar Android (keluhan Adnan 2026-11-15).
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.lg + MediaQuery.of(context).padding.bottom),
         children: [
           AppCard(
             child: Row(

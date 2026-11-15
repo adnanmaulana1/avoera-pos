@@ -118,11 +118,11 @@ Future<void> showBarangMasukSheet(
   await showAppSheet<void>(
     context: context,
     isScrollControlled: true,
-    isDismissible: false,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setSheet) {
         return FormSheet(
           title: 'Barang Masuk',
+          showClose: true,
           saveLabel: 'Simpan Barang Masuk',
           errorText: error,
           onSave: () {
@@ -195,13 +195,13 @@ Future<void> showOpnameSheet(
   await showAppSheet<void>(
     context: context,
     isScrollControlled: true,
-    isDismissible: false,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setSheet) {
         final fisik = _parseQty(fisikCtrl.text);
         final selisih = (bahan != null && fisik != null) ? fisik - bahan!.stock : null;
         return FormSheet(
           title: 'Opname Stok',
+          showClose: true,
           saveLabel: 'Simpan Opname',
           errorText: error,
           onSave: () {

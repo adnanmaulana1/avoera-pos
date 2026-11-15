@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'pembayaran_screen.dart';
 
 class KasirScreen extends StatefulWidget {
   const KasirScreen({
@@ -385,112 +386,21 @@ class _KasirScreenState extends State<KasirScreen> {
   }
 
   Future<void> _openPayment(BuildContext context) async {
-    var method = 'Tunai';
-    int? paid;
-    // Kolom nominal & chip berbagi satu nilai: memilih chip mengisi
-    // kolom (berformat titik), mengetik memperbarui pilihan chip.
-    final amountCtrl = TextEditingController();
-    final methodResult = await showDialog<String>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlg) {
-          final change = (paid ?? 0) - _grandTotal;
-          return AlertDialog(
-            title: const Text('Pembayaran'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    for (final m in ['Tunai', 'QRIS'])
-                      Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.sm),
-                        child: AppChip(
-                          label: m,
-                          selected: method == m,
-                          onSelected: (_) => setDlg(() => method = m),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _payRow('Subtotal', _subtotal),
-                _payRow('Biaya layanan (${widget.servicePercent}%)', _service),
-                _payRow('Pajak (${widget.taxPercent}%)', _tax),
-                const Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Total bayar'),
-                    Text(rupiah(_grandTotal), style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
-                  ],
-                ),
-                if (method == 'Tunai') ...[
-                  const SizedBox(height: AppSpacing.md),
-                  const Text('Uang diterima', style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      for (final amt in [_grandTotal, 50000, 100000, 200000])
-                        AppChip(
-                          label: amt == _grandTotal ? 'Uang pas' : rupiah(amt),
-                          selected: paid == amt,
-                          onSelected: amt >= _grandTotal
-                              ? (_) => setDlg(() {
-                                    paid = amt;
-                                    amountCtrl.text = ThousandsFormatter.format(amt);
-                                  })
-                              : null,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    controller: amountCtrl,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: const [ThousandsFormatter()],
-                    decoration: const InputDecoration(prefixText: 'Rp ', hintText: 'atau ketik nominal sendiri'),
-                    onChanged: (v) => setDlg(() => paid = int.tryParse(v.replaceAll('.', ''))),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  if (paid == null)
-                    Text('Pilih nominal atau ketik jumlah uang diterima.', style: AppText.small.copyWith(color: AppColors.muted))
-                  else if (paid! < _grandTotal)
-                    Text('Masih kurang ${rupiah(_grandTotal - paid!)}', style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w700))
-                  else
-                    Text('Kembalian: ${rupiah(change)}', style: AppText.body.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w800)),
-                ] else ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    decoration: cardDecoration(),
-                    child: Column(
-                      children: [
-                        Icon(Icons.qr_code_2, size: 64, color: AppColors.ink),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text('Tampilkan QR ini ke pelanggan', style: AppText.small.copyWith(color: AppColors.muted)),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-              PrimaryButton(
-                label: 'Proses Bayar',
-                onPressed: (method == 'Tunai' && (paid == null || paid! < _grandTotal)) ? null : () => Navigator.pop(ctx, method),
-              ),
-            ],
-          );
-        },
+    // v0.10.1: pembayaran kini HALAMAN penuh (PembayaranScreen),
+    // bukan dialog — permintaan Adnan 2026-11-15 (dialog sempit,
+    // tombol menimpa kolom saat keyboard naik).
+    final methodResult = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => PembayaranScreen(
+          subtotal: _subtotal,
+          service: _service,
+          tax: _tax,
+          grandTotal: _grandTotal,
+          servicePercent: widget.servicePercent,
+          taxPercent: widget.taxPercent,
+        ),
       ),
     );
-    disposeControllersLater([amountCtrl]);
     if (methodResult == null || !context.mounted) return;
     final paidTotal = _grandTotal;
     // Label tiket dapur mengikuti pilihan kasir: meja terpilih selalu
@@ -533,21 +443,6 @@ class _KasirScreenState extends State<KasirScreen> {
   }
 }
 
-/// Baris ringkasan kecil di dialog pembayaran (Subtotal dsb).
-Widget _payRow(String label, int value) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
-          Text(rupiah(value), style: AppText.small),
-        ],
-      ),
-    );
-
-/// Denyut cepat (permintaan Adnan 2026-11-14): elemen membesar
-/// sesaat lalu kembali — dipakai tombol + di kartu menu dan bar
-/// keranjang saat item masuk, supaya terasa 'masuk keranjang'.
 class _Denyut extends StatefulWidget {
   const _Denyut({required this.pemicu, required this.child});
 

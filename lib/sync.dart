@@ -40,6 +40,20 @@ String ringkasErrorSinkron(Object e) {
   return s.length > 140 ? '${s.substring(0, 140)}…' : s;
 }
 
+/// Id yang aman dihapus dari server (PERBAIKAN BUG 2026-11-15:
+/// barang yang dihapus di HP BALIK LAGI sesudah sinkron, karena
+/// unggah hanya upsert — tidak pernah menghapus baris server —
+/// lalu tarik-gabung menganggapnya barang baru dan
+/// mengembalikannya).
+///
+/// Aturannya: sebuah id server boleh dihapus HANYA bila perangkat
+/// ini PERNAH mengenalnya (pernah terlihat pada sinkron
+/// sebelumnya) DAN sekarang tidak ada lagi di daftar lokal —
+/// artinya memang dihapus di perangkat ini. Id server yang belum
+/// dikenal tidak disentuh: itu barang baru dari perangkat lain.
+List<String> idHantuDiServer({required Set<String> idServer, required Set<String> idLokal, required Set<String> idDikenal}) =>
+    idServer.intersection(idDikenal).difference(idLokal).toList();
+
 class HasilSinkron {
   HasilSinkron({
     required this.menus,
@@ -49,6 +63,7 @@ class HasilSinkron {
     required this.pengaturanServer,
     required this.ringkasan,
     required this.rincian,
+    required this.dikenalBaru,
   });
   final List<MenuItem> menus;
   final List<Ingredient> ingredients;
@@ -60,6 +75,11 @@ class HasilSinkron {
   /// Hasil per tabel (untuk halaman Status Sinkronisasi):
   /// mana yang berhasil terkirim, mana yang gagal + sebabnya.
   final List<StatusTabel> rincian;
+
+  /// Keanggotaan id per tabel SESUDAH gabungan sinkron ini —
+  /// perangkat mengingatnya untuk membedakan 'dihapus di sini'
+  /// dari 'baru dari perangkat lain' pada sinkron berikutnya.
+  final Map<String, Set<String>> dikenalBaru;
 
   bool get adaGagal => rincian.any((r) => !r.berhasil);
 }
@@ -111,6 +131,7 @@ Future<HasilSinkron> sinkronkanSupabase({
   required List<Branch> branches,
   required List<TxRecord> transactions,
   bool perbaruiSemua = false,
+  Map<String, Set<String>> dikenal = const {},
 }) async {
   final kode = settings.businessKey.trim();
   // Jaring pengaman kedua (selain pembersihan saat disimpan):
@@ -139,6 +160,7 @@ Future<HasilSinkron> sinkronkanSupabase({
       branches: branches,
       transactions: transactions,
       perbaruiSemua: perbaruiSemua,
+      dikenal: dikenal,
     );
   } finally {
     // WAJIB dibuang: SupabaseClient menyalakan timer auto-refresh
@@ -157,6 +179,7 @@ Future<HasilSinkron> _kerjakanSinkron(
   required List<Branch> branches,
   required List<TxRecord> transactions,
   bool perbaruiSemua = false,
+  Map<String, Set<String>> dikenal = const {},
 }) async {
   final sekarang = DateTime.now().toUtc().toIso8601String();
   final rincian = <String, StatusTabel>{};
@@ -177,6 +200,33 @@ Future<HasilSinkron> _kerjakanSinkron(
         'data': data,
         'updated_at': sekarang,
       };
+
+  // ---------- BERSIHKAN HANTU: baris server yang sudah
+  // dihapus di perangkat ini dihapus juga dari server, SEBELUM
+  // unggah & tarik — kalau tidak, gabungan akan
+  // mengembalikannya (bug barang terhapus balik lagi).
+  // Kegagalan di sini tidak membatalkan sinkron: hantu cukup
+  // dibersihkan pada sinkron berikutnya.
+  Future<void> bersihkanHantu(String kunci, String tabel, Set<String> idLokal) async {
+    final dikenalTabel = dikenal[kunci] ?? const <String>{};
+    if (dikenalTabel.isEmpty) return;
+    try {
+      final rows = await client.from(tabel).select('id').eq('business_key', kode);
+      final idServer = {for (final r in rows) r['id'] as String};
+      final hantu = idHantuDiServer(idServer: idServer, idLokal: idLokal, idDikenal: dikenalTabel);
+      if (hantu.isNotEmpty) {
+        await client.from(tabel).delete().eq('business_key', kode).inFilter('id', hantu);
+      }
+    } catch (e) {
+      // Diamkan — dicoba lagi pada sinkron berikutnya.
+      // ignore: avoid_print
+      print('Bersihkan hantu $tabel gagal: $e');
+    }
+  }
+
+  await bersihkanHantu('branches', 'avoera_branches', {for (final b in branches) b.id});
+  await bersihkanHantu('menus', 'avoera_menus', {for (final m in menus) m.id});
+  await bersihkanHantu('ingredients', 'avoera_ingredients', {for (final i in ingredients) i.id});
 
   // ---------- UNGGAH (per tabel dijaga sendiri-sendiri: satu
   // tabel gagal tidak membatalkan tabel lain, dan kegagalannya
@@ -264,6 +314,13 @@ Future<HasilSinkron> _kerjakanSinkron(
     await unggah('transactions', 'Transaksi', 'avoera_transactions', barisTx(txGabung));
   }
 
+  // Keanggotaan baru = id hasil gabungan per tabel.
+  final dikenalBaru = <String, Set<String>>{
+    'menus': {for (final m in menuGabung) m.id},
+    'ingredients': {for (final i in bahanGabung) i.id},
+    'branches': {for (final b in cabangGabung) b.id},
+  };
+
   final daftar = rincian.values.toList();
   final gagal = daftar.where((r) => !r.berhasil).length;
   return HasilSinkron(
@@ -273,6 +330,7 @@ Future<HasilSinkron> _kerjakanSinkron(
     transactions: txGabung,
     pengaturanServer: pengaturanServer,
     rincian: daftar,
+    dikenalBaru: dikenalBaru,
     ringkasan: gagal == 0
         ? 'Sinkron selesai: ${menuGabung.length} menu, ${bahanGabung.length} bahan, ${cabangGabung.length} cabang, ${txGabung.length} transaksi.'
         : 'Sinkron belum tuntas: $gagal dari ${daftar.length} bagian gagal — rincian di Status Sinkronisasi.',

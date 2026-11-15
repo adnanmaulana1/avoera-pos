@@ -308,6 +308,7 @@ Future<void> showMenuEditor(
           dirty: () => snapshot() != awal,
           child: FormSheet(
             title: item == null ? 'Tambah Menu' : 'Ubah Menu',
+            showClose: true,
             saveLabel: item == null ? 'Simpan Menu' : 'Simpan Perubahan',
             errorText: error,
             onDelete: item == null

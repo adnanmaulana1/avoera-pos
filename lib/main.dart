@@ -152,7 +152,10 @@ class _KasirFnbAppState extends State<KasirFnbApp> {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: gelap ? Brightness.light : Brightness.dark,
         statusBarBrightness: gelap ? Brightness.dark : Brightness.light,
-        systemNavigationBarColor: Colors.transparent,
+        // Warna navbar Android = warna latar aplikasi tema aktif,
+        // supaya tidak ada pita putih asing di bawah (edge-to-edge
+        // tetap: ikon navbar digambar di atas warna ini).
+        systemNavigationBarColor: AppColors.bg,
         systemNavigationBarIconBrightness: gelap ? Brightness.light : Brightness.dark,
       ),
     );
@@ -244,6 +247,11 @@ class _HomeShellState extends State<HomeShell> {
   /// menunggu per tabel — bahan halaman Status Sinkronisasi.
   List<StatusTabel> _laporanSinkron = [];
   final Map<String, int> _kotor = {'menus': 0, 'ingredients': 0, 'branches': 0, 'transactions': 0, 'settings': 0};
+
+  /// Id per tabel yang PERNAH terlihat perangkat ini (untuk
+  /// membedakan barang yang dihapus di sini dari barang baru
+  /// perangkat lain saat sinkron — lihat idHantuDiServer).
+  final Map<String, Set<String>> _dikenal = {'menus': {}, 'ingredients': {}, 'branches': {}};
   final ValueNotifier<int> _penandaSinkron = ValueNotifier<int>(0);
 
   /// Cloud Sync benar-benar jalan hanya bila diatur DAN saklarnya
@@ -318,6 +326,14 @@ class _HomeShellState extends State<HomeShell> {
           if (_kotor.containsKey(kunci)) _kotor[kunci] = (v as num?)?.toInt() ?? 0;
         });
       }
+      final d = (meta['dikenal'] as Map?)?.cast<String, dynamic>();
+      if (d != null) {
+        d.forEach((kunci, v) {
+          if (_dikenal.containsKey(kunci) && v is List) {
+            _dikenal[kunci] = {for (final e in v) e.toString()};
+          }
+        });
+      }
       final lap = meta['laporan'] as List?;
       if (lap != null) {
         _laporanSinkron = lap.map((e) => StatusTabel.fromJson((e as Map).cast<String, dynamic>())).toList();
@@ -358,6 +374,27 @@ class _HomeShellState extends State<HomeShell> {
     _syncDebounce = Timer(const Duration(seconds: 2), () => _syncNow(diam: true));
   }
 
+  /// Sedang menampilkan shimmer penyegaran (tarik-ke-bawah).
+  bool _menyegarkan = false;
+
+  /// Tarik-ke-bawah di halaman mana pun (permintaan Adnan
+  /// 2026-11-15): tampilkan SHIMMER selama sinkron berjalan,
+  /// TANPA toast apa pun (mode diam — kegagalan tetap tercatat
+  /// sebagai pemberitahuan tersimpan). Shimmer tampil minimal
+  /// 750ms supaya tidak berkedip bila jaringan sangat cepat.
+  Future<void> _segarkan() async {
+    if (_menyegarkan) return;
+    setState(() => _menyegarkan = true);
+    try {
+      await Future.wait([
+        _syncNow(diam: true),
+        Future.delayed(const Duration(milliseconds: 750)),
+      ]);
+    } finally {
+      if (mounted) setState(() => _menyegarkan = false);
+    }
+  }
+
   /// Ketuk ikon awan di Beranda: belum diatur → buka Pengaturan;
   /// sudah diatur → sinkron sekarang.
   void _syncTap() {
@@ -381,6 +418,7 @@ class _HomeShellState extends State<HomeShell> {
     LocalStore.saveSyncMeta({
       'kotor': _kotor,
       'laporan': _laporanSinkron.map((r) => r.toJson()).toList(),
+      'dikenal': {for (final e in _dikenal.entries) e.key: e.value.toList()},
     });
   }
 
@@ -451,6 +489,9 @@ class _HomeShellState extends State<HomeShell> {
     LocalStore.saveMenus(_menus);
     _tandaiKotor('menus');
     _jadwalkanSinkron();
+    // Tindakan seperti hapus harus ada toast penegas (permintaan
+    // Adnan 2026-11-15).
+    if (mounted) tampilToast(context, 'Produk "${m.name}" dihapus.', icon: Icons.delete_outline);
   }
 
   // ---------- CRUD: Meja ----------
@@ -476,6 +517,7 @@ class _HomeShellState extends State<HomeShell> {
     });
     LocalStore.saveTables(_tables);
     _jadwalkanSinkron();
+    if (mounted) tampilToast(context, 'Meja ${t.number} dihapus.', icon: Icons.delete_outline);
   }
 
   // ---------- Gudang: mutasi stok ----------
@@ -554,6 +596,7 @@ class _HomeShellState extends State<HomeShell> {
     LocalStore.saveIngredients(_ingredients);
     _tandaiKotor('ingredients');
     _jadwalkanSinkron();
+    if (mounted) tampilToast(context, 'Bahan "${i.name}" dihapus.', icon: Icons.delete_outline);
   }
 
   // ---------- Pengaturan ----------
@@ -646,20 +689,20 @@ class _HomeShellState extends State<HomeShell> {
 
   void _openNotices() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => NotifikasiScreen(notifications: _notifications)),
+      MaterialPageRoute(builder: (_) => NotifikasiScreen(notifications: _notifications, onTandaiSemuaDibaca: _tandaiSemuaDibaca)),
     );
-    // Membuka pusat pemberitahuan = menandai semua sudah dibaca
-    // (sedikit ditunda supaya halaman yang terbuka masih sempat
-    // menampilkan penanda belum-dibacanya).
-    Future.delayed(const Duration(milliseconds: 700), () {
-      if (!mounted || _belumDibaca == 0) return;
-      setState(() {
-        for (final n in _notifications) {
-          n.dibaca = true;
-        }
-      });
-      LocalStore.saveNotifications(_notifications);
+  }
+
+  /// v0.10.1: menandai dibaca kini eksplisit lewat tombol di
+  /// halaman Pemberitahuan (dulu otomatis saat halaman dibuka).
+  void _tandaiSemuaDibaca() {
+    if (_belumDibaca == 0) return;
+    setState(() {
+      for (final n in _notifications) {
+        n.dibaca = true;
+      }
     });
+    LocalStore.saveNotifications(_notifications);
   }
 
   void _switchBranch(Branch b) => _settingChanged(() => _settings.activeBranchId = b.id);
@@ -734,6 +777,7 @@ class _HomeShellState extends State<HomeShell> {
       branches: _settings.branches,
       transactions: _transactions,
       perbaruiSemua: perbaruiSemua,
+      dikenal: _dikenal,
     ).then((h) {
       _syncTimeoutTimer?.cancel();
       if (!selesai.isCompleted) selesai.complete(h);
@@ -792,6 +836,11 @@ class _HomeShellState extends State<HomeShell> {
         for (final r in hasil.rincian) {
           if (r.berhasil) _kotor[r.kunci] = 0;
         }
+        // Ingatan id perangkat diperbarui dari hasil gabungan —
+        // dasar keputusan hapus-di-server pada sinkron berikut.
+        hasil.dikenalBaru.forEach((kunci, ids) {
+          if (_dikenal.containsKey(kunci)) _dikenal[kunci] = ids;
+        });
       });
       LocalStore.saveMenus(_menus);
       LocalStore.saveIngredients(_ingredients);
@@ -996,19 +1045,29 @@ class _HomeShellState extends State<HomeShell> {
   /// ±200 mdtk, BUKAN dorongan halaman. Keadaan tiap layar tetap
   /// utuh karena IndexedStack-nya sendiri tidak berubah.
   Widget _tumpukanLayar(List<Widget> screens) {
-    return TweenAnimationBuilder<double>(
-      key: ValueKey(_index),
-      tween: Tween(begin: 0.45, end: 1),
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      builder: (_, v, child) => Opacity(opacity: v, child: child),
-      // Tarik ke bawah di halaman mana pun = sinkron Supabase
-      // (permintaan Adnan 23:51: data diambil dari internet,
-      // semua halaman harus bisa ditarik untuk menyegarkan).
-      child: RefreshIndicator(
-        onRefresh: () => _syncNow(),
-        child: IndexedStack(index: _index, children: screens),
-      ),
+    return Stack(
+      children: [
+        TweenAnimationBuilder<double>(
+          key: ValueKey(_index),
+          tween: Tween(begin: 0.45, end: 1),
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          builder: (_, v, child) => Opacity(opacity: v, child: child),
+          // Tarik ke bawah di halaman mana pun = sinkron Supabase
+          // (permintaan Adnan 23:51: data diambil dari internet,
+          // semua halaman harus bisa ditarik untuk menyegarkan).
+          child: RefreshIndicator(
+            // Putaran bawaan disembunyikan (transparan): yang tampil
+            // adalah shimmer _menyegarkan di atas seluruh halaman.
+            color: Colors.transparent,
+            backgroundColor: Colors.transparent,
+            onRefresh: _segarkan,
+            child: IndexedStack(index: _index, children: screens),
+          ),
+        ),
+        // Lapisan shimmer selama penyegaran tarik-ke-bawah.
+        if (_menyegarkan) const Positioned.fill(child: ShimmerSkeleton()),
+      ],
     );
   }
 
