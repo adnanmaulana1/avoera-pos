@@ -484,3 +484,7 @@ untuk hasil akhir.
 - **Profil Usaha diperbarui**: kolom Nama/Alamat/Telepon berikon depan Lucide redup (toko, pin, telepon — ikon phone baru), foto usaha diberi bingkai garis halus.
 - **Sheet Pilih Bahan bisa diseret** (permintaan: "kalau ditarik ke bawah maka dia kegeser ke bawah popupnya"): DraggableScrollableSheet — menarik daftar di puncak atau gagang/kepala sheet menggeser sheet mengikuti jari, tarikan jauh menutup; ada gagang tarik 40×4 di atas; tinggi awal 88% layar sehingga judul tidak lagi menempel status bar. Teruji angka: tarikan 320px menggeser judul turun 300px.
 - Ikon kini 137 field. Tes: 137/137 lulus.
+
+## v0.14.2 (2026-11-17) — Statistik Beranda jadi satu kartu lebar
+- Tiga kartu statistik terpisah (Transaksi / Rata-rata / Menu Dijual atau Di Dapur) digabung jadi SATU kartu lebar berisi 3 kolom berpisah garis tipis menjorok — pilihan Adnan dari 3 usul sesudah mengeluh kartu lama "kurang lebar kalau di HP". Ruang antar kartu yang terbuang (2×12) kini jadi ruang angka; tinggi tetap dikunci 88; tiap kolom tetap bisa diketuk ke tujuan lama (Riwayat / Dapur / Produk) dengan InkWell di atas Material transparan; angka tetap FitNumber.
+- Tes: 137/137 lulus. Frame Beranda terverifikasi: satu kartu, 3 kolom, garis pemisah menjorok.

@@ -319,24 +319,27 @@ class _BerandaScreenState extends State<BerandaScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
-        // Tinggi dikunci + stretch: ketiga kartu DIJAMIN seukuran
-        // persis di semua HP (keluhan Adnan 2026-11-15: kartu
-        // terlihat tidak seukuran).
+        // SATU kartu lebar isi 3 kolom (pilihan Adnan
+        // 2026-11-17: tiga kartu terpisah terasa sempit di HP).
+        // Kolom dipisah garis tipis; tiap kolom tetap bisa
+        // diketuk ke tujuan yang sama seperti kartu lamanya.
+        // Tinggi dikunci 88 seperti sebelumnya.
         SizedBox(
           height: 88,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: _StatCard(label: 'Transaksi', value: '$countToday', onTap: widget.onOpenRiwayat)),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(child: _StatCard(label: 'Rata-rata', value: rupiah(avgToday), onTap: widget.onOpenRiwayat)),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: widget.kitchenEnabled
-                    ? _StatCard(label: 'Di Dapur', value: '${widget.kitchenActive}', onTap: () => widget.onNavigate(4))
-                    : _StatCard(label: 'Menu Dijual', value: '${widget.menuCount}', onTap: () => widget.onNavigate(2)),
-              ),
-            ],
+          child: AppCard(
+            padding: EdgeInsets.zero,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _KolomStat(label: 'Transaksi', value: '$countToday', onTap: widget.onOpenRiwayat),
+                const _PemisahStat(),
+                _KolomStat(label: 'Rata-rata', value: rupiah(avgToday), onTap: widget.onOpenRiwayat),
+                const _PemisahStat(),
+                widget.kitchenEnabled
+                    ? _KolomStat(label: 'Di Dapur', value: '${widget.kitchenActive}', onTap: () => widget.onNavigate(4))
+                    : _KolomStat(label: 'Menu Dijual', value: '${widget.menuCount}', onTap: () => widget.onNavigate(2)),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -488,25 +491,51 @@ class _BerandaScreenState extends State<BerandaScreen> {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value, this.onTap});
+/// Satu kolom statistik di dalam kartu lebar Beranda: label
+/// redup + angka FitNumber (menyusut sendiri bila panjang).
+/// Material transparan + InkWell agar sentuhan terlihat di
+/// atas permukaan kartu.
+class _KolomStat extends StatelessWidget {
+  const _KolomStat({required this.label, required this.value, this.onTap});
   final String label;
   final String value;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
-          const SizedBox(height: AppSpacing.xs),
-          FitNumber(value),
-        ],
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(label, style: AppText.small.copyWith(color: AppColors.muted)),
+                const SizedBox(height: AppSpacing.xs),
+                FitNumber(value),
+              ],
+            ),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+/// Garis pemisah tegak antar kolom statistik — menjorok dari
+/// tepi atas-bawah kartu agar terlihat ringan.
+class _PemisahStat extends StatelessWidget {
+  const _PemisahStat();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: Container(width: 1, color: AppColors.border),
     );
   }
 }
