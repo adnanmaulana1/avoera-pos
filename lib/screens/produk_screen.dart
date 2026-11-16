@@ -329,42 +329,47 @@ class _ProdukScreenState extends State<ProdukScreen> {
   @override
   Widget build(BuildContext context) {
     final list = _list;
+    // Dropdown Produk (dirombak v0.14.1, permintaan Adnan:
+    // menu bawaan tampak mentah — panel raksasa memenuhi
+    // layar). Kini: lebar dibatasi, tiap baris berikon Lucide,
+    // tinggi ringkas 46, kelompok dipisah garis, keadaan
+    // nyala tetap ditandai TEKS 'Aktif' (aturan permanen:
+    // tanpa centang).
+    PopupMenuItem<String> butir(String value, IconData icon, String label, {bool aktif = false}) {
+      return PopupMenuItem<String>(
+        value: value,
+        height: 46,
+        child: Row(
+          children: [
+            Icon(icon, size: 19, color: AppColors.accentDark),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(child: Text(label, style: AppText.body)),
+            if (aktif)
+              Text('Aktif', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      );
+    }
+
     final tombolMenu = PopupMenuButton<String>(
       icon: const Icon(Ikon.more_vert),
       tooltip: 'Pilihan produk',
       onSelected: _aksiMenu,
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 6),
+      constraints: const BoxConstraints(minWidth: 256, maxWidth: 292),
       itemBuilder: (_) => [
-        const PopupMenuItem(value: 'massal', child: Text('Edit Harga Massal')),
-        PopupMenuItem(
-          value: 'bahan',
-          // Keadaan nyala ditandai TEKS 'Aktif', bukan
-          // centang (aturan permanen Adnan).
-          child: Row(
-            children: [
-              const Expanded(child: Text('Tampilkan Bahan Baku')),
-              if (_tampilBahan)
-                Text('Aktif', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(value: 'pilih', child: Text('Pilih Produk')),
+        butir('massal', Ikon.percent_outlined, 'Edit Harga Massal'),
+        butir('bahan', Ikon.inventory_outlined, 'Tampilkan Bahan Baku', aktif: _tampilBahan),
+        butir('pilih', Ikon.fact_check_outlined, 'Pilih Produk'),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'ekspor', child: Text('Ekspor Data')),
-        const PopupMenuItem(value: 'impor', child: Text('Impor Data')),
+        butir('ekspor', Ikon.save_alt, 'Ekspor Data'),
+        butir('impor', Ikon.upload_file_outlined, 'Impor Data'),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'resep', child: Text('Resep')),
-        const PopupMenuItem(value: 'bundle', child: Text('Bundle')),
-        PopupMenuItem(
-          value: 'ojol',
-          child: Row(
-            children: [
-              const Expanded(child: Text('Tampilkan Harga Ojol')),
-              if (_tampilOjol)
-                Text('Aktif', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(value: 'label', child: Text('Cetak Label Harga')),
+        butir('resep', Ikon.restaurant_menu_outlined, 'Resep'),
+        butir('bundle', Ikon.card_giftcard_outlined, 'Bundle'),
+        butir('ojol', Ikon.delivery_dining_outlined, 'Tampilkan Harga Ojol', aktif: _tampilOjol),
+        butir('label', Ikon.print_outlined, 'Cetak Label Harga'),
       ],
     );
     return Stack(
@@ -503,7 +508,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
                           ),
                         ),
                     ],
-                    if (_modePilih) const SizedBox(height: 64),
+                    if (_modePilih) const SizedBox(height: 88),
                   ]),
                 ),
               ),
@@ -515,15 +520,41 @@ class _ProdukScreenState extends State<ProdukScreen> {
             right: AppSpacing.lg,
             bottom: AppSpacing.lg,
             child: AppCard(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
               child: Row(
                 children: [
                   Expanded(child: Text('${_terpilih.length} dipilih', style: AppText.body.copyWith(fontWeight: FontWeight.w700))),
-                  TextButton(onPressed: _keluarModePilih, child: const Text('Batal')),
-                  PrimaryButton(
-                    label: 'Hapus Terpilih',
-                    backgroundColor: AppColors.danger,
-                    onPressed: _terpilih.isEmpty ? null : _hapusTerpilih,
+                  // Sepasang tombol SAMAKAN ukurannya (keluhan
+                  // Adnan 2026-11-17: dulu Batal kecil mungil,
+                  // Hapus raksasa): tinggi 48, huruf sama,
+                  // bantalan sama — beda hanya warna peran.
+                  SizedBox(
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: _keluarModePilih,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.ink,
+                        textStyle: AppText.body.copyWith(fontWeight: FontWeight.w700),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                        side: BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                      ),
+                      child: const Text('Batal'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  SizedBox(
+                    height: 48,
+                    child: FilledButton(
+                      onPressed: _terpilih.isEmpty ? null : _hapusTerpilih,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.danger,
+                        textStyle: AppText.body.copyWith(fontWeight: FontWeight.w700),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                      ),
+                      child: const Text('Hapus Terpilih'),
+                    ),
                   ),
                 ],
               ),

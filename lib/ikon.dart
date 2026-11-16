@@ -53,6 +53,7 @@ class Ikon {
   static const IconData coffee = IconData(0xf195, fontFamily: 'Lucide'); // bean
   static const IconData coffee_maker = IconData(0xf26a, fontFamily: 'Lucide'); // cupSoda
   static const IconData delete_outline = IconData(0xf546, fontFamily: 'Lucide'); // trash2
+  static const IconData delivery_dining_outlined = IconData(0xf1a2, fontFamily: 'Lucide'); // bike
   static const IconData dinner_dining = IconData(0xf576, fontFamily: 'Lucide'); // utensils
   static const IconData done_all = IconData(0xf1ef, fontFamily: 'Lucide'); // checkCheck
   static const IconData edit_outlined = IconData(0xf43d, fontFamily: 'Lucide'); // pencil
@@ -87,6 +88,7 @@ class Ikon {
   static const IconData notifications_rounded = IconData(0xf19c, fontFamily: 'Lucide'); // bell
   static const IconData payments_outlined = IconData(0xf184, fontFamily: 'Lucide'); // banknote
   static const IconData percent_outlined = IconData(0xf43e, fontFamily: 'Lucide'); // percent
+  static const IconData phone_outlined = IconData(0xf440, fontFamily: 'Lucide'); // phone
   static const IconData person_outline = IconData(0xf564, fontFamily: 'Lucide'); // user
   static const IconData photo_camera_outlined = IconData(0xf1df, fontFamily: 'Lucide'); // camera
   static const IconData photo_library_outlined = IconData(0xf365, fontFamily: 'Lucide'); // image
@@ -145,6 +147,7 @@ class Ikon {
   static const IconData trending_down = IconData(0xf54b, fontFamily: 'Lucide'); // trendingDown
   static const IconData trending_up = IconData(0xf54c, fontFamily: 'Lucide'); // trendingUp
   static const IconData trending_up_outlined = IconData(0xf54c, fontFamily: 'Lucide'); // trendingUp
+  static const IconData upload_file_outlined = IconData(0xf561, fontFamily: 'Lucide'); // upload
   static const IconData visibility_off_outlined = IconData(0xf29d, fontFamily: 'Lucide'); // eyeOff
   static const IconData visibility_outlined = IconData(0xf29c, fontFamily: 'Lucide'); // eye
   static const IconData warehouse_outlined = IconData(0xf58e, fontFamily: 'Lucide'); // warehouse

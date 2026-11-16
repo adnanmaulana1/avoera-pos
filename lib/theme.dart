@@ -226,6 +226,20 @@ ThemeData buildTheme() {
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
     ),
+    // Dropdown/menu tempel (v0.14.1, permintaan Adnan: menu
+    // bawaan Material tampak mentah — panel raksasa hijau pucat,
+    // teks besar): samakan dengan bahasa kartu aplikasi —
+    // permukaan kartu, garis tepi halus, sudut md, teks body.
+    popupMenuTheme: PopupMenuThemeData(
+      color: AppColors.card,
+      surfaceTintColor: Colors.transparent,
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        side: BorderSide(color: AppColors.border),
+      ),
+      textStyle: AppText.body.copyWith(color: AppColors.ink),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.card,

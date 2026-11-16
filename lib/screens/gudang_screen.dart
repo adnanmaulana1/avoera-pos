@@ -20,55 +20,83 @@ double? _parseQty(String raw) {
 }
 
 /// Pemilih bahan: sheet berisi daftar bahan yang bisa dicari.
+///
+/// Sheet BISA DISERET (permintaan Adnan 2026-11-17: "kalau
+/// ditarik ke bawah maka dia kegeser ke bawah popupnya"):
+/// DraggableScrollableSheet — menarik daftar yang sudah di
+/// puncak, atau menarik gagang/kepala sheet, menggeser sheet
+/// mengikuti jari; tarikan jauh menutupnya. Tinggi awal 88%
+/// layar, jadi judul tidak lagi menempel ke status bar.
 Future<Ingredient?> pilihBahan(BuildContext context, List<Ingredient> ingredients) async {
   final cari = TextEditingController();
-  final hasilPilih = await showAppSheet<Ingredient>(
+  final hasilPilih = await showModalBottomSheet<Ingredient>(
     context: context,
     isScrollControlled: true,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setSheet) {
-        final q = cari.text.toLowerCase();
-        final hasil = ingredients.where((i) => i.name.toLowerCase().contains(q)).toList();
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xl + MediaQuery.viewInsetsOf(ctx).bottom),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Pilih Bahan', style: AppText.subtitle),
-                const SizedBox(height: AppSpacing.md),
-                TextField(
-                  controller: cari,
-                  decoration: const InputDecoration(prefixIcon: Icon(Ikon.search), hintText: 'Cari bahan…'),
-                  onChanged: (_) => setSheet(() {}),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
+    builder: (ctx) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.88,
+      minChildSize: 0.45,
+      maxChildSize: 0.88,
+      builder: (ctx, scrollController) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          final q = cari.text.toLowerCase();
+          final hasil = ingredients.where((i) => i.name.toLowerCase().contains(q)).toList();
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+            child: Material(
+              color: AppColors.card,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, MediaQuery.viewInsetsOf(ctx).bottom),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (hasil.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                          child: Text('Tidak ada bahan yang cocok.', style: AppText.small.copyWith(color: AppColors.muted)),
+                      // Gagang tarik di tengah atas.
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(AppRadius.pill)),
                         ),
-                      for (final ing in hasil)
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(ing.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
-                          subtitle: Text('Sisa ${stockText(ing.stock)} ${ing.unit}', style: AppText.small.copyWith(color: AppColors.muted)),
-                          trailing: const Icon(Ikon.chevron_right, size: 20),
-                          onTap: () => Navigator.of(ctx).pop(ing),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text('Pilih Bahan', style: AppText.subtitle),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(
+                        controller: cari,
+                        decoration: const InputDecoration(prefixIcon: Icon(Ikon.search), hintText: 'Cari bahan…'),
+                        onChanged: (_) => setSheet(() {}),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Expanded(
+                        child: ListView(
+                          controller: scrollController,
+                          children: [
+                            if (hasil.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                                child: Text('Tidak ada bahan yang cocok.', style: AppText.small.copyWith(color: AppColors.muted)),
+                              ),
+                            for (final ing in hasil)
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(ing.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                                subtitle: Text('Sisa ${stockText(ing.stock)} ${ing.unit}', style: AppText.small.copyWith(color: AppColors.muted)),
+                                trailing: const Icon(Ikon.chevron_right, size: 20),
+                                onTap: () => Navigator.of(ctx).pop(ing),
+                              ),
+                          ],
                         ),
+                      ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     ),
   );
   disposeControllersLater([cari]);

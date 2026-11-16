@@ -133,14 +133,36 @@ class _ProfilUsahaScreenState extends State<ProfilUsahaScreen> {
             Text(widget.nama, textAlign: TextAlign.center, style: AppText.title),
             Text('Profil ini tampil di Beranda, struk, dan laporan.', textAlign: TextAlign.center, style: AppText.caption.copyWith(color: AppColors.muted)),
             const SizedBox(height: AppSpacing.xl),
+            // Kolom berikon depan (perbarui UI v0.14.1): ikon
+            // Lucide redup di kiri kolom — halaman terasa
+            // dirancang, bukan formulir mentah.
             const FormLabel('Nama Usaha'),
-            TextField(controller: _namaCtrl, decoration: const InputDecoration(hintText: 'cth. Kopi Senja')),
+            TextField(
+              controller: _namaCtrl,
+              decoration: InputDecoration(
+                hintText: 'cth. Kopi Senja',
+                prefixIcon: Icon(Ikon.store_outlined, size: 20, color: AppColors.muted),
+              ),
+            ),
             const SizedBox(height: AppSpacing.md),
             const FormLabel('Alamat Usaha'),
-            TextField(controller: _alamatCtrl, decoration: const InputDecoration(hintText: 'cth. Jl. Merdeka No. 10')),
+            TextField(
+              controller: _alamatCtrl,
+              decoration: InputDecoration(
+                hintText: 'cth. Jl. Merdeka No. 10',
+                prefixIcon: Icon(Ikon.pin_outlined, size: 20, color: AppColors.muted),
+              ),
+            ),
             const SizedBox(height: AppSpacing.md),
             const FormLabel('Telepon / WhatsApp'),
-            TextField(controller: _teleponCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(hintText: 'cth. 0812-3456-7890')),
+            TextField(
+              controller: _teleponCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                hintText: 'cth. 0812-3456-7890',
+                prefixIcon: Icon(Ikon.phone_outlined, size: 20, color: AppColors.muted),
+              ),
+            ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(_error!, style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w600)),
@@ -191,7 +213,14 @@ class _PemilihFoto extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          isi,
+          // Bingkai halus memisahkan foto dari latar halaman.
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: isi,
+          ),
           Positioned(
             right: -4,
             bottom: -4,
