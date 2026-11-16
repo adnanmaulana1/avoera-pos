@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:avoera_pos/main.dart';
+import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,6 +31,13 @@ void main() {
     final iconBytes = await File('$dir/MaterialIcons-Regular.otf').readAsBytes();
     icons.addFont(Future.value(ByteData.view(iconBytes.buffer)));
     await icons.load();
+    // Huruf khas v0.12.0 ikut dimuat — tanpa ini judul/angka
+    // jatuh ke font uji raksasa dan lebar teksnya mengecoh.
+    final jakarta = FontLoader('Plus Jakarta Sans');
+    for (final f in ['PlusJakartaSans-Regular.ttf', 'PlusJakartaSans-Medium.ttf', 'PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-Bold.ttf', 'PlusJakartaSans-ExtraBold.ttf']) {
+      jakarta.addFont(Future.value(ByteData.view((await File('/home/hatch/workspace/projects/avoera-pos/assets/fonts/$f').readAsBytes()).buffer)));
+    }
+    await jakarta.load();
   });
 
   Finder inSheet(Finder inner) => find.descendant(of: find.byType(BottomSheet), matching: inner);
@@ -55,7 +63,7 @@ void main() {
     await tester.pumpWidget(const KasirFnbApp());
     await tester.pumpAndSettle();
     // Aplikasi membuka di Beranda — pindah ke Kasir dulu.
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Kasir')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Kasir')));
     await tester.pumpAndSettle();
 
     await tambahPaketDariKartu(tester);
@@ -91,7 +99,7 @@ void main() {
     await tester.pumpWidget(const KasirFnbApp());
     await tester.pumpAndSettle();
     // Aplikasi membuka di Beranda — pindah ke Kasir dulu.
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Kasir')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Kasir')));
     await tester.pumpAndSettle();
 
     await tambahPaketDariKartu(tester);

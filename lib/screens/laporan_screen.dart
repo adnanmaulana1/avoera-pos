@@ -55,21 +55,31 @@ class LaporanScreen extends StatelessWidget {
     final rata = todayTx.isEmpty ? 0 : (omzet / todayTx.length).round();
     final mejaTerisi = tables.where((t) => t.status != TableStatus.kosong).length;
 
-    final laporan = <(IconData, String, String, VoidCallback?)>[
-      (Icons.receipt_long_outlined, 'Laporan Transaksi', 'Semua pembayaran tercatat, bisa disaring per periode.', onOpenRiwayat),
-      (Icons.calendar_month_outlined, 'Laporan Bulanan', 'Total penjualan 6 bulan terakhir + hari terbaik.', onOpenBulanan),
-      (Icons.account_balance_outlined, 'Laporan Pajak', 'Pajak & biaya layanan yang terkumpul per bulan.', onOpenPajak),
-      (Icons.person_outline, 'Laporan Piutang', 'Tagihan meja yang belum dibayar.', onOpenPiutang),
-      (Icons.trending_up_outlined, 'Laporan Laba Rugi', 'Pendapatan, HPP, biaya operasional & laba bersih per periode.', onOpenLabaRugi),
-      (Icons.scale_outlined, 'Neraca', 'Posisi aset, utang & modal usaha pada tanggal tertentu.', onOpenNeraca),
-      (Icons.payments_outlined, 'Arus Kas', 'Uang masuk & keluar per periode + saldo awal-akhir.', onOpenArusKas),
-      (Icons.swap_horiz_outlined, 'Arus Stok', 'Rekap masuk, terpakai & penyesuaian bahan per periode.', onOpenArusStok),
-      (Icons.warehouse_outlined, 'Persediaan Barang', 'Nilai stok semua bahan + status kritis & habis.', onOpenPersediaan),
-      (Icons.shopping_bag_outlined, 'Laporan Pembelian', 'Semua barang masuk gudang per periode + nilainya.', onOpenPembelian),
-      (Icons.store_outlined, 'Laporan Hutang', 'Catatan hutang usaha: tambah, lunasi, pantau jatuh tempo.', onOpenHutang),
-      (Icons.percent_outlined, 'Promo & Diskon', 'Kelola promo kasir + total diskon yang sudah diberikan.', onOpenPromo),
-      (Icons.show_chart_outlined, 'Margin Tipis', 'Menu dengan untung paling tipis — butuh resep/HPP per menu.', null),
-      (Icons.groups_outlined, 'Laporan Pengunjung', 'Butuh catatan jumlah tamu per transaksi.', null),
+    // Kelompok BERBOBOT (update identitas v0.12.0): ubin ikon
+    // tidak lagi seragam — laporan uang memakai ubin aksen
+    // pekat, stok & operasional ubin bergaris, yang belum jadi
+    // ubin pudar. Mata langsung tahu mana yang inti.
+    final kelompok = <(String, int, List<(IconData, String, String, VoidCallback?)>)>[
+      ('Penjualan & Keuangan', 0, [
+        (Icons.receipt_long_outlined, 'Laporan Transaksi', 'Semua pembayaran tercatat, bisa disaring per periode.', onOpenRiwayat),
+        (Icons.calendar_month_outlined, 'Laporan Bulanan', 'Total penjualan 6 bulan terakhir + hari terbaik.', onOpenBulanan),
+        (Icons.account_balance_outlined, 'Laporan Pajak', 'Pajak & biaya layanan yang terkumpul per bulan.', onOpenPajak),
+        (Icons.person_outline, 'Laporan Piutang', 'Tagihan meja yang belum dibayar.', onOpenPiutang),
+        (Icons.trending_up_outlined, 'Laporan Laba Rugi', 'Pendapatan, HPP, biaya operasional & laba bersih per periode.', onOpenLabaRugi),
+        (Icons.scale_outlined, 'Neraca', 'Posisi aset, utang & modal usaha pada tanggal tertentu.', onOpenNeraca),
+        (Icons.payments_outlined, 'Arus Kas', 'Uang masuk & keluar per periode + saldo awal-akhir.', onOpenArusKas),
+      ]),
+      ('Stok & Operasional', 1, [
+        (Icons.swap_horiz_outlined, 'Arus Stok', 'Rekap masuk, terpakai & penyesuaian bahan per periode.', onOpenArusStok),
+        (Icons.warehouse_outlined, 'Persediaan Barang', 'Nilai stok semua bahan + status kritis & habis.', onOpenPersediaan),
+        (Icons.shopping_bag_outlined, 'Laporan Pembelian', 'Semua barang masuk gudang per periode + nilainya.', onOpenPembelian),
+        (Icons.store_outlined, 'Laporan Hutang', 'Catatan hutang usaha: tambah, lunasi, pantau jatuh tempo.', onOpenHutang),
+        (Icons.percent_outlined, 'Promo & Diskon', 'Kelola promo kasir + total diskon yang sudah diberikan.', onOpenPromo),
+      ]),
+      ('Segera', 2, [
+        (Icons.show_chart_outlined, 'Margin Tipis', 'Menu dengan untung paling tipis — butuh resep/HPP per menu.', null),
+        (Icons.groups_outlined, 'Laporan Pengunjung', 'Butuh catatan jumlah tamu per transaksi.', null),
+      ]),
     ];
 
     return ListView(
@@ -97,43 +107,65 @@ class LaporanScreen extends StatelessWidget {
             );
           },
         ),
-        const SizedBox(height: AppSpacing.xl),
-        Text('Semua Laporan', style: AppText.title),
-        const SizedBox(height: AppSpacing.md),
-        for (final (icon, title, sub, action) in laporan)
-          AppCard(
-            margin: const EdgeInsets.only(bottom: AppSpacing.md),
-            child: InkWell(
-              onTap: action,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                    child: Icon(icon, color: AppColors.accentDark, size: 22),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title, style: AppText.body.copyWith(fontWeight: FontWeight.w700)),
-                        Text(sub, style: AppText.caption.copyWith(color: AppColors.muted)),
-                      ],
+        for (final (namaGrup, bobot, isi) in kelompok) ...[
+          const SizedBox(height: AppSpacing.xl),
+          Text(namaGrup, style: AppText.title),
+          const SizedBox(height: AppSpacing.md),
+          for (final (icon, title, sub, action) in isi)
+            AppCard(
+              margin: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: InkWell(
+                onTap: action,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                child: Row(
+                  children: [
+                    _UbinLaporan(icon: icon, bobot: bobot),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: AppText.subtitle),
+                          Text(sub, style: AppText.caption.copyWith(color: AppColors.muted)),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  if (action != null)
-                    Icon(Icons.chevron_right, color: AppColors.muted)
-                  else
-                    StatusChip(label: 'Segera', color: AppColors.muted),
-                ],
+                    const SizedBox(width: AppSpacing.sm),
+                    if (action != null)
+                      Icon(Icons.chevron_right, color: AppColors.muted)
+                    else
+                      StatusChip(label: 'Segera', color: AppColors.muted),
+                  ],
+                ),
               ),
             ),
-          ),
+        ],
       ],
+    );
+  }
+}
+
+/// Ubin ikon baris laporan menurut bobot kelompoknya:
+/// 0 = aksen pekat + ikon putih (inti uang), 1 = bergaris
+/// aksen + ikon hijau tua, 2 = pudar (belum jadi).
+class _UbinLaporan extends StatelessWidget {
+  const _UbinLaporan({required this.icon, required this.bobot});
+  final IconData icon;
+  final int bobot;
+
+  @override
+  Widget build(BuildContext context) {
+    final _ = Theme.of(context);
+    final (Color latar, Color warnaIkon, Border? garis) = switch (bobot) {
+      0 => (AppColors.accent, Colors.white, null),
+      1 => (Colors.transparent, AppColors.accentDark, Border.all(color: AppColors.accent.withValues(alpha: 0.45))),
+      _ => (AppColors.track, AppColors.muted, null),
+    };
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(color: latar, border: garis, borderRadius: BorderRadius.circular(AppRadius.sm)),
+      child: Icon(icon, color: warnaIkon, size: 22),
     );
   }
 }

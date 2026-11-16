@@ -385,7 +385,7 @@ Future<void> showPengeluaranSheet(
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                decoration: BoxDecoration(color: AppColors.fieldFill, borderRadius: BorderRadius.circular(AppRadius.md)),
+                decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(AppRadius.md)),
                 child: Row(
                   children: [
                     Icon(Icons.calendar_month_outlined, size: 18, color: AppColors.muted),

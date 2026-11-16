@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:avoera_pos/main.dart';
+import 'package:avoera_pos/widgets.dart';
 import 'package:avoera_pos/screens/onboarding_screen.dart' show hashPin;
 import 'package:avoera_pos/screens/pin_screen.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,13 @@ void main() {
     final icons = FontLoader('MaterialIcons');
     icons.addFont(Future.value(ByteData.view((await File('$dir/MaterialIcons-Regular.otf').readAsBytes()).buffer)));
     await icons.load();
+    // Huruf khas v0.12.0 ikut dimuat — tanpa ini judul/angka
+    // jatuh ke font uji raksasa dan lebar teksnya mengecoh.
+    final jakarta = FontLoader('Plus Jakarta Sans');
+    for (final f in ['PlusJakartaSans-Regular.ttf', 'PlusJakartaSans-Medium.ttf', 'PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-Bold.ttf', 'PlusJakartaSans-ExtraBold.ttf']) {
+      jakarta.addFont(Future.value(ByteData.view((await File('/home/hatch/workspace/projects/avoera-pos/assets/fonts/$f').readAsBytes()).buffer)));
+    }
+    await jakarta.load();
   });
 
   Future<void> pumpPhone(WidgetTester tester) async {
@@ -36,7 +44,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(const KasirFnbApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Kasir')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Kasir')));
     await tester.pumpAndSettle();
   }
 

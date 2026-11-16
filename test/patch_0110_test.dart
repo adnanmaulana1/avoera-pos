@@ -17,6 +17,7 @@ import 'package:avoera_pos/screens/persediaan_screen.dart';
 import 'package:avoera_pos/screens/pin_screen.dart';
 import 'package:avoera_pos/screens/promo_screen.dart';
 import 'package:avoera_pos/theme.dart';
+import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +52,13 @@ void main() {
     final icons = FontLoader('MaterialIcons');
     icons.addFont(Future.value(ByteData.view((await File('$dir/MaterialIcons-Regular.otf').readAsBytes()).buffer)));
     await icons.load();
+    // Huruf khas v0.12.0 ikut dimuat — tanpa ini judul/angka
+    // jatuh ke font uji raksasa dan lebar teksnya mengecoh.
+    final jakarta = FontLoader('Plus Jakarta Sans');
+    for (final f in ['PlusJakartaSans-Regular.ttf', 'PlusJakartaSans-Medium.ttf', 'PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-Bold.ttf', 'PlusJakartaSans-ExtraBold.ttf']) {
+      jakarta.addFont(Future.value(ByteData.view((await File('/home/hatch/workspace/projects/avoera-pos/assets/fonts/$f').readAsBytes()).buffer)));
+    }
+    await jakarta.load();
   });
 
   group('hitungDiskonPromo', () {
@@ -504,10 +512,12 @@ void main() {
   });
 
   group('Gerbang PIN berlogo', () {
-    testWidgets('logo aplikasi tampil sebagai gambar di gerbang PIN', (tester) async {
+    testWidgets('logo Avorea susunan huruf tampil di gerbang PIN', (tester) async {
       await tester.pumpWidget(bungkus(Scaffold(body: PinGateScreen(pinHash: 'x', businessName: 'Avoera', onUnlock: () {}))));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.byType(Image), findsOneWidget);
+      // v0.12.0: logo bukan lagi gambar poster — susunan huruf.
+      expect(find.byType(LogoAvorea), findsOneWidget);
+      expect(find.text('AVOREA'), findsOneWidget);
       await tester.pump(const Duration(seconds: 3));
     });
   });

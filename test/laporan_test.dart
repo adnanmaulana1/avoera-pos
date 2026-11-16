@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:avoera_pos/data.dart';
 import 'package:avoera_pos/main.dart';
+import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +26,13 @@ void main() {
     final iconBytes = await File('$dir/MaterialIcons-Regular.otf').readAsBytes();
     icons.addFont(Future.value(ByteData.view(iconBytes.buffer)));
     await icons.load();
+    // Huruf khas v0.12.0 ikut dimuat — tanpa ini judul/angka
+    // jatuh ke font uji raksasa dan lebar teksnya mengecoh.
+    final jakarta = FontLoader('Plus Jakarta Sans');
+    for (final f in ['PlusJakartaSans-Regular.ttf', 'PlusJakartaSans-Medium.ttf', 'PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-Bold.ttf', 'PlusJakartaSans-ExtraBold.ttf']) {
+      jakarta.addFont(Future.value(ByteData.view((await File('/home/hatch/workspace/projects/avoera-pos/assets/fonts/$f').readAsBytes()).buffer)));
+    }
+    await jakarta.load();
   });
 
   testWidgets('Lonceng stok + Laporan Pajak dari data asli', (tester) async {
@@ -60,7 +68,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Laporan → Pajak: pajak terkumpul Rp3.200 dari transaksi tadi.
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Lainnya')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Lainnya')));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Laporan')));
     await tester.pumpAndSettle();

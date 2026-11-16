@@ -466,7 +466,10 @@ Future<void> showMenuEditor(
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: icon == ic ? AppColors.accentSoft : AppColors.track,
+                          // Terpilih (v0.12.0): permukaan kartu +
+                          // garis aksen 2px — bukan isian pastel.
+                          color: icon == ic ? AppColors.card : AppColors.track,
+                          border: icon == ic ? Border.all(color: AppColors.accent, width: 2) : null,
                           borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                         child: Icon(ic, size: 22, color: icon == ic ? AppColors.accentDark : AppColors.muted),

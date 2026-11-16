@@ -26,6 +26,13 @@ void main() {
     final icons = FontLoader('MaterialIcons');
     icons.addFont(File('/home/hatch/tools/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf').readAsBytes().then((b) => ByteData.view(b.buffer)));
     await icons.load();
+    // Huruf khas v0.12.0 ikut dimuat — tanpa ini judul/angka
+    // jatuh ke font uji raksasa dan lebar teksnya mengecoh.
+    final jakarta = FontLoader('Plus Jakarta Sans');
+    for (final f in ['PlusJakartaSans-Regular.ttf', 'PlusJakartaSans-Medium.ttf', 'PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-Bold.ttf', 'PlusJakartaSans-ExtraBold.ttf']) {
+      jakarta.addFont(Future.value(ByteData.view((await File('/home/hatch/workspace/projects/avoera-pos/assets/fonts/$f').readAsBytes()).buffer)));
+    }
+    await jakarta.load();
   });
 
   AppNotification notif(String id, String jenis, String judul, String kunci) => AppNotification(

@@ -159,21 +159,43 @@ class KartuHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final _ = Theme.of(context);
+    // Pita ringkasan TENANG (update identitas v0.12.0): permukaan
+    // kartu + garis aksen tipis di kiri + angka tinta. Blok
+    // emerald pekat dicadangkan hanya untuk dua angka utama
+    // aplikasi (penjualan Beranda & laba bersih) — kalau semua
+    // laporan memakai blok yang sama, rasanya seperti templat
+    // yang ditempel berulang.
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.accent,
+        color: AppColors.card,
+        border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: AppText.small.copyWith(color: Colors.white.withValues(alpha: 0.85), fontWeight: FontWeight.w600)),
-          const SizedBox(height: AppSpacing.xs),
-          Text(nilai, style: AppText.number.copyWith(color: Colors.white, fontSize: 26)),
-          const SizedBox(height: AppSpacing.xs),
-          Text(keterangan, style: AppText.caption.copyWith(color: Colors.white.withValues(alpha: 0.85))),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: AppColors.accent),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: AppText.small.copyWith(color: AppColors.muted, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(nilai, style: AppText.number.copyWith(fontSize: 26)),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(keterangan, style: AppText.caption.copyWith(color: AppColors.muted)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1794,32 +1794,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             onOpenAbout: () => showAppInfoDialog(context),
           ),
           bottomNavigationBar: Builder(
-            builder: (barCtx) => NavigationBar(
+            builder: (barCtx) => BarNavigasiBawah(
               // Sedang di menu drawer → sorot 'Lainnya'.
               selectedIndex: mainNav.contains(_index) ? mainNav.indexOf(_index) : mainNav.length,
-              onDestinationSelected: (pos) {
+              onTap: (pos) {
                 if (pos == mainNav.length) {
                   Scaffold.of(barCtx).openDrawer();
                 } else {
                   setState(() => _index = mainNav[pos]);
                 }
               },
-              destinations: [
+              items: [
                 for (final i in mainNav)
-                  NavigationDestination(
-                    icon: Badge(
-                      isLabelVisible: i == 4 && _kitchen.where((o) => o.status == KitchenStatus.baru).isNotEmpty,
-                      label: Text('${_kitchen.where((o) => o.status == KitchenStatus.baru).length}'),
-                      child: Icon(_navItems[i].icon),
-                    ),
-                    selectedIcon: Icon(_navItems[i].selectedIcon),
+                  TujuanBar(
+                    icon: _navItems[i].icon,
+                    selectedIcon: _navItems[i].selectedIcon,
                     label: _navItems[i].label,
+                    badge: i == 4 ? _kitchen.where((o) => o.status == KitchenStatus.baru).length : 0,
                   ),
-                const NavigationDestination(
-                  icon: Icon(Icons.menu),
-                  selectedIcon: Icon(Icons.menu),
-                  label: 'Lainnya',
-                ),
+                const TujuanBar(icon: Icons.menu, selectedIcon: Icons.menu, label: 'Lainnya'),
               ],
             ),
           ),
@@ -1998,7 +1991,7 @@ class _PhoneDrawer extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                 child: Material(
-                  color: index == i ? AppColors.accentSoft : Colors.transparent,
+                  color: index == i ? AppColors.accent : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                   child: ListTile(
                     dense: true,
@@ -2006,14 +1999,14 @@ class _PhoneDrawer extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
                     leading: Icon(
                       index == i ? _navItems[i].selectedIcon : _navItems[i].icon,
-                      color: index == i ? AppColors.accentDark : AppColors.muted,
+                      color: index == i ? Colors.white : AppColors.muted,
                       size: 24,
                     ),
                     title: Text(
                       _navItems[i].label,
                       style: AppText.body.copyWith(
                         fontWeight: index == i ? FontWeight.w700 : FontWeight.w500,
-                        color: index == i ? AppColors.accentDark : AppColors.ink,
+                        color: index == i ? Colors.white : AppColors.ink,
                       ),
                     ),
                     onTap: () {
@@ -2164,7 +2157,7 @@ class _SideBar extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                       child: Material(
-                        color: index == i ? AppColors.accentSoft : Colors.transparent,
+                        color: index == i ? AppColors.accent : Colors.transparent,
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                         child: ListTile(
                           dense: true,
@@ -2172,14 +2165,14 @@ class _SideBar extends StatelessWidget {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
                           leading: Icon(
                             index == i ? _navItems[i].selectedIcon : _navItems[i].icon,
-                            color: index == i ? AppColors.accentDark : AppColors.muted,
+                            color: index == i ? Colors.white : AppColors.muted,
                             size: 24,
                           ),
                           title: Text(
                             _navItems[i].label,
                             style: AppText.body.copyWith(
                               fontWeight: index == i ? FontWeight.w700 : FontWeight.w500,
-                              color: index == i ? AppColors.accentDark : AppColors.ink,
+                              color: index == i ? Colors.white : AppColors.ink,
                             ),
                           ),
                           trailing: (i == 4 && kitchenCount > 0) ? StatusChip(label: '$kitchenCount baru', color: AppColors.danger) : null,

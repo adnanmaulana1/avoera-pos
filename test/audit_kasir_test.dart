@@ -28,6 +28,13 @@ void main() {
     final iconBytes = await File('$dir/MaterialIcons-Regular.otf').readAsBytes();
     icons.addFont(Future.value(ByteData.view(iconBytes.buffer)));
     await icons.load();
+    // Huruf khas v0.12.0 ikut dimuat — tanpa ini judul/angka
+    // jatuh ke font uji raksasa dan lebar teksnya mengecoh.
+    final jakarta = FontLoader('Plus Jakarta Sans');
+    for (final f in ['PlusJakartaSans-Regular.ttf', 'PlusJakartaSans-Medium.ttf', 'PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-Bold.ttf', 'PlusJakartaSans-ExtraBold.ttf']) {
+      jakarta.addFont(Future.value(ByteData.view((await File('/home/hatch/workspace/projects/avoera-pos/assets/fonts/$f').readAsBytes()).buffer)));
+    }
+    await jakarta.load();
   });
 
   Finder inSheet(Finder inner) => find.descendant(of: find.byType(BottomSheet), matching: inner);
@@ -40,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
     // Aplikasi kini membuka di Beranda — tes kasir pindah dulu ke Kasir.
     if (keKasir) {
-      await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Kasir')));
+      await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Kasir')));
       await tester.pumpAndSettle();
     }
   }
@@ -62,13 +69,13 @@ void main() {
     await pumpPhone(tester, keKasir: false);
     // Bar bawah 5 tombol: Beranda, Kasir, Produk, Dapur + Lainnya
     // (Produk masuk bar pada v0.7.0; Meja pindah ke drawer).
-    final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.destinations.length, 5, reason: 'Bar bawah harus berisi Beranda, Kasir, Produk, Dapur, Lainnya');
-    expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Produk')), findsOneWidget);
-    expect(find.descendant(of: find.byType(NavigationBar), matching: find.text('Pengaturan')), findsNothing,
+    final bar = tester.widget<BarNavigasiBawah>(find.byType(BarNavigasiBawah));
+    expect(bar.items.length, 5, reason: 'Bar bawah harus berisi Beranda, Kasir, Produk, Dapur, Lainnya');
+    expect(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Produk')), findsOneWidget);
+    expect(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Pengaturan')), findsNothing,
         reason: 'Pengaturan tidak lagi di bar bawah');
 
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Lainnya')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Lainnya')));
     await tester.pumpAndSettle();
     expect(find.descendant(of: find.byType(Drawer), matching: find.text('MENU LAINNYA')), findsOneWidget);
     expect(find.descendant(of: find.byType(Drawer), matching: find.text('Meja')), findsOneWidget,
@@ -78,7 +85,7 @@ void main() {
     // v0.8.0: Usaha jadi kartu profil — nama usaha tampil di kartu itu.
     expect(find.text('Avoera Cafe & Resto'), findsOneWidget, reason: 'Pengaturan harus terbuka dari drawer (kartu profil usaha)');
     // Selama di menu drawer, sorotan bar bawah jatuh ke 'Lainnya'.
-    expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex, 4);
+    expect(tester.widget<BarNavigasiBawah>(find.byType(BarNavigasiBawah)).selectedIndex, 4);
   });
 
   testWidgets('Audit: Beranda — penjualan ASLI muncul sesudah checkout', (tester) async {
@@ -100,18 +107,28 @@ void main() {
     await tester.tap(find.text('Selesai'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Beranda')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Beranda')));
     await tester.pumpAndSettle();
     expect(find.text('Penjualan 8 Hari Terakhir'), findsOneWidget, reason: 'Grafik penjualan harus tampil di Beranda');
     // Di atas lipatan: total penjualan + rata-rata sama-sama
     // Rp36.800 (1 transaksi).
     expect(find.text('Rp36.800'), findsAtLeastNWidgets(2), reason: 'Beranda harus menampilkan penjualan asli dari checkout tadi');
     // Kartu Transaksi Terbaru ada di bawah lipatan — gulir dulu,
-    // barisnya harus membawa nominal yang sama.
-    await tester.drag(find.byType(ListView).first, const Offset(0, -600));
+    // barisnya harus membawa nominal yang sama. (Jarak gulir
+    // diperbesar di v0.12.0: huruf Jakarta lebih ramping, isi
+    // Beranda lebih pendek, jadi angka ringkasan harus benar-
+    // benar keluar layar supaya tinggal baris transaksinya.)
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1100));
     await tester.pumpAndSettle();
     expect(find.text('Transaksi Terbaru'), findsOneWidget);
-    expect(find.text('Rp36.800'), findsOneWidget, reason: 'Baris transaksi terbaru harus tampil di Beranda');
+    // Baris transaksi memakai angka 14px; angka ringkasan di
+    // atasnya 22px dan sejak huruf Jakarta (v0.12.0) keduanya
+    // bisa tampil bersamaan — sasar yang 14px.
+    expect(
+      find.byWidgetPredicate((w) => w is Text && w.data == 'Rp36.800' && w.style?.fontSize == 14),
+      findsOneWidget,
+      reason: 'Baris transaksi terbaru harus tampil di Beranda',
+    );
     final loaded = await LocalStore.load();
     expect(loaded.transactions.length, 1);
     expect(loaded.transactions.single.total, 36800);
@@ -119,7 +136,7 @@ void main() {
 
   testWidgets('Audit: fitur meja bisa dimatikan dari Pengaturan', (tester) async {
     await pumpPhone(tester, keKasir: false);
-    Finder inBar(Finder inner) => find.descendant(of: find.byType(NavigationBar), matching: inner);
+    Finder inBar(Finder inner) => find.descendant(of: find.byType(BarNavigasiBawah), matching: inner);
     Finder inDrawer(Finder inner) => find.descendant(of: find.byType(Drawer), matching: inner);
 
     // Awalnya Meja ada di drawer (sejak v0.7.0 bar bawah berisi
@@ -278,7 +295,7 @@ void main() {
   testWidgets('Audit: pilih meja → bayar → kartu meja mencerminkan tagihan', (tester) async {
     await pumpPhone(tester);
     // Ke layar Meja lewat drawer (Meja tidak lagi di bar bawah).
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Lainnya')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Lainnya')));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Meja')));
     await tester.pumpAndSettle();
@@ -306,7 +323,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Ke layar Meja lewat drawer (Meja tidak lagi di bar bawah).
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Lainnya')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Lainnya')));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Meja')));
     await tester.pumpAndSettle();
@@ -345,17 +362,17 @@ void main() {
   testWidgets('Audit: stok — filter Habis & Aman menyaring dengan benar', (tester) async {
     await pumpPhone(tester);
     // Stok Bahan kini di sidebar geser: buka lewat tombol Lainnya.
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Lainnya')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Lainnya')));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Stok Bahan')));
     await tester.pumpAndSettle();
     // 'Habis'/'Aman' juga teks chip status di kartu bahan — ketuk chip filternya.
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Habis'));
+    await tester.tap(find.widgetWithText(AppChip, 'Habis'));
     await tester.pumpAndSettle();
     expect(find.text('Bubuk Matcha'), findsOneWidget);
     expect(find.text('Beras'), findsNothing, reason: 'Filter Habis harus menyembunyikan bahan aman');
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Aman'));
+    await tester.tap(find.widgetWithText(AppChip, 'Aman'));
     await tester.pumpAndSettle();
     expect(find.text('Beras'), findsOneWidget);
     expect(find.text('Bubuk Matcha'), findsNothing, reason: 'Filter Aman harus menyembunyikan bahan habis');

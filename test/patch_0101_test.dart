@@ -31,6 +31,13 @@ void main() {
     final iconBytes = await File('$dir/MaterialIcons-Regular.otf').readAsBytes();
     icons.addFont(Future.value(ByteData.view(iconBytes.buffer)));
     await icons.load();
+    // Huruf khas v0.12.0 ikut dimuat — tanpa ini judul/angka
+    // jatuh ke font uji raksasa dan lebar teksnya mengecoh.
+    final jakarta = FontLoader('Plus Jakarta Sans');
+    for (final f in ['PlusJakartaSans-Regular.ttf', 'PlusJakartaSans-Medium.ttf', 'PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-Bold.ttf', 'PlusJakartaSans-ExtraBold.ttf']) {
+      jakarta.addFont(Future.value(ByteData.view((await File('/home/hatch/workspace/projects/avoera-pos/assets/fonts/$f').readAsBytes()).buffer)));
+    }
+    await jakarta.load();
   });
 
   Finder inSheet(Finder inner) => find.descendant(of: find.byType(BottomSheet), matching: inner);
@@ -196,7 +203,7 @@ void main() {
     await pumpApp(tester, size: const Size(390, 844));
     final awal = await LocalStore.load();
     final menu = awal.menus.first;
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Produk')));
+    await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Produk')));
     await tester.pumpAndSettle();
     await tester.tap(find.text(menu.name).first);
     await tester.pumpAndSettle();

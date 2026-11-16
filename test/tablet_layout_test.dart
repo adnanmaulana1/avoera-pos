@@ -1,4 +1,5 @@
 import 'package:avoera_pos/main.dart';
+import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,7 +25,7 @@ void main() {
     const drawerLabels = ['Laporan', 'Stok Bahan', 'Pengaturan'];
     for (final label in ['Meja', 'Dapur', 'Laporan', 'Stok Bahan', 'Pengaturan', 'Kasir']) {
       if (phoneLayout && drawerLabels.contains(label)) {
-        await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Lainnya')));
+        await tester.tap(find.descendant(of: find.byType(BarNavigasiBawah), matching: find.text('Lainnya')));
         await tester.pumpAndSettle();
         await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text(label)));
       } else {

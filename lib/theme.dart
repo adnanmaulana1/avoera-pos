@@ -60,14 +60,17 @@ class AppText {
   static const caption = TextStyle(fontFamily: 'Roboto', fontSize: 11);
   static const small = TextStyle(fontFamily: 'Roboto', fontSize: 12);
   static const body = TextStyle(fontFamily: 'Roboto', fontSize: 14);
-  static const subtitle = TextStyle(fontFamily: 'Roboto', fontSize: 15, fontWeight: FontWeight.w700);
-  static const title = TextStyle(fontFamily: 'Roboto', fontSize: 17, fontWeight: FontWeight.w700);
-  static const pageTitle = TextStyle(fontFamily: 'Roboto', fontSize: 20, fontWeight: FontWeight.w800);
-  static const number = TextStyle(fontFamily: 'Roboto', fontSize: 22, fontWeight: FontWeight.w800);
-  static const hero = TextStyle(fontFamily: 'Roboto', fontSize: 26, fontWeight: FontWeight.w800);
+  // Judul & angka memakai Plus Jakarta Sans (update identitas
+  // v0.12.0) — huruf khas yang membedakan dari template Flutter;
+  // isi teks tetap Roboto demi keterbacaan panjang.
+  static const subtitle = TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: FontWeight.w700);
+  static const title = TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 17, fontWeight: FontWeight.w700);
+  static const pageTitle = TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 20, fontWeight: FontWeight.w800);
+  static const number = TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 22, fontWeight: FontWeight.w800);
+  static const hero = TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 26, fontWeight: FontWeight.w800);
   // Khusus angka penjualan di Beranda: satu angka terpenting di
   // aplikasi, jadi satu-satunya yang berhak sebesar ini.
-  static const display = TextStyle(fontFamily: 'Roboto', fontSize: 32, fontWeight: FontWeight.w800);
+  static const display = TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 32, fontWeight: FontWeight.w800);
 }
 
 /// Bayangan hanya untuk SATU elemen: kartu penjualan Beranda —
@@ -98,9 +101,13 @@ ThemeData buildTheme() {
   );
 
   final chipBorder = BorderSide(color: AppColors.border);
+  // Kolom isian BERTEPI JELAS (update identitas v0.12.0):
+  // permukaan kartu + garis 1px yang selalu terlihat; fokus =
+  // garis aksen 1.5px. Isian abu lembut tanpa garis (Material 3
+  // mentah) ditinggalkan — formulir keuangan harus terasa tegas.
   final inputBorder = OutlineInputBorder(
     borderRadius: BorderRadius.circular(AppRadius.md),
-    borderSide: BorderSide.none,
+    borderSide: BorderSide(color: AppColors.border),
   );
 
   return base.copyWith(
@@ -110,6 +117,9 @@ ThemeData buildTheme() {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       foregroundColor: AppColors.ink,
+      // Judul bar atas ikut huruf khas (v0.12.0); layar yang
+      // memberi gaya sendiri lewat AppText tidak terpengaruh.
+      titleTextStyle: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.ink),
     ),
     dividerColor: AppColors.border,
     // Toast/pesan bawah didesain ulang (permintaan Adnan
@@ -138,16 +148,9 @@ ThemeData buildTheme() {
       },
     ),
     // Chip pilihan di semua layar: satu gaya terpilih / tak terpilih.
-    chipTheme: base.chipTheme.copyWith(
-      backgroundColor: AppColors.card,
-      selectedColor: AppColors.accent,
-      disabledColor: AppColors.card,
-      side: chipBorder,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.pill)),
-      labelStyle: AppText.small.copyWith(color: AppColors.ink, fontWeight: FontWeight.w600),
-      secondaryLabelStyle: AppText.small.copyWith(color: AppColors.card, fontWeight: FontWeight.w600),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-    ),
+    // Tema chip Material SENGAJA tidak dipasang lagi (v0.12.0):
+    // semua chip pilihan adalah AppChip jahitan sendiri di
+    // widgets.dart — ChoiceChip bawaan tidak dipakai di mana pun.
     // Semua tombol utama: tinggi 52, radius md, teks subtitle tebal.
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -186,41 +189,24 @@ ThemeData buildTheme() {
         textStyle: WidgetStatePropertyAll(AppText.small.copyWith(fontWeight: FontWeight.w600)),
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md))),
         side: WidgetStatePropertyAll(chipBorder),
+        // Terpilih = aksen PEKAT + teks putih (v0.12.0) — bukan
+        // lagi isian pastel, menyatu dengan bahasa AppChip baru.
         backgroundColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? AppColors.accentSoft : AppColors.card,
+          (s) => s.contains(WidgetState.selected) ? AppColors.accent : AppColors.card,
         ),
         foregroundColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? AppColors.accentDark : AppColors.ink,
+          (s) => s.contains(WidgetState.selected) ? Colors.white : AppColors.ink,
         ),
         iconColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? AppColors.accentDark : AppColors.muted,
+          (s) => s.contains(WidgetState.selected) ? Colors.white : AppColors.muted,
         ),
       ),
     ),
-    navigationBarTheme: NavigationBarThemeData(
-      // Permukaan KARTU (putih di mode terang): bar bawah jadi
-      // satu blok tegas sampai tepi bawah layar. Riwayat: 2026-
-      // 11-15 Adnan minta bar sewarna latar (tanpa pita putih),
-      // tapi di HP-nya yang memakai tombol navigasi 3 tombol,
-      // area tombol Android ±48dp ikut sewarna latar → halaman
-      // terasa "ketutupan navbar" dan berjarak (keluhan Adnan
-      // 2026-11-16). Warna kartu membuat seluruh blok bawah
-      // terbaca sebagai bar, bukan ruang kosong.
-      backgroundColor: AppColors.card,
-      indicatorColor: AppColors.accentSoft,
-      iconTheme: WidgetStateProperty.resolveWith(
-        (s) => IconThemeData(
-          size: 24,
-          color: s.contains(WidgetState.selected) ? AppColors.accentDark : AppColors.muted,
-        ),
-      ),
-      labelTextStyle: WidgetStateProperty.resolveWith(
-        (s) => AppText.small.copyWith(
-          fontWeight: FontWeight.w600,
-          color: s.contains(WidgetState.selected) ? AppColors.accentDark : AppColors.muted,
-        ),
-      ),
-    ),
+    // Bar navigasi bawah TIDAK lagi diatur dari tema: sejak
+    // update identitas v0.12.0 bar itu jahitan sendiri
+    // (BarNavigasiBawah di widgets.dart) — NavigationBar bawaan
+    // Material terasa template. Riwayat permukaan kartu untuk
+    // blok bawah tetap berlaku di widget itu.
     badgeTheme: BadgeThemeData(
       backgroundColor: AppColors.danger,
       textColor: AppColors.card,
@@ -242,7 +228,7 @@ ThemeData buildTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.fieldFill,
+      fillColor: AppColors.card,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       hintStyle: AppText.small.copyWith(color: AppColors.muted),
@@ -251,6 +237,14 @@ ThemeData buildTheme() {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: const BorderSide(color: AppColors.danger),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
       ),
     ),
   );

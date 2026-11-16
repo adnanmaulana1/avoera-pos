@@ -687,7 +687,11 @@ class _KepalaTetapDelegate extends SliverPersistentHeaderDelegate {
   double get minExtent => tinggi;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => child;
+  // Anak DIPAKSA setinggi [tinggi] yang diumumkan: kalau isi
+  // lebih pendek 1px saja (mis. tinggi chip berubah karena
+  // huruf baru), geometri sliver jadi tidak sah (layoutExtent
+  // melebihi paintExtent) dan seluruh layar error.
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => SizedBox(height: tinggi, child: child);
 
   @override
   bool shouldRebuild(covariant _KepalaTetapDelegate oldDelegate) => oldDelegate.child != child;

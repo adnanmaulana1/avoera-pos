@@ -119,7 +119,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
           // ===== Rincian pesanan dari keranjang =====
           if (widget.items.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
-            const Text('Rincian pesanan', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text('Rincian pesanan', style: AppText.subtitle),
             const SizedBox(height: AppSpacing.sm),
             AppCard(
               child: Column(
@@ -155,7 +155,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
           ],
           // ===== Metode pembayaran: kartu pilih =====
           const SizedBox(height: AppSpacing.xl),
-          const Text('Metode pembayaran', style: TextStyle(fontWeight: FontWeight.w600)),
+          Text('Metode pembayaran', style: AppText.subtitle),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
@@ -166,7 +166,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
           ),
           if (_method == 'Tunai') ...[
             const SizedBox(height: AppSpacing.xl),
-            const Text('Uang diterima', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text('Uang diterima', style: AppText.subtitle),
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
@@ -282,59 +282,65 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
         ),
       );
 
-  /// Kartu pilih metode: terpilih = latar emerald lembut +
-  /// garis emerald; tanpa ikon centang (aturan permanen).
-  Widget _kartuMetode(String method, IconData icon) {
-    final aktif = _method == method;
+  /// SATU sistem kartu tombol pilih (perbaikan Adnan 2026-11-16
+  /// + update identitas v0.12.0): metode bayar dan ubin nominal
+  /// memakai rangka yang sama persis — tinggi tetap 76, radius
+  /// sama, perlakuan terpilih sama. Terpilih TIDAK lagi diisi
+  /// pastel: cukup garis aksen 2px + isi berwarna aksen di atas
+  /// permukaan kartu. Tanpa ikon centang (aturan permanen).
+  Widget _kartuPilih({required bool aktif, required VoidCallback? onTap, required Widget isi, bool redup = false}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        onTap: () => setState(() => _method = method),
+        onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+          height: 76,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: aktif ? AppColors.accentSoft : AppColors.card,
+            color: redup ? AppColors.track : AppColors.card,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: aktif ? AppColors.accent : AppColors.border, width: aktif ? 1.5 : 1),
+            border: Border.all(color: aktif ? AppColors.accent : AppColors.border, width: aktif ? 2 : 1),
           ),
-          child: Column(
-            children: [
-              Icon(icon, size: 28, color: aktif ? AppColors.accentDark : AppColors.muted),
-              const SizedBox(height: AppSpacing.sm),
-              Text(method, style: AppText.body.copyWith(fontWeight: FontWeight.w700, color: aktif ? AppColors.accentDark : AppColors.ink)),
-            ],
-          ),
+          child: isi,
         ),
       ),
     );
   }
 
-  /// Ubin nominal besar: terpilih seperti kartu metode;
-  /// nominal di bawah total (selain Uang pas) redup & mati.
+  /// Kartu pilih metode (Tunai/QRIS) — rangka [_kartuPilih].
+  Widget _kartuMetode(String method, IconData icon) {
+    final aktif = _method == method;
+    return _kartuPilih(
+      aktif: aktif,
+      onTap: () => setState(() => _method = method),
+      isi: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 26, color: aktif ? AppColors.accentDark : AppColors.muted),
+          const SizedBox(height: 6),
+          Text(method, style: AppText.subtitle.copyWith(fontSize: 14, color: aktif ? AppColors.accentDark : AppColors.ink)),
+        ],
+      ),
+    );
+  }
+
+  /// Ubin nominal — rangka [_kartuPilih] yang sama dengan kartu
+  /// metode; nominal di bawah total (selain Uang pas) redup & mati.
   Widget _ubinNominal(int amt, String label, {String? caption}) {
     final aktif = _paid == amt;
     final bisa = amt >= widget.grandTotal;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        onTap: bisa ? () => _pilihNominal(amt) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: !bisa ? AppColors.track : (aktif ? AppColors.accentSoft : AppColors.card),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: aktif ? AppColors.accent : AppColors.border, width: aktif ? 1.5 : 1),
-          ),
-          child: Column(
-            children: [
-              Text(label, style: AppText.body.copyWith(fontWeight: FontWeight.w700, color: !bisa ? AppColors.muted : (aktif ? AppColors.accentDark : AppColors.ink))),
-              if (caption != null)
-                Text(caption, style: AppText.caption.copyWith(color: aktif ? AppColors.accentDark : AppColors.muted)),
-            ],
-          ),
-        ),
+    return _kartuPilih(
+      aktif: aktif,
+      redup: !bisa,
+      onTap: bisa ? () => _pilihNominal(amt) : null,
+      isi: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: AppText.subtitle.copyWith(fontSize: 14, color: !bisa ? AppColors.muted : (aktif ? AppColors.accentDark : AppColors.ink))),
+          if (caption != null)
+            Text(caption, style: AppText.caption.copyWith(color: aktif ? AppColors.accentDark : AppColors.muted)),
+        ],
       ),
     );
   }

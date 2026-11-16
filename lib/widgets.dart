@@ -32,6 +32,16 @@ class PageHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Motif khas Avoera (v0.12.0): garis aksen pendek —
+              // penanda yang sama dengan indikator bar bawah &
+              // garis tepi pita ringkasan laporan. Satu motif
+              // kecil yang berulang = identitas, bukan dekorasi.
+              Container(
+                width: 26,
+                height: 4,
+                decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.pill)),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               Text(title, style: AppText.pageTitle),
               const SizedBox(height: AppSpacing.xs),
               Text(subtitle, style: AppText.small.copyWith(color: AppColors.muted)),
@@ -253,11 +263,35 @@ class AppChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: onSelected,
-      showCheckmark: false,
+    Theme.of(context); // daftar ulang saat tema berganti
+    final aktif = onSelected != null;
+    // Jahitan sendiri (v0.12.0), bukan ChoiceChip bawaan:
+    // terpilih = isi aksen PEKAT + teks putih (tegas, bukan
+    // pastel); tidak terpilih = permukaan kartu + garis tepi;
+    // nonaktif = teks pudar tanpa ketukan.
+    final latar = selected ? AppColors.accent : AppColors.card;
+    final garis = selected ? AppColors.accent : AppColors.border;
+    final warnaTeks = !aktif ? AppColors.muted : (selected ? Colors.white : AppColors.ink);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onSelected == null ? null : () => onSelected!(!selected),
+        customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.pill)),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: latar,
+            border: Border.all(color: garis),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Text(
+              label,
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13, fontWeight: FontWeight.w600, color: warnaTeks),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -358,13 +392,24 @@ class EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 32, color: AppColors.muted),
-              const SizedBox(height: AppSpacing.sm),
+              // Ikon di dalam CINCIN bergaris (v0.12.0) — keadaan
+              // kosong yang dirancang, bukan ikon lepas polos
+              // seperti contoh dokumentasi.
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border, width: 1.5),
+                ),
+                child: Icon(icon, size: 28, color: AppColors.accentDark),
+              ),
+              const SizedBox(height: AppSpacing.lg),
             ],
             Text(
               message,
               textAlign: TextAlign.center,
-              style: AppText.body.copyWith(color: AppColors.muted),
+              style: AppText.body.copyWith(color: AppColors.ink, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -677,6 +722,159 @@ class _ShimmerSkeletonState extends State<ShimmerSkeleton> with SingleTickerProv
           ),
         );
       },
+    );
+  }
+}
+
+/// Satu tujuan di [BarNavigasiBawah].
+class TujuanBar {
+  const TujuanBar({required this.icon, required this.selectedIcon, required this.label, this.badge = 0});
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+
+  /// Angka lencana (0 = tanpa lencana), mis. pesanan dapur baru.
+  final int badge;
+}
+
+/// Bar navigasi bawah JAHITAN SENDIRI (update identitas v0.12.0)
+/// — menggantikan NavigationBar Material yang terasa bawaan
+/// template: tanpa kapsul pastel di belakang ikon aktif.
+/// Keadaan aktif ditandai garis aksen pendek di atas ikon +
+/// ikon & label berwarna aksen; sisanya abu tenang. Permukaan
+/// kartu + garis tepi atas; area tombol Android di bawah ikut
+/// tertutup permukaan yang sama (SafeArea di dalam Material).
+class BarNavigasiBawah extends StatelessWidget {
+  const BarNavigasiBawah({super.key, required this.items, required this.selectedIndex, required this.onTap});
+
+  final List<TujuanBar> items;
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    Theme.of(context); // daftar ulang saat tema berganti
+    return Material(
+      color: AppColors.card,
+      child: DecoratedBox(
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 58,
+            child: Row(
+              children: [for (var i = 0; i < items.length; i++) Expanded(child: _item(i))],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _item(int pos) {
+    final t = items[pos];
+    final aktif = pos == selectedIndex;
+    final warna = aktif ? AppColors.accent : AppColors.muted;
+    return InkWell(
+      onTap: () => onTap(pos),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Ruang penanda selalu disediakan supaya tinggi tidak
+          // meloncat saat pilihan berpindah.
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            height: 3,
+            width: aktif ? 22 : 0,
+            decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.pill)),
+          ),
+          const SizedBox(height: 6),
+          Badge(
+            isLabelVisible: t.badge > 0,
+            label: Text('${t.badge}'),
+            child: Icon(aktif ? t.selectedIcon : t.icon, color: warna, size: 24),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            t.label,
+            // Label navigasi TIDAK boleh membungkus dua baris —
+            // lebar tiap tujuan sempit; satu baris selalu.
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 11,
+              fontWeight: aktif ? FontWeight.w700 : FontWeight.w500,
+              color: warna,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Logo Avorea sebagai SUSUNAN HURUF (update identitas
+/// v0.12.0) — bukan lagi gambar poster promosi: 'AVOREA'
+/// Plus Jakarta Sans ExtraBold hijau alpukat tua, garis
+/// kuning brand, dan 'MAESTRO ALPUKAT KOCOK' berjarak huruf.
+/// Dipakai layar sambut & gerbang PIN. [terang] untuk latar
+/// gelap (teks krem).
+class LogoAvorea extends StatelessWidget {
+  const LogoAvorea({super.key, this.skala = 1, this.terang = false});
+
+  final double skala;
+  final bool terang;
+
+  static const _hijau = Color(0xFF1E3A2A);
+  static const _kuning = Color(0xFFF5B921);
+  static const _krem = Color(0xFFF7F8F2);
+
+  @override
+  Widget build(BuildContext context) {
+    final warnaUtama = terang ? _krem : _hijau;
+    final warnaSampingan = terang ? _krem.withValues(alpha: 0.75) : const Color(0xFF6B7268);
+    Widget garis() => Container(
+          width: 18 * skala,
+          height: 3,
+          decoration: BoxDecoration(color: _kuning, borderRadius: BorderRadius.circular(AppRadius.pill)),
+        );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'AVOREA',
+          style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 42 * skala,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 5 * skala,
+            color: warnaUtama,
+          ),
+        ),
+        SizedBox(height: 8 * skala),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            garis(),
+            SizedBox(width: 10 * skala),
+            Text(
+              'MAESTRO ALPUKAT KOCOK',
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 10 * skala,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 3 * skala,
+                color: warnaSampingan,
+              ),
+            ),
+            SizedBox(width: 10 * skala),
+            garis(),
+          ],
+        ),
+      ],
     );
   }
 }
