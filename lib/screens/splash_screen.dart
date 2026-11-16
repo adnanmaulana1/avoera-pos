@@ -1,14 +1,18 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
-/// Layar sambut (permintaan Adnan 2026-11-15, desain ulang total
-/// di hari yang sama): tampil selama data dimuat + sekejap
-/// sesudahnya. Logo Avorea tampil MENYATU di atas hijau emerald
-/// tua — bukan gambar ditempel dalam kotak putih. Berkas
-/// avorea-logo-gelap.png adalah varian logo asli yang disiapkan
-/// untuk latar gelap: pola latar dibuang, hijau gelap pada badan
-/// alpukat & teks bawah diangkat jadi hijau muda supaya terbaca.
-/// Mekanisme tampil & alur startup TIDAK berubah — yang berubah
-/// hanya visual + animasi masuk.
+/// Layar sambut: tampil selama data dimuat + sekejap sesudahnya.
+///
+/// Desain "Fill + Hijau" (dipilih Adnan 2026-11-16 dari 4
+/// kandidat + usul efek fill dari Adnan sendiri): latar hijau
+/// brand POLOS, karya logo transparan baru
+/// (avorea-segar.png — "Bikin Harimu Lebih Segar!") di tengah,
+/// dan logonya SENDIRI menjadi penanda muat: mulai pudar
+/// abu-abu, warnanya MENGISI dari bawah ke atas dengan batas
+/// gelombang tipis selama splash tampil (±1,5 detik, seirama
+/// timer splash di shell). Tanpa garis muat terpisah, tanpa
+/// teks slogan terpisah (sudah ada di dalam karya logo).
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -17,141 +21,121 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late final AnimationController _masuk;
+  late final AnimationController _anim;
 
-  static const _kuningBrand = Color(0xFFF5B921);
+  static const _hijauBrand = Color(0xFF1E3A2A);
   static const _kremBrand = Color(0xFFF7F8F2);
 
   @override
   void initState() {
     super.initState();
-    _masuk = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))..forward();
+    _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..forward();
   }
 
   @override
   void dispose() {
-    _masuk.dispose();
+    _anim.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final lebarLogo = (size.width * 0.78).clamp(240.0, 340.0);
-    final logoMasuk = CurvedAnimation(parent: _masuk, curve: const Interval(0, 0.7, curve: Curves.easeOutCubic));
-    final teksMasuk = CurvedAnimation(parent: _masuk, curve: const Interval(0.35, 1, curve: Curves.easeOut));
+    final lebarLogo = (size.width * 0.86).clamp(260.0, 430.0);
+    final logoMasuk = CurvedAnimation(parent: _anim, curve: const Interval(0, 0.2, curve: Curves.easeOut));
+    final teksMasuk = CurvedAnimation(parent: _anim, curve: const Interval(0.3, 0.8, curve: Curves.easeOut));
     return Scaffold(
-      backgroundColor: const Color(0xFF1E3A2A),
-      body: Stack(
-        // expand WAJIB: tanpa ini Stack menyusut selebar isi kolom
-        // dan logo/tagline bergeser ke kiri (ketahuan dari bedah
-        // frame 2026-11-15).
-        fit: StackFit.expand,
-        children: [
-          // Latar: emerald tua bergradasi halus + aksen visual.
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF17402A), Color(0xFF1E3A2A), Color(0xFF122A1C)],
-                  stops: [0, 0.45, 1],
+      backgroundColor: _hijauBrand,
+      body: SafeArea(
+        child: SizedBox.expand(
+          child: Column(
+            children: [
+              const Spacer(flex: 5),
+              FadeTransition(
+                opacity: logoMasuk,
+                child: AnimatedBuilder(
+                  animation: _anim,
+                  builder: (context, _) {
+                    final isi = const Interval(0.05, 0.95, curve: Curves.easeInOut).transform(_anim.value);
+                    return _LogoIsi(lebar: lebarLogo, isi: isi);
+                  },
                 ),
               ),
-            ),
+              const Spacer(flex: 6),
+              FadeTransition(
+                opacity: teksMasuk,
+                child: Text(
+                  'AVOERA POS · BY WEBTALES STUDIO',
+                  style: TextStyle(color: _kremBrand.withValues(alpha: 0.45), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 2.2),
+                ),
+              ),
+              const SizedBox(height: 22),
+            ],
           ),
-          Positioned.fill(child: CustomPaint(painter: _AksenSplashPainter())),
-          SafeArea(
-            child: Column(
-              children: [
-                const Spacer(flex: 5),
-                FadeTransition(
-                  opacity: logoMasuk,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.94, end: 1).animate(logoMasuk),
-                    child: Image.asset(
-                      'assets/branding/avorea-logo-gelap.png',
-                      width: lebarLogo,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => const Text(
-                        'AVOREA',
-                        style: TextStyle(color: _kremBrand, fontSize: 40, fontWeight: FontWeight.w900, letterSpacing: 3),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 26),
-                FadeTransition(
-                  opacity: teksMasuk,
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Bikin Harimu Lebih Segar!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: _kuningBrand, fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: 0.3),
-                      ),
-                      const SizedBox(height: 30),
-                      // Penanda muat ramping berwarna brand.
-                      SizedBox(
-                        width: 128,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(99),
-                          child: LinearProgressIndicator(
-                            minHeight: 4,
-                            backgroundColor: _kremBrand.withValues(alpha: 0.14),
-                            valueColor: const AlwaysStoppedAnimation<Color>(_kuningBrand),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(flex: 6),
-                FadeTransition(
-                  opacity: teksMasuk,
-                  child: Text(
-                    'AVOERA POS · BY WEBTALES STUDIO',
-                    style: TextStyle(color: _kremBrand.withValues(alpha: 0.45), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 2.2),
-                  ),
-                ),
-                const SizedBox(height: 22),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-/// Aksen visual minimalis: cahaya radial lembut di belakang logo,
-/// cincin-cincin tipis samar di dua sudut, dan tiga titik kecil —
-/// cukup memberi tekstur tanpa meramaikan.
-class _AksenSplashPainter extends CustomPainter {
+/// Saringan abu-abu untuk lapisan "belum terisi".
+const _saringAbu = ColorFilter.matrix(<double>[
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0,
+  0.2126, 0.7152, 0.0722, 0, 0,
+  0, 0, 0, 1, 0,
+]);
+
+/// Logo dua lapis: pudar abu-abu di bawah; warna penuh di atas
+/// terpotong sampai ketinggian [isi] (0..1) dengan tepi
+/// gelombang tipis — seperti minuman yang sedang dituang.
+class _LogoIsi extends StatelessWidget {
+  const _LogoIsi({required this.lebar, required this.isi});
+
+  final double lebar;
+  final double isi;
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final cahaya = Paint()
-      ..shader = RadialGradient(
-        colors: [const Color(0xFF3E7A52).withValues(alpha: 0.35), const Color(0xFF3E7A52).withValues(alpha: 0)],
-      ).createShader(Rect.fromCircle(center: Offset(size.width / 2, size.height * 0.38), radius: size.width * 0.62));
-    canvas.drawCircle(Offset(size.width / 2, size.height * 0.38), size.width * 0.62, cahaya);
-    final cincin = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..color = Colors.white.withValues(alpha: 0.055);
-    for (final r in [54.0, 92.0, 130.0]) {
-      canvas.drawCircle(Offset(size.width - 8, -10), r, cincin);
+  Widget build(BuildContext context) {
+    final gambar = Image.asset(
+      'assets/branding/avorea-segar.png',
+      width: lebar,
+      fit: BoxFit.contain,
+      errorBuilder: (_, _, _) => const Text(
+        'AVOREA',
+        style: TextStyle(color: Color(0xFFF7F8F2), fontSize: 40, fontWeight: FontWeight.w900, letterSpacing: 3),
+      ),
+    );
+    return Stack(
+      children: [
+        Opacity(opacity: 0.45, child: ColorFiltered(colorFilter: _saringAbu, child: gambar)),
+        ClipPath(clipper: _KlipIsi(isi), child: gambar),
+      ],
+    );
+  }
+}
+
+/// Potongan isi: tampilkan gambar dari dasar sampai garis
+/// gelombang di ketinggian [isi].
+class _KlipIsi extends CustomClipper<Path> {
+  _KlipIsi(this.isi);
+  final double isi;
+
+  @override
+  Path getClip(Size size) {
+    final y = size.height * (1 - isi);
+    final p = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(0, y);
+    for (double x = 0; x <= size.width; x += 4) {
+      p.lineTo(x, y + math.sin(x / size.width * math.pi * 2.2) * 5);
     }
-    for (final r in [40.0, 74.0]) {
-      canvas.drawCircle(Offset(6, size.height + 6), r, cincin);
-    }
-    final titik = Paint()..color = Colors.white.withValues(alpha: 0.07);
-    for (var i = 0; i < 3; i++) {
-      canvas.drawCircle(Offset(26, size.height * 0.30 + i * 16), 2.2, titik);
-    }
+    p
+      ..lineTo(size.width, size.height)
+      ..close();
+    return p;
   }
 
   @override
-  bool shouldRepaint(_AksenSplashPainter oldDelegate) => false;
+  bool shouldReclip(_KlipIsi oldDelegate) => oldDelegate.isi != isi;
 }

@@ -421,3 +421,8 @@ untuk hasil akhir.
 - Sebab: Directory.systemTemp di Android menunjuk folder CODE cache, sedangkan file_paths.xml hanya mendaftarkan cache-path + files-path. FileProvider menolak membuat URI → pemasang tak pernah terbuka. Ini menjelaskan SEMUA kegagalan sejak v0.10.7.
 - Obat: tambah `<code-cache-path name="code_cache" path="." />`. Tanpa perubahan kode lain.
 - Konsekuensi jujur: perbaikan tinggal di APK baru → Adnan pasang manual SEKALI lagi (0.10.17 dari tautan); rilis sesudahnya adalah uji pemasang yang sesungguhnya.
+
+## v0.10.18 (2026-11-16) — Splash baru "Fill + Hijau" (pilihan Adnan)
+- Adnan mengirim karya logo transparan baru (avorea-segar.png, 1774×887, berisi slogan + lencana Halal) dan mengusulkan efek fill; dari kandidat Krim/Hijau Stiker/Hijau Panel/Putih + 3 varian fill, Adnan memilih **Fill + Hijau**.
+- SplashScreen ditulis ulang visualnya: latar #1E3A2A POLOS (gradasi + painter aksen lama dibuang), karya logo di tengah, efek isi dua lapis (abu-abu pudar 45% + warna penuh terpotong _KlipIsi bergelombang) digerakkan controller 1500ms (Interval 0.05–0.95 easeInOut) seirama timer splash shell; label bawah 'AVOERA POS · BY WEBTALES STUDIO' dipertahankan. Garis muat & teks slogan terpisah hilang (sudah di dalam karya).
+- Aset lama avorea-logo-gelap.png tidak lagi dirujuk splash (masih di bundle; tidak dihapus).
