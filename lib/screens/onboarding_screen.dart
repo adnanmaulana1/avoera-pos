@@ -220,7 +220,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
 
   Widget _wizardView() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.xl),
+      padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, paddingBawahAman(context, AppSpacing.xl)),
       children: [
         Center(
           child: ConstrainedBox(

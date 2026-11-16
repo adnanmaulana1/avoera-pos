@@ -51,7 +51,7 @@ class _BranchWizardScreenState extends State<BranchWizardScreen> {
         body: Stack(
           children: [
             ListView(
-              padding: const EdgeInsets.all(AppSpacing.xl),
+              padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, paddingBawahAman(context, AppSpacing.xl)),
               children: [
                 Row(
                   children: [

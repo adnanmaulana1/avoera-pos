@@ -45,7 +45,7 @@ class DetailTransaksiScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Transaksi')),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
         children: [
           // Kepala: ikon metode, id, waktu & cabang, status.
           AppCard(

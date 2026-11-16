@@ -39,7 +39,7 @@ class _KelolaStokScreenState extends State<KelolaStokScreen> {
             child: widget.ingredients.isEmpty
                 ? const EmptyState(message: 'Belum ada bahan.\nKetuk Tambah Bahan untuk membuat yang pertama.', icon: Icons.inventory_2_outlined)
                 : ListView.builder(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
                     itemCount: widget.ingredients.length,
                     itemBuilder: (_, i) {
                       final ing = widget.ingredients[i];

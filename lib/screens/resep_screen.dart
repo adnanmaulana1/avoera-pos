@@ -25,7 +25,7 @@ class _ResepScreenState extends State<ResepScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Resep Menu')),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
         children: [
           Text(
             'Resep menentukan bahan yang terpotong dari stok tiap menu terjual, dan jadi dasar hitung HPP (modal). '
@@ -108,7 +108,7 @@ class _BundleScreenState extends State<BundleScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Bundle / Paket')),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
         children: [
           Text(
             'Bundle = satu menu paket berisi beberapa menu lain. Terjual di kasir seperti menu biasa; '

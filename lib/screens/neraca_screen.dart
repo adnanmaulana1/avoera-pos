@@ -91,7 +91,7 @@ class _NeracaScreenState extends State<NeracaScreen> {
         actions: [TombolEkspor(onPressed: ekspor)],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
         children: [
           Row(
             children: [

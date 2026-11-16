@@ -62,7 +62,7 @@ class LaporanBulananScreen extends StatelessWidget {
         actions: [TombolEkspor(onPressed: ekspor)],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
         children: [
           if (bestDay.$2 > 0)
             AppCard(
@@ -173,7 +173,7 @@ class _LaporanPajakScreenState extends State<LaporanPajakScreen> {
         actions: [TombolEkspor(onPressed: ekspor)],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
         children: [
           FilterChipRow(
             children: [
@@ -255,7 +255,7 @@ class LaporanPiutangScreen extends StatelessWidget {
       body: utang.isEmpty
           ? const EmptyState(message: 'Tidak ada piutang.\nSemua tagihan meja sudah lunas.', icon: Icons.check_circle_outline)
           : ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
               children: [
                 AppCard(
                   margin: const EdgeInsets.only(bottom: AppSpacing.lg),

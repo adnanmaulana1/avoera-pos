@@ -135,7 +135,7 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
       body: ListView(
         // Bawah ditambah inset sistem: teks terakhir jangan
         // tertutup navbar Android (keluhan Adnan 2026-11-15).
-        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.lg + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.lg + MediaQuery.viewPaddingOf(context).bottom),
         children: [
           AppCard(
             child: Row(

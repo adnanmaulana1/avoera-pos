@@ -345,7 +345,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     icon: Icons.receipt_long_outlined,
                   )
                 : ListView(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+                    padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, paddingBawahAman(context)),
                     children: [
                       for (final entri in grup.entries) ...[
                         Padding(

@@ -307,7 +307,7 @@ class _RiwayatMutasiScreenState extends State<RiwayatMutasiScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Riwayat Mutasi Stok')),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
         children: [
           FilterChipRow(
             children: [

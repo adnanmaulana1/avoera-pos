@@ -67,7 +67,7 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
           child: widget.menus.isEmpty
               ? const EmptyState(message: 'Belum ada menu.\nKetuk Tambah Menu untuk membuat yang pertama.', icon: Icons.restaurant_menu_outlined)
               : ListView.builder(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
                   itemCount: widget.menus.length,
                   itemBuilder: (_, i) {
                     final m = widget.menus[i];

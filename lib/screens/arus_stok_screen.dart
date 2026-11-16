@@ -52,7 +52,7 @@ class _ArusStokScreenState extends State<ArusStokScreen> {
         actions: [TombolEkspor(onPressed: ekspor)],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
         children: [
           PemilihPeriode(onChanged: (r) => setState(() => _rentang = r)),
           const SizedBox(height: AppSpacing.lg),

@@ -121,7 +121,7 @@ class _ProfilUsahaScreenState extends State<ProfilUsahaScreen> {
       child: Scaffold(
         appBar: AppBar(title: const Text('Profil Usaha')),
         body: ListView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
           children: [
             Center(child: _PemilihFoto(path: _fotoPath, onPilih: _pilihFoto)),
             const SizedBox(height: AppSpacing.sm),

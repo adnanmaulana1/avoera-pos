@@ -490,6 +490,19 @@ class GuardBack extends StatelessWidget {
 /// Membuka sheet bawah dengan bentuk yang sama di semua tempat:
 /// latar, sudut atas, dan tint dari tema sheet. Isi sheet WAJIB diawali
 /// [SheetHandle] (dengan jarak atas md) supaya semua sheet sejajar.
+/// Jarak bawah isi untuk LAYAR TERDORONG (layar dengan AppBar
+/// sendiri, bukan halaman shell): jarak dasar ditambah tinggi
+/// area tombol navigasi sistem Android. Di HP tombol 3 area itu
+/// ±48dp dan tembus pandang — tanpa tambahan ini isi terakhir
+/// daftar tertutup navbar (keluhan Adnan berulang sejak
+/// 2026-11-15; Status Sinkronisasi dulu diperbaiki sendiri,
+/// kini semua layar memakai hitungan yang sama). Halaman shell
+/// TIDAK memakai ini: bar bawah shell sudah menyisakan ruang.
+/// Lembar popup juga tidak: showAppSheet sudah membungkus
+/// SafeArea.
+double paddingBawahAman(BuildContext context, [double dasar = AppSpacing.lg]) =>
+    dasar + MediaQuery.viewPaddingOf(context).bottom;
+
 Future<T?> showAppSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,

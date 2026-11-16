@@ -102,7 +102,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                   child: list.isEmpty
                       ? const EmptyState(message: 'Tidak ada pemberitahuan di kategori ini.', icon: Icons.notifications_none_outlined)
                       : ListView.builder(
-                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
                           itemCount: list.length,
                           itemBuilder: (_, i) {
                             final n = list[i];
