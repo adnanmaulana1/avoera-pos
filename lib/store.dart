@@ -37,6 +37,7 @@ class LocalStore {
   static const _kPromos = 'avoera.promos.v1';
   static const _kSyncMeta = 'avoera.syncmeta.v1';
   static const _kUpdateMeta = 'avoera.updatemeta.v1';
+  static const _kNotifKunci = 'avoera.notifkunci.v1';
 
   static Future<AppData> load() async {
     try {
@@ -128,4 +129,22 @@ class LocalStore {
   }
 
   static Future<void> saveUpdateMeta(Map<String, dynamic> meta) => _save(_kUpdateMeta, meta);
+
+  /// Kunci pemberitahuan yang episodenya SEDANG berjalan
+  /// (v0.14.3): satu kunci hanya melahirkan satu pemberitahuan
+  /// sampai episodenya dinyatakan berakhir. Mencegah
+  /// pemberitahuan yang sudah dibaca lahir lagi sebagai belum
+  /// dibaca setiap kali keadaan diperiksa ulang (refresh).
+  static Future<Set<String>> loadKunciNotif() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kNotifKunci);
+      if (raw == null) return <String>{};
+      return (jsonDecode(raw) as List).map((e) => e.toString()).toSet();
+    } catch (_) {
+      return <String>{};
+    }
+  }
+
+  static Future<void> saveKunciNotif(Set<String> kunci) => _save(_kNotifKunci, kunci.toList());
 }

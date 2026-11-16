@@ -488,3 +488,8 @@ untuk hasil akhir.
 ## v0.14.2 (2026-11-17) — Statistik Beranda jadi satu kartu lebar
 - Tiga kartu statistik terpisah (Transaksi / Rata-rata / Menu Dijual atau Di Dapur) digabung jadi SATU kartu lebar berisi 3 kolom berpisah garis tipis menjorok — pilihan Adnan dari 3 usul sesudah mengeluh kartu lama "kurang lebar kalau di HP". Ruang antar kartu yang terbuang (2×12) kini jadi ruang angka; tinggi tetap dikunci 88; tiap kolom tetap bisa diketuk ke tujuan lama (Riwayat / Dapur / Produk) dengan InkWell di atas Material transparan; angka tetap FitNumber.
 - Tes: 137/137 lulus. Frame Beranda terverifikasi: satu kartu, 3 kolom, garis pemisah menjorok.
+
+## v0.14.3 (2026-11-17) — Pemberitahuan terbaca tidak lahir lagi
+- Keluhan Adnan (mengambang sejak 2026-11-16 05:49, jelas 2026-11-17 04:46): "notifikasi walaupun sudah dibaca kalau direfresh terbaca belum dibaca". Akar terbukti di kode: penjaga duplikat `_tambahNotifikasi` hanya menolak bila salinan BELUM dibaca masih ada — salinan terbaca tidak menghalangi, jadi setiap pemeriksaan ulang (sinkron sesudah tarik-refresh memanggil `_periksaStokNotifikasi`; cek update saat aplikasi dibuka lagi) melahirkan salinan baru belum-dibaca.
+- Obat: satu kunci = satu pemberitahuan per EPISODE keadaan. Kunci aktif tersimpan persisten (LocalStore `avoera.notifkunci.v1`); episode berakhir eksplisit hanya bila keadaan pulih: stok bahan normal lagi (di `_periksaStokNotifikasi`), sinkron tuntas (kunci sinkron-gagal), versi pembaruan berganti/terpasang (kunci update-*). Migrasi: pemberitahuan stok & pembaruan yang sudah ada di daftar dianggap episode berjalan.
+- Tes regresi baru patch_0143: tandai semua terbaca → buka ulang aplikasi → tombol 'Tandai semua terbaca' tetap tidak muncul. Suite 138/138 lulus.

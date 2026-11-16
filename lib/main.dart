@@ -362,6 +362,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     // ditawarkan otomatis (tawaran hanya sekali per versi).
     final metaUpdate = await LocalStore.loadUpdateMeta();
     _kodeTawaranTerakhir = (metaUpdate['tawaranKode'] as num?)?.toInt() ?? 0;
+    // Kunci episode pemberitahuan yang sedang berjalan.
+    _kunciNotifAktif = await LocalStore.loadKunciNotif();
+    // Migrasi: pemberitahuan lama di daftar (stok & pembaruan)
+    // dianggap episode berjalan, supaya tidak lahir lagi
+    // sebagai belum dibaca pada pemeriksaan pertama.
+    var kunciBerubah = false;
+    for (final n in _notifications) {
+      if ((n.jenis == 'stok' || n.kunci.startsWith('update-')) && _kunciNotifAktif.add(n.kunci)) kunciBerubah = true;
+    }
+    if (kunciBerubah) LocalStore.saveKunciNotif(_kunciNotifAktif);
     // Meta sinkron tersimpan (menunggu + laporan terakhir).
     final meta = await LocalStore.loadSyncMeta();
     if (mounted) {
@@ -518,6 +528,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// cap waktu cek terakhir (untuk cek saat aplikasi kembali
   /// ke depan).
   int _kodeTawaranTerakhir = 0;
+
+  /// Kunci pemberitahuan yang episodenya sedang berjalan
+  /// (v0.14.3) — lihat LocalStore.loadKunciNotif.
+  Set<String> _kunciNotifAktif = {};
   bool _tawaranSedangTampil = false;
   DateTime? _cekUpdateTerakhir;
   Timer? _timerTawaran;
@@ -535,7 +549,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _cekUpdateOtomatis() async {
     _cekUpdateTerakhir = DateTime.now();
     final info = await ambilInfoUpdate();
-    if (info == null || info.kode <= appBuild || !mounted) return;
+    if (info == null) return;
+    // Episode pembaruan lama berakhir: sudah versi terbaru,
+    // atau versi yang ditawarkan sudah berganti.
+    for (final k in _kunciNotifAktif.where((k) => k.startsWith('update-')).toList()) {
+      if (info.kode <= appBuild || k != 'update-${info.kode}') _akhiriEpisodeNotif(k);
+    }
+    if (info.kode <= appBuild || !mounted) return;
     setState(() => _infoUpdate = info);
     _tambahNotifikasi(
       jenis: 'info',
@@ -1024,10 +1044,26 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ),
       );
 
-  /// Tambah pemberitahuan tersimpan. Kunci yang sama & belum
-  /// dibaca = tidak ditambah lagi (mencegah banjir duplikat untuk
-  /// keadaan yang sama, mis. stok yang memang sedang habis).
+  /// Akhiri episode pemberitahuan: kunci dicabut dari daftar
+  /// aktif, sehingga keadaan yang sama BOLEH memberitahu lagi
+  /// bila benar-benar terjadi lagi dari awal (stok pulih lalu
+  /// habis lagi; sinkron berhasil lalu gagal lagi).
+  void _akhiriEpisodeNotif(String kunci) {
+    if (_kunciNotifAktif.remove(kunci)) {
+      LocalStore.saveKunciNotif(_kunciNotifAktif);
+    }
+  }
+
+  /// Tambah pemberitahuan tersimpan. Satu kunci = satu
+  /// pemberitahuan per EPISODE keadaan — dibaca atau belum.
+  /// (Perbaikan v0.14.3, keluhan Adnan 2026-11-17: pemberitahuan
+  /// yang sudah dibaca muncul lagi sebagai belum dibaca sesudah
+  /// refresh. Sebabnya penjaga lama hanya menolak bila salinan
+  /// BELUM dibaca masih ada; salinan yang sudah dibaca tidak
+  /// menghalangi, jadi setiap pemeriksaan ulang — mis. sinkron
+  /// sesudah tarik-refresh — melahirkan salinan baru.)
   void _tambahNotifikasi({required String jenis, required String judul, required String isi, required String kunci}) {
+    if (_kunciNotifAktif.contains(kunci)) return;
     if (_notifications.any((n) => n.kunci == kunci && !n.dibaca)) return;
     _notifications.insert(
       0,
@@ -1041,6 +1077,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
     );
     if (_notifications.length > 60) _notifications.removeRange(60, _notifications.length);
+    _kunciNotifAktif.add(kunci);
+    LocalStore.saveKunciNotif(_kunciNotifAktif);
     LocalStore.saveNotifications(_notifications);
     if (mounted) setState(() {});
   }
@@ -1049,6 +1087,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// melahirkan pemberitahuan (dijaga kunci per bahan+keadaan).
   void _periksaStokNotifikasi() {
     for (final i in _ingredients) {
+      // Episode berakhir untuk keadaan yang sudah tidak
+      // berlaku: bahan pulih → kunci habis & kritis bebas;
+      // bahan kritis → kunci habis bebas (dan sebaliknya).
+      if (i.status != StockStatus.habis) _akhiriEpisodeNotif('stok-${i.id}-habis');
+      if (i.status != StockStatus.kritis) _akhiriEpisodeNotif('stok-${i.id}-kritis');
       if (i.status == StockStatus.habis) {
         _tambahNotifikasi(
           jenis: 'stok',
@@ -1285,8 +1328,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         if (!diam && mounted) {
           tampilToast(context, hasil.ringkasan, icon: Ikon.cloud_off_outlined, warna: AppColors.danger, durasi: const Duration(seconds: 5));
         }
-      } else if (!diam && mounted) {
-        tampilToast(context, hasil.ringkasan, icon: Ikon.cloud_done_outlined);
+      } else {
+        // Sinkron tuntas: episode gagal berakhir — kegagalan
+        // berikutnya adalah kejadian baru yang boleh
+        // memberitahu lagi.
+        _akhiriEpisodeNotif('sinkron-gagal');
+        if (!diam && mounted) {
+          tampilToast(context, hasil.ringkasan, icon: Ikon.cloud_done_outlined);
+        }
       }
     } catch (e) {
       debugPrint('Sinkron gagal: $e');
