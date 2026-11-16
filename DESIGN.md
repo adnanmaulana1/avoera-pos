@@ -415,3 +415,9 @@ untuk hasil akhir.
 - Model Pengeluaran baru (kategori bawaan 8, keterangan, jumlah, tanggal, cabang) tersimpan LOKAL (avoera.expenses.v1; belum sinkron — seperti mutasi/notifikasi). CRUD lewat sheet pola Gudang dari layar laporan: tombol Tambah Pengeluaran + ketuk catatan untuk edit/hapus.
 - rupiah() kini aman untuk nilai negatif (-Rp...) — dipakai label rugi.
 - Tes: patch_0116 baru (8).
+
+## v0.10.17 (2026-11-16) — AKAR SAGA PEMASANG KETEMU: code-cache-path hilang
+- Tangkapan layar Adnan 08:00 (aplikasinya sudah 0.10.15 — dialog mencetak alasannya): "PROVIDER: IllegalArgumentException: Failed to find configured root that contains /data/data/id.avoera.avoera_pos/code_cache/avoera-42.apk".
+- Sebab: Directory.systemTemp di Android menunjuk folder CODE cache, sedangkan file_paths.xml hanya mendaftarkan cache-path + files-path. FileProvider menolak membuat URI → pemasang tak pernah terbuka. Ini menjelaskan SEMUA kegagalan sejak v0.10.7.
+- Obat: tambah `<code-cache-path name="code_cache" path="." />`. Tanpa perubahan kode lain.
+- Konsekuensi jujur: perbaikan tinggal di APK baru → Adnan pasang manual SEKALI lagi (0.10.17 dari tautan); rilis sesudahnya adalah uji pemasang yang sesungguhnya.

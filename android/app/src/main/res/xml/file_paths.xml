@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Jalur yang boleh dibagikan FileProvider: cache aplikasi
-     (tempat APK unduhan disimpan Dart lewat Directory.systemTemp)
-     dan folder berkas internal. -->
+<!-- Jalur yang boleh dibagikan FileProvider. TIGA akar wajib
+     ada: Directory.systemTemp di Android (Flutter) menunjuk ke
+     folder CODE cache (…/code_cache), BUKAN cache biasa — tanpa
+     baris code-cache-path, getUriForFile melempar
+     IllegalArgumentException "Failed to find configured root
+     that contains …/code_cache/…" dan pemasang pembaruan gagal
+     dibuka (akar saga pemasang, ketahuan 2026-11-16 dari pesan
+     kesalahan yang ditampilkan v0.10.15 di HP Adnan). -->
 <paths>
     <cache-path name="cache" path="." />
+    <code-cache-path name="code_cache" path="." />
     <files-path name="files" path="." />
 </paths>
+
