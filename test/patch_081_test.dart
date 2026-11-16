@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // Patch v0.8.1 lanjutan (permintaan Adnan 2026-11-14):
 // 1) bukaan pertama = mode TERANG, simpanan tema tetap dihormati;
@@ -83,7 +84,7 @@ void main() {
       // Sejak v0.12.0 AppChip jahitan sendiri — ChoiceChip
       // bawaan tidak boleh muncul lagi, dan tetap tanpa centang.
       expect(find.byType(ChoiceChip), findsNothing, reason: 'AppChip tidak lagi memakai ChoiceChip bawaan');
-      expect(find.byIcon(Icons.check), findsNothing);
+      expect(find.byIcon(Ikon.check), findsNothing);
     });
 
     Future<void> pumpProduk(WidgetTester tester) async {
@@ -113,12 +114,12 @@ void main() {
     testWidgets('Chip kategori Produk terpilih tanpa centang', (tester) async {
       await pumpProduk(tester);
       expect(find.text('Semua'), findsOneWidget);
-      expect(find.byIcon(Icons.check), findsNothing, reason: 'Tidak boleh ada centang di chip kategori Produk');
+      expect(find.byIcon(Ikon.check), findsNothing, reason: 'Tidak boleh ada centang di chip kategori Produk');
     });
 
     testWidgets('Edit Harga Massal: segmented tanpa ikon terpilih, tinggi pill = kotak persen, Terapkan = PrimaryButton', (tester) async {
       await pumpProduk(tester);
-      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.tap(find.byIcon(Ikon.more_vert));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Edit Harga Massal'));
       await tester.pumpAndSettle();
@@ -126,7 +127,7 @@ void main() {
 
       final seg = tester.widget<SegmentedButton<bool>>(find.byType(SegmentedButton<bool>));
       expect(seg.showSelectedIcon, isFalse, reason: 'Segmented dialog tidak boleh menggambar ikon pada pilihan aktif');
-      expect(find.byIcon(Icons.check), findsNothing, reason: 'Dialog tidak boleh berisi ikon centang');
+      expect(find.byIcon(Ikon.check), findsNothing, reason: 'Dialog tidak boleh berisi ikon centang');
 
       final tinggiSeg = tester.getSize(find.byType(SegmentedButton<bool>)).height;
       final kotakPersen = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));

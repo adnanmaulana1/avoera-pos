@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // Regresi bug dari HP (2026-11-14): sheet keranjang di HP tidak bereaksi —
 // tombol +/−/Hapus mengubah data tapi tampilan diam, karena isi sheet
@@ -75,13 +76,13 @@ void main() {
     expect(inSheet(find.text('Rp36.800')), findsOneWidget);
 
     // Ketuk + → jumlah jadi 2 dan total ikut naik. Ini yang dulu diam.
-    await tester.tap(inSheet(find.widgetWithIcon(IconButton, Icons.add)));
+    await tester.tap(inSheet(find.widgetWithIcon(IconButton, Ikon.add)));
     await tester.pumpAndSettle();
     expect(inSheet(find.text('2')), findsOneWidget, reason: 'Jumlah harus berubah jadi 2');
     expect(inSheet(find.text('Rp73.600')), findsOneWidget, reason: 'Total harus ikut berubah');
 
     // Ketuk − → kembali 1.
-    await tester.tap(inSheet(find.widgetWithIcon(IconButton, Icons.remove)));
+    await tester.tap(inSheet(find.widgetWithIcon(IconButton, Ikon.remove)));
     await tester.pumpAndSettle();
     expect(inSheet(find.text('Rp36.800')), findsOneWidget, reason: 'Total harus turun lagi');
 

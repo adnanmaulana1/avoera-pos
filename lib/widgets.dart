@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'theme.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // ============================================================
 // Komponen bersama Avoera POS — aturan lengkapnya di DESIGN.md.
@@ -111,7 +112,7 @@ class AppCard extends StatelessWidget {
 void tampilToast(
   BuildContext context,
   String pesan, {
-  IconData icon = Icons.check_circle_outline,
+  IconData icon = Ikon.check_circle_outline,
   Color? warna,
   Duration durasi = const Duration(seconds: 3),
 }) {

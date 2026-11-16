@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 /// Halaman detail satu transaksi — dibuka dengan mengetuk
 /// baris di Riwayat Transaksi (permintaan Adnan 2026-11-15).
@@ -55,7 +56,7 @@ class DetailTransaksiScreen extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                  child: Icon(tx.method == 'QRIS' ? Icons.qr_code_2_outlined : Icons.payments_outlined, color: AppColors.accentDark, size: 22),
+                  child: Icon(tx.method == 'QRIS' ? Ikon.qr_code_2_outlined : Ikon.payments_outlined, color: AppColors.accentDark, size: 22),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(

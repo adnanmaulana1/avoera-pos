@@ -12,6 +12,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // Bukti visual patch v0.8.1 lanjutan — PNG disimpan ke
 // ~/workspace/avoera-screenshots/ untuk dibedah induk:
@@ -43,7 +44,7 @@ void main() {
   });
 
   Future<void> bukaDialogHargaMassal(WidgetTester tester, String mode) async {
-    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.tap(find.byIcon(Ikon.more_vert));
     await tester.pumpAndSettle();
     expect(find.text('Pilih Produk'), findsOneWidget, reason: 'Menu ⋯ harus terbuka (mode $mode)');
     await tester.tap(find.text('Edit Harga Massal'));

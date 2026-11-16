@@ -5,6 +5,7 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart';
+import '../ikon.dart';
 
 /// Kelola Stok Bahan: tambah, ubah (nama, jumlah, satuan, batas), hapus.
 /// Perubahan langsung tampil di layar Stok & Laporan, tersimpan permanen.
@@ -37,7 +38,7 @@ class _KelolaStokScreenState extends State<KelolaStokScreen> {
         children: [
           Expanded(
             child: widget.ingredients.isEmpty
-                ? const EmptyState(message: 'Belum ada bahan.\nKetuk Tambah Bahan untuk membuat yang pertama.', icon: Icons.inventory_2_outlined)
+                ? const EmptyState(message: 'Belum ada bahan.\nKetuk Tambah Bahan untuk membuat yang pertama.', icon: Ikon.inventory_2_outlined)
                 : ListView.builder(
                     padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
                     itemCount: widget.ingredients.length,
@@ -64,7 +65,7 @@ class _KelolaStokScreenState extends State<KelolaStokScreen> {
                               color: switch (ing.status) { StockStatus.aman => AppColors.accentDark, StockStatus.kritis => AppColors.warning, StockStatus.habis => AppColors.danger },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              icon: const Icon(Ikon.edit_outlined, size: 20),
                               color: AppColors.accentDark,
                               onPressed: () => _openEditor(ing),
                             ),
@@ -80,7 +81,7 @@ class _KelolaStokScreenState extends State<KelolaStokScreen> {
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: SizedBox(
                 width: double.infinity,
-                child: PrimaryButton(label: 'Tambah Bahan', icon: Icons.add, onPressed: () => _openEditor(null)),
+                child: PrimaryButton(label: 'Tambah Bahan', icon: Ikon.add, onPressed: () => _openEditor(null)),
               ),
             ),
           ),

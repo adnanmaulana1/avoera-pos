@@ -5,6 +5,7 @@ import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'laporan_bersama.dart';
+import '../ikon.dart';
 
 /// Laporan Arus Kas (update besar v0.11.0): uang masuk &
 /// keluar per periode dari catatan aplikasi. Masuk: penjualan
@@ -97,7 +98,7 @@ class _ArusKasScreenState extends State<ArusKasScreen> {
             keterangan: 'Saldo awal ${rupiah(hasil.saldoAwal)} → Saldo akhir ${rupiah(hasil.saldoAkhir)}',
           ),
           const SizedBox(height: AppSpacing.lg),
-          const JudulSeksi(ikon: Icons.arrow_downward_outlined, teks: 'Uang Masuk'),
+          const JudulSeksi(ikon: Ikon.arrow_downward_outlined, teks: 'Uang Masuk'),
           const SizedBox(height: AppSpacing.sm),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
@@ -114,7 +115,7 @@ class _ArusKasScreenState extends State<ArusKasScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          const JudulSeksi(ikon: Icons.arrow_upward_outlined, teks: 'Uang Keluar'),
+          const JudulSeksi(ikon: Ikon.arrow_upward_outlined, teks: 'Uang Keluar'),
           const SizedBox(height: AppSpacing.sm),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
@@ -135,7 +136,7 @@ class _ArusKasScreenState extends State<ArusKasScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          const JudulSeksi(ikon: Icons.account_balance_outlined, teks: 'Saldo'),
+          const JudulSeksi(ikon: Ikon.account_balance_outlined, teks: 'Saldo'),
           const SizedBox(height: AppSpacing.sm),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),

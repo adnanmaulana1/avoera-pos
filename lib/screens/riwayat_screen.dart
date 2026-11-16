@@ -5,6 +5,7 @@ import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'detail_transaksi_screen.dart';
+import '../ikon.dart';
 
 /// Apakah waktu transaksi masuk rentang tanggal inklusif
 /// (hari terakhir dihitung penuh sampai 23:59). Rentang null
@@ -230,7 +231,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         // Tombol kembali eksplisit (poin 1 Adnan) — layar ini
         // selalu dibuka sebagai rute tumpuk dari shell.
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Ikon.arrow_back),
           tooltip: 'Kembali',
           onPressed: () => Navigator.of(context).maybePop(),
         ),
@@ -238,7 +239,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         actions: [
           // Kalender pindah ke app bar, di sebelah bagikan.
           IconButton(
-            icon: Icon(Icons.calendar_month_outlined, color: _rentang != null ? AppColors.accent : null),
+            icon: Icon(Ikon.calendar_month_outlined, color: _rentang != null ? AppColors.accent : null),
             tooltip: 'Pilih tanggal',
             onPressed: _pilihTanggal,
           ),
@@ -283,12 +284,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 TextField(
                   controller: _cariController,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: const Icon(Ikon.search),
                     hintText: 'Cari no. transaksi atau nominal',
                     suffixIcon: _cari.isEmpty
                         ? null
                         : IconButton(
-                            icon: const Icon(Icons.close),
+                            icon: const Icon(Ikon.close),
                             tooltip: 'Hapus pencarian',
                             onPressed: () {
                               _cariController.clear();
@@ -330,8 +331,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
-                      Expanded(child: _RincianMetode(ikon: Icons.payments_outlined, label: 'Tunai', nilai: totalTunai)),
-                      Expanded(child: _RincianMetode(ikon: Icons.qr_code_2_outlined, label: 'QRIS', nilai: totalQris)),
+                      Expanded(child: _RincianMetode(ikon: Ikon.payments_outlined, label: 'Tunai', nilai: totalTunai)),
+                      Expanded(child: _RincianMetode(ikon: Ikon.qr_code_2_outlined, label: 'QRIS', nilai: totalQris)),
                     ],
                   ),
                 ],
@@ -342,7 +343,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             child: list.isEmpty
                 ? EmptyState(
                     message: _cari.trim().isNotEmpty ? 'Tidak ada transaksi yang cocok dengan pencarian.' : 'Belum ada transaksi pada periode ini.',
-                    icon: Icons.receipt_long_outlined,
+                    icon: Ikon.receipt_long_outlined,
                   )
                 : ListView(
                     padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, paddingBawahAman(context)),
@@ -412,7 +413,7 @@ class _PilRentang extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.calendar_month_outlined, size: 18, color: Colors.white),
+                  const Icon(Ikon.calendar_month_outlined, size: 18, color: Colors.white),
                   const SizedBox(width: AppSpacing.xs),
                   Text(label, style: AppText.small.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
                 ],
@@ -424,7 +425,7 @@ class _PilRentang extends StatelessWidget {
             borderRadius: const BorderRadius.horizontal(right: Radius.circular(AppRadius.pill)),
             child: const Padding(
               padding: EdgeInsets.only(left: AppSpacing.xs, right: AppSpacing.md),
-              child: Icon(Icons.close, size: 18, color: Colors.white),
+              child: Icon(Ikon.close, size: 18, color: Colors.white),
             ),
           ),
         ],
@@ -480,7 +481,7 @@ class _BarisTx extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-              child: Icon(tx.method == 'QRIS' ? Icons.qr_code_2_outlined : Icons.payments_outlined, color: AppColors.accentDark, size: 20),
+              child: Icon(tx.method == 'QRIS' ? Ikon.qr_code_2_outlined : Ikon.payments_outlined, color: AppColors.accentDark, size: 20),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
@@ -528,7 +529,7 @@ class _BarisTx extends StatelessWidget {
               ],
             ),
             const SizedBox(width: AppSpacing.xs),
-            Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
+            Icon(Ikon.chevron_right, size: 20, color: AppColors.muted),
           ],
         ),
       ),

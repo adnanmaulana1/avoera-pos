@@ -4,6 +4,7 @@ import '../data.dart';
 import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 /// Layar Cetak Label Harga (permintaan Adnan 2026-11-15 — fitur
 /// yang dulu 'Segera'): pratinjau label persis seperti hasil
@@ -22,7 +23,7 @@ class LabelHargaScreen extends StatelessWidget {
         children: [
           Expanded(
             child: menus.isEmpty
-                ? const EmptyState(message: 'Belum ada menu untuk dibuatkan label.', icon: Icons.sell_outlined)
+                ? const EmptyState(message: 'Belum ada menu untuk dibuatkan label.', icon: Ikon.sell_outlined)
                 : GridView.builder(
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -77,7 +78,7 @@ class LabelHargaScreen extends StatelessWidget {
                   width: double.infinity,
                   child: PrimaryButton(
                     label: 'Bagikan / Cetak PDF',
-                    icon: Icons.print_outlined,
+                    icon: Ikon.print_outlined,
                     onPressed: menus.isEmpty
                         ? null
                         : () => bagikanPdfLabel(menus: menus, businessName: businessName),

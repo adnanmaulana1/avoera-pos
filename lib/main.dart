@@ -42,6 +42,7 @@ import 'screens/persediaan_screen.dart';
 import 'screens/pembelian_screen.dart';
 import 'screens/hutang_screen.dart';
 import 'screens/promo_screen.dart';
+import 'package:avoera_pos/ikon.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -209,14 +210,14 @@ class _NavItem {
 }
 
 const _navItems = <_NavItem>[
-  _NavItem('Beranda', Icons.home_outlined, Icons.home),
-  _NavItem('Kasir', Icons.point_of_sale_outlined, Icons.point_of_sale),
-  _NavItem('Produk', Icons.inventory_2_outlined, Icons.inventory_2),
-  _NavItem('Meja', Icons.table_restaurant_outlined, Icons.table_restaurant),
-  _NavItem('Dapur', Icons.soup_kitchen_outlined, Icons.soup_kitchen),
-  _NavItem('Laporan', Icons.bar_chart_outlined, Icons.bar_chart),
-  _NavItem('Stok Bahan', Icons.inventory_outlined, Icons.inventory),
-  _NavItem('Pengaturan', Icons.settings_outlined, Icons.settings),
+  _NavItem('Beranda', Ikon.home_outlined, Ikon.home),
+  _NavItem('Kasir', Ikon.point_of_sale_outlined, Ikon.point_of_sale),
+  _NavItem('Produk', Ikon.inventory_2_outlined, Ikon.inventory_2),
+  _NavItem('Meja', Ikon.table_restaurant_outlined, Ikon.table_restaurant),
+  _NavItem('Dapur', Ikon.soup_kitchen_outlined, Ikon.soup_kitchen),
+  _NavItem('Laporan', Ikon.bar_chart_outlined, Ikon.bar_chart),
+  _NavItem('Stok Bahan', Ikon.inventory_outlined, Ikon.inventory),
+  _NavItem('Pengaturan', Ikon.settings_outlined, Ikon.settings),
 ];
 
 class HomeShell extends StatefulWidget {
@@ -602,11 +603,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (!mounted) return;
     Navigator.of(context).pop();
     if (info == null) {
-      tampilToast(context, 'Tidak bisa memeriksa pembaruan. Periksa koneksi internet.', icon: Icons.wifi_off_outlined);
+      tampilToast(context, 'Tidak bisa memeriksa pembaruan. Periksa koneksi internet.', icon: Ikon.wifi_off_outlined);
       return;
     }
     if (info.kode <= appBuild) {
-      tampilToast(context, 'Sudah versi terbaru (v$appVersion).', icon: Icons.check_circle_outline);
+      tampilToast(context, 'Sudah versi terbaru (v$appVersion).', icon: Ikon.check_circle_outline);
       return;
     }
     setState(() => _infoUpdate = info);
@@ -734,7 +735,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _jadwalkanSinkron();
     // Tindakan seperti hapus harus ada toast penegas (permintaan
     // Adnan 2026-11-15).
-    if (mounted) tampilToast(context, 'Produk "${m.name}" dihapus.', icon: Icons.delete_outline);
+    if (mounted) tampilToast(context, 'Produk "${m.name}" dihapus.', icon: Ikon.delete_outline);
   }
 
   // ---------- CRUD: Meja ----------
@@ -760,7 +761,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     });
     LocalStore.saveTables(_tables);
     _jadwalkanSinkron();
-    if (mounted) tampilToast(context, 'Meja ${t.number} dihapus.', icon: Icons.delete_outline);
+    if (mounted) tampilToast(context, 'Meja ${t.number} dihapus.', icon: Ikon.delete_outline);
   }
 
   // ---------- Gudang: mutasi stok ----------
@@ -794,7 +795,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     LocalStore.saveIngredients(_ingredients);
     _tandaiKotor('ingredients');
     _jadwalkanSinkron();
-    tampilToast(context, '${ing.name} bertambah ${stockText(qty)} ${ing.unit}.', icon: Icons.add_box_outlined);
+    tampilToast(context, '${ing.name} bertambah ${stockText(qty)} ${ing.unit}.', icon: Ikon.add_box_outlined);
   }
 
   void _opname(Ingredient ing, double stokFisik, String catatan) {
@@ -804,7 +805,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     LocalStore.saveIngredients(_ingredients);
     _tandaiKotor('ingredients');
     _jadwalkanSinkron();
-    tampilToast(context, 'Opname ${ing.name} tersimpan.', icon: Icons.fact_check_outlined);
+    tampilToast(context, 'Opname ${ing.name} tersimpan.', icon: Ikon.fact_check_outlined);
   }
 
   // ---------- CRUD: Stok bahan ----------
@@ -839,7 +840,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     LocalStore.saveIngredients(_ingredients);
     _tandaiKotor('ingredients');
     _jadwalkanSinkron();
-    if (mounted) tampilToast(context, 'Bahan "${i.name}" dihapus.', icon: Icons.delete_outline);
+    if (mounted) tampilToast(context, 'Bahan "${i.name}" dihapus.', icon: Ikon.delete_outline);
   }
 
   // ---------- Pengaturan ----------
@@ -1214,7 +1215,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (_syncing || !_syncSiap) return;
     if (!_settings.cloudSyncEnabled) {
       if (!diam && mounted) {
-        tampilToast(context, 'Cloud Sync sedang mati — nyalakan di Pengaturan.', icon: Icons.cloud_off_outlined, warna: AppColors.warning);
+        tampilToast(context, 'Cloud Sync sedang mati — nyalakan di Pengaturan.', icon: Ikon.cloud_off_outlined, warna: AppColors.warning);
       }
       return;
     }
@@ -1282,10 +1283,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           kunci: 'sinkron-gagal',
         );
         if (!diam && mounted) {
-          tampilToast(context, hasil.ringkasan, icon: Icons.cloud_off_outlined, warna: AppColors.danger, durasi: const Duration(seconds: 5));
+          tampilToast(context, hasil.ringkasan, icon: Ikon.cloud_off_outlined, warna: AppColors.danger, durasi: const Duration(seconds: 5));
         }
       } else if (!diam && mounted) {
-        tampilToast(context, hasil.ringkasan, icon: Icons.cloud_done_outlined);
+        tampilToast(context, hasil.ringkasan, icon: Ikon.cloud_done_outlined);
       }
     } catch (e) {
       debugPrint('Sinkron gagal: $e');
@@ -1311,7 +1312,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         kunci: 'sinkron-gagal',
       );
       if (!diam && mounted) {
-        tampilToast(context, 'Sinkron gagal: $ringkas', icon: Icons.cloud_off_outlined, warna: AppColors.danger, durasi: const Duration(seconds: 6));
+        tampilToast(context, 'Sinkron gagal: $ringkas', icon: Ikon.cloud_off_outlined, warna: AppColors.danger, durasi: const Duration(seconds: 6));
       }
     }
   }
@@ -1537,7 +1538,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                           ),
                           child: Transform.rotate(
                             angle: p * 3.5,
-                            child: Icon(Icons.refresh, size: 20, color: siap ? Colors.white : AppColors.accent),
+                            child: Icon(Ikon.refresh, size: 20, color: siap ? Colors.white : AppColors.accent),
                           ),
                         ),
                       ),
@@ -1812,7 +1813,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                     label: _navItems[i].label,
                     badge: i == 4 ? _kitchen.where((o) => o.status == KitchenStatus.baru).length : 0,
                   ),
-                const TujuanBar(icon: Icons.menu, selectedIcon: Icons.menu, label: 'Lainnya'),
+                const TujuanBar(icon: Ikon.menu, selectedIcon: Ikon.menu, label: 'Lainnya'),
               ],
             ),
           ),
@@ -1909,7 +1910,7 @@ class _AvatarUsaha extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
-      child: Icon(Icons.local_cafe, color: AppColors.card, size: 20),
+      child: Icon(Ikon.local_cafe, color: AppColors.card, size: 20),
     );
     if (path == null || path!.isEmpty) return fallback;
     return ClipRRect(
@@ -2021,7 +2022,7 @@ class _PhoneDrawer extends StatelessWidget {
               child: Text('PINTASAN', style: AppText.caption.copyWith(color: AppColors.muted, fontWeight: FontWeight.w700)),
             ),
             _BarisPintasan(
-              icon: Icons.storefront_outlined,
+              icon: Ikon.storefront_outlined,
               label: 'Profil Usaha',
               onTap: () {
                 Navigator.of(context).pop();
@@ -2029,7 +2030,7 @@ class _PhoneDrawer extends StatelessWidget {
               },
             ),
             _BarisPintasan(
-              icon: Icons.cloud_sync_outlined,
+              icon: Ikon.cloud_sync_outlined,
               label: 'Status Sinkronisasi',
               onTap: () {
                 Navigator.of(context).pop();
@@ -2037,7 +2038,7 @@ class _PhoneDrawer extends StatelessWidget {
               },
             ),
             _BarisPintasan(
-              icon: Icons.pin_outlined,
+              icon: Ikon.pin_outlined,
               label: 'PIN Kasir',
               onTap: () {
                 Navigator.of(context).pop();
@@ -2045,7 +2046,7 @@ class _PhoneDrawer extends StatelessWidget {
               },
             ),
             _BarisPintasan(
-              icon: Icons.notifications_outlined,
+              icon: Ikon.notifications_outlined,
               label: 'Pemberitahuan',
               badge: unreadCount,
               onTap: () {
@@ -2054,7 +2055,7 @@ class _PhoneDrawer extends StatelessWidget {
               },
             ),
             _BarisPintasan(
-              icon: Icons.info_outlined,
+              icon: Ikon.info_outlined,
               label: 'Info Aplikasi',
               onTap: () {
                 Navigator.of(context).pop();
@@ -2138,7 +2139,7 @@ class _SideBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
             child: Row(
               children: [
-                const Icon(Icons.circle, size: 8, color: AppColors.accent),
+                const Icon(Ikon.circle, size: 8, color: AppColors.accent),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text('Cabang aktif: $branchName', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.caption.copyWith(color: AppColors.muted)),
@@ -2188,11 +2189,11 @@ class _SideBar extends StatelessWidget {
                       child: Text('PINTASAN', style: AppText.caption.copyWith(color: AppColors.muted, fontWeight: FontWeight.w700)),
                     ),
                   ),
-                  _BarisPintasan(icon: Icons.storefront_outlined, label: 'Profil Usaha', onTap: onOpenProfile),
-                  _BarisPintasan(icon: Icons.cloud_sync_outlined, label: 'Status Sinkronisasi', onTap: onOpenSyncStatus),
-                  _BarisPintasan(icon: Icons.pin_outlined, label: 'PIN Kasir', onTap: onOpenPin),
-                  _BarisPintasan(icon: Icons.notifications_outlined, label: 'Pemberitahuan', badge: unreadCount, onTap: onOpenNotices),
-                  _BarisPintasan(icon: Icons.info_outlined, label: 'Info Aplikasi', onTap: onOpenAbout),
+                  _BarisPintasan(icon: Ikon.storefront_outlined, label: 'Profil Usaha', onTap: onOpenProfile),
+                  _BarisPintasan(icon: Ikon.cloud_sync_outlined, label: 'Status Sinkronisasi', onTap: onOpenSyncStatus),
+                  _BarisPintasan(icon: Ikon.pin_outlined, label: 'PIN Kasir', onTap: onOpenPin),
+                  _BarisPintasan(icon: Ikon.notifications_outlined, label: 'Pemberitahuan', badge: unreadCount, onTap: onOpenNotices),
+                  _BarisPintasan(icon: Ikon.info_outlined, label: 'Info Aplikasi', onTap: onOpenAbout),
                 ],
               ),
             ),

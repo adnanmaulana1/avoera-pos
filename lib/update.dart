@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'theme.dart';
 import 'widgets.dart';
+import 'package:avoera_pos/ikon.dart';
 
 /// Pembaruan dari dalam aplikasi (diminta Adnan 2026-11-15
 /// 22:02). Android TIDAK mengizinkan aplikasi memasang pembaruan
@@ -221,7 +222,7 @@ class BannerUpdate extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
-            child: const Icon(Icons.system_update_alt, color: Colors.white, size: 22),
+            child: const Icon(Ikon.system_update_alt, color: Colors.white, size: 22),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -238,7 +239,7 @@ class BannerUpdate extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
+          Icon(Ikon.chevron_right, size: 20, color: AppColors.muted),
         ],
       ),
     );

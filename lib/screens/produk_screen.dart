@@ -8,6 +8,7 @@ import '../widgets.dart';
 import 'kelola_menu_screen.dart' show MenuThumb, menuPalette, showMenuEditor;
 import 'label_screen.dart';
 import 'resep_screen.dart';
+import '../ikon.dart';
 
 /// Layar Produk ala referensi Kasaba (permintaan Adnan 2026-11-14):
 /// daftar produk dengan foto, nama, kategori + SKU, harga di kanan;
@@ -329,7 +330,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
   Widget build(BuildContext context) {
     final list = _list;
     final tombolMenu = PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
+      icon: const Icon(Ikon.more_vert),
       tooltip: 'Pilihan produk',
       onSelected: _aksiMenu,
       itemBuilder: (_) => [
@@ -407,7 +408,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.only(top: AppSpacing.xxl),
-                  child: EmptyState(message: 'Tidak ada produk yang cocok.\nCoba kata cari atau kategori lain.', icon: Icons.restaurant_menu_outlined),
+                  child: EmptyState(message: 'Tidak ada produk yang cocok.\nCoba kata cari atau kategori lain.', icon: Ikon.restaurant_menu_outlined),
                 ),
               )
             else
@@ -493,7 +494,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
                                 width: 44,
                                 height: 44,
                                 decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                                child: Icon(Icons.inventory_2_outlined, color: AppColors.muted, size: 22),
+                                child: Icon(Ikon.inventory_2_outlined, color: AppColors.muted, size: 22),
                               ),
                               const SizedBox(width: AppSpacing.md),
                               Expanded(child: Text(ing.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600))),
@@ -547,7 +548,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
                       child: const SizedBox(
                         width: 48,
                         height: 48,
-                        child: Icon(Icons.search, color: AppColors.accentDark, size: 23),
+                        child: Icon(Ikon.search, color: AppColors.accentDark, size: 23),
                       ),
                     ),
                   ),
@@ -557,7 +558,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
                   heroTag: 'tambahProduk',
                   onPressed: () => _bukaEditor(null),
                   tooltip: 'Tambah Produk',
-                  child: const Icon(Icons.add),
+                  child: const Icon(Ikon.add),
                 ),
               ],
             ),
@@ -625,7 +626,7 @@ class _KepalaProdukDelegate extends SliverPersistentHeaderDelegate {
                     TextField(
                       controller: cariCtrl,
                       focusNode: fokusCari,
-                      decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari produk…'),
+                      decoration: const InputDecoration(prefixIcon: Icon(Ikon.search), hintText: 'Cari produk…'),
                       onChanged: onCari,
                     ),
                   ],
@@ -655,7 +656,7 @@ class _KepalaProdukDelegate extends SliverPersistentHeaderDelegate {
                         Expanded(
                           child: Text(subjudul, style: AppText.small.copyWith(color: AppColors.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
                         ),
-                        IconButton(icon: const Icon(Icons.search), tooltip: 'Cari produk', onPressed: onRingkas),
+                        IconButton(icon: const Icon(Ikon.search), tooltip: 'Cari produk', onPressed: onRingkas),
                         const SizedBox(width: 48),
                       ],
                     ),

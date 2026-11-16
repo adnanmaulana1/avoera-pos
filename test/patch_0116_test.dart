@@ -11,6 +11,7 @@ import 'package:avoera_pos/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:avoera_pos/ikon.dart';
 
 Ingredient _bahan() => Ingredient(id: 'b1', name: 'Biji Kopi', stock: 1000, unit: 'gram', minStock: 10, maxStock: 2000, costPerUnit: 200);
 
@@ -20,7 +21,7 @@ MenuItem _menu() => MenuItem(
       category: 'Kopi',
       price: 15000,
       color: const Color(0xFF4E342E),
-      icon: Icons.coffee,
+      icon: Ikon.coffee,
       isDrink: true,
       recipe: [RecipeLine(ingredientId: 'b1', qty: 10)], // HPP 10 × 200 = 2.000
     );

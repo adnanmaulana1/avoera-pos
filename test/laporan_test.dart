@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // Uji v0.7.0: lonceng pemberitahuan dari stok asli + Laporan Pajak
 // dihitung dari rincian transaksi yang tercatat.
@@ -60,7 +61,7 @@ void main() {
     expect(find.text('Rp36.800'), findsWidgets, reason: 'Beranda membaca transaksi yang ditanam');
 
     // Lonceng → pusat pemberitahuan: Bubuk Matcha stok 0 (data contoh).
-    await tester.tap(find.byIcon(Icons.notifications_outlined));
+    await tester.tap(find.byIcon(Ikon.notifications_outlined));
     await tester.pumpAndSettle();
     expect(find.text('Pemberitahuan'), findsOneWidget);
     expect(find.text('Stok habis: Bubuk Matcha'), findsOneWidget);

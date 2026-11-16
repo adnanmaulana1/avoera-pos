@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart' show FormLabel;
 import 'onboarding_screen.dart' show SetupCelebration;
+import '../ikon.dart';
 
 /// Wizard tambah cabang (permintaan Adnan 2026-11-14: tambah cabang
 /// pakai wizard + penyiapan ala onboarding, bukan dialog satu kolom):
@@ -90,7 +91,7 @@ class _BranchWizardScreenState extends State<BranchWizardScreen> {
           height: 56,
           alignment: Alignment.center,
           decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
-          child: const Icon(Icons.add_business_outlined, color: AppColors.accentDark, size: 28),
+          child: const Icon(Ikon.add_business_outlined, color: AppColors.accentDark, size: 28),
         ),
         const SizedBox(height: AppSpacing.lg),
         Text('Cabang Baru', style: AppText.pageTitle),
@@ -167,7 +168,7 @@ class _BranchWizardScreenState extends State<BranchWizardScreen> {
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: PrimaryButton(label: 'Buat Cabang', icon: Icons.add_business_outlined, onPressed: () => setState(() => _selesai = true)),
+              child: PrimaryButton(label: 'Buat Cabang', icon: Ikon.add_business_outlined, onPressed: () => setState(() => _selesai = true)),
             ),
           ],
         ),
@@ -194,7 +195,7 @@ class _TitikLangkah extends StatelessWidget {
             // Langkah beres ditandai titik isi, BUKAN centang
             // (aturan permanen Adnan: tanpa ikon centang).
             child: beres
-                ? Icon(Icons.circle, size: 10, color: AppColors.card)
+                ? Icon(Ikon.circle, size: 10, color: AppColors.card)
                 : Text('$nomor', style: AppText.small.copyWith(color: aktif ? AppColors.card : AppColors.muted, fontWeight: FontWeight.w800)),
           ),
         ),

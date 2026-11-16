@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 /// Pusat Pemberitahuan: daftar pemberitahuan TERSIMPAN dari
 /// kejadian nyata — stok kritis & habis, sinkron gagal. Yang
@@ -46,11 +47,11 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
   (IconData, Color) _gaya(AppNotification n) {
     switch (n.jenis) {
       case 'stok':
-        return n.judul.contains('habis') ? (Icons.error_outline, AppColors.danger) : (Icons.warning_amber_outlined, AppColors.warning);
+        return n.judul.contains('habis') ? (Ikon.error_outline, AppColors.danger) : (Ikon.warning_amber_outlined, AppColors.warning);
       case 'sinkron':
-        return (Icons.cloud_off_outlined, AppColors.danger);
+        return (Ikon.cloud_off_outlined, AppColors.danger);
       default:
-        return (Icons.info_outline, AppColors.accentDark);
+        return (Ikon.info_outline, AppColors.accentDark);
     }
   }
 
@@ -68,7 +69,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Pemberitahuan')),
       body: semua.isEmpty
-          ? const EmptyState(message: 'Tidak ada pemberitahuan.\nStok aman, semua berjalan baik.', icon: Icons.notifications_none_outlined)
+          ? const EmptyState(message: 'Tidak ada pemberitahuan.\nStok aman, semua berjalan baik.', icon: Ikon.notifications_none_outlined)
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -93,14 +94,14 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                           widget.onTandaiSemuaDibaca?.call();
                           setState(() {});
                         },
-                        icon: const Icon(Icons.done_all, size: 18),
+                        icon: const Icon(Ikon.done_all, size: 18),
                         label: const Text('Tandai semua terbaca'),
                       ),
                     ),
                   ),
                 Expanded(
                   child: list.isEmpty
-                      ? const EmptyState(message: 'Tidak ada pemberitahuan di kategori ini.', icon: Icons.notifications_none_outlined)
+                      ? const EmptyState(message: 'Tidak ada pemberitahuan di kategori ini.', icon: Ikon.notifications_none_outlined)
                       : ListView.builder(
                           padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
                           itemCount: list.length,
@@ -151,7 +152,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                                   if (bisaDibuka)
                                     Padding(
                                       padding: const EdgeInsets.only(left: AppSpacing.sm, top: 12),
-                                      child: Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
+                                      child: Icon(Ikon.chevron_right, size: 20, color: AppColors.muted),
                                     ),
                                 ],
                               ),

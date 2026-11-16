@@ -6,6 +6,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_stok_screen.dart' show showIngredientEditor;
 import 'gudang_screen.dart' show showBarangMasukSheet, showOpnameSheet;
+import '../ikon.dart';
 
 /// Stok Bahan dengan CRUD LANGSUNG di layar ini (permintaan Adnan
 /// 2026-11-14): ketuk bahan untuk mengubah, tombol + untuk tambah —
@@ -137,7 +138,7 @@ class _StokScreenState extends State<StokScreen> {
                 children: [
                   Expanded(
                     child: _UbinAksi(
-                      ikon: Icons.add_box_outlined,
+                      ikon: Ikon.add_box_outlined,
                       label: 'Barang Masuk',
                       onTap: () => showBarangMasukSheet(context, ingredients: widget.ingredients, onSimpan: widget.onBarangMasuk!),
                     ),
@@ -145,7 +146,7 @@ class _StokScreenState extends State<StokScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _UbinAksi(
-                      ikon: Icons.fact_check_outlined,
+                      ikon: Ikon.fact_check_outlined,
                       label: 'Opname',
                       onTap: () => showOpnameSheet(context, ingredients: widget.ingredients, onSimpan: widget.onOpname!),
                     ),
@@ -153,7 +154,7 @@ class _StokScreenState extends State<StokScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _UbinAksi(
-                      ikon: Icons.history,
+                      ikon: Ikon.history,
                       label: 'Riwayat',
                       onTap: widget.onBukaRiwayat,
                     ),
@@ -164,7 +165,7 @@ class _StokScreenState extends State<StokScreen> {
             const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _cariController,
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari bahan…'),
+              decoration: const InputDecoration(prefixIcon: Icon(Ikon.search), hintText: 'Cari bahan…'),
               onChanged: (v) => setState(() => _query = v),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -176,7 +177,7 @@ class _StokScreenState extends State<StokScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             if (list.isEmpty)
-              const EmptyState(message: 'Tidak ada bahan yang cocok.\nCoba kata cari atau filter lain.', icon: Icons.inventory_2_outlined),
+              const EmptyState(message: 'Tidak ada bahan yang cocok.\nCoba kata cari atau filter lain.', icon: Ikon.inventory_2_outlined),
             for (final ing in list)
               AppCard(
                 margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -192,7 +193,7 @@ class _StokScreenState extends State<StokScreen> {
                           color: switch (ing.status) { StockStatus.aman => AppColors.accentDark, StockStatus.kritis => AppColors.warning, StockStatus.habis => AppColors.danger },
                         ),
                         const SizedBox(width: AppSpacing.sm),
-                        Icon(Icons.edit_outlined, size: 18, color: AppColors.muted),
+                        Icon(Ikon.edit_outlined, size: 18, color: AppColors.muted),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -227,7 +228,7 @@ class _StokScreenState extends State<StokScreen> {
             heroTag: 'tambahBahan',
             onPressed: () => _bukaEditor(null),
             tooltip: 'Tambah Bahan',
-            child: const Icon(Icons.add),
+            child: const Icon(Ikon.add),
           ),
         ),
       ],

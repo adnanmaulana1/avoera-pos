@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 /// Layar Pengaturan: profil usaha, biaya transaksi (langsung berlaku
 /// di kasir), dan Tentang aplikasi. Semua nilai tinggal di HomeShell —
@@ -143,7 +144,7 @@ class PengaturanScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right, color: AppColors.muted, size: 20),
+                  Icon(Ikon.chevron_right, color: AppColors.muted, size: 20),
                 ],
               ),
             ),
@@ -160,7 +161,7 @@ class PengaturanScreen extends StatelessWidget {
             children: [
               for (final b in branches)
                 ListTile(
-                  leading: const Icon(Icons.storefront_outlined, color: AppColors.accentDark),
+                  leading: const Icon(Ikon.storefront_outlined, color: AppColors.accentDark),
                   title: Text(b.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
                   subtitle: Text(b.id == activeBranchId ? 'Cabang aktif — penjualan tercatat di sini' : 'Ketuk untuk pindah ke cabang ini', style: AppText.small.copyWith(color: AppColors.muted)),
                   trailing: b.id == activeBranchId ? const StatusChip(label: 'Aktif', color: AppColors.accent) : null,
@@ -168,7 +169,7 @@ class PengaturanScreen extends StatelessWidget {
                 ),
               const Divider(height: 1),
               _SettingRow(
-                icon: Icons.add_business_outlined,
+                icon: Ikon.add_business_outlined,
                 label: 'Tambah Cabang',
                 value: 'Wizard',
                 onTap: onOpenBranchWizard,
@@ -183,7 +184,7 @@ class PengaturanScreen extends StatelessWidget {
         AppCard(
           padding: EdgeInsets.zero,
           child: _SettingRow(
-            icon: Icons.pin_outlined,
+            icon: Ikon.pin_outlined,
             label: 'PIN Kasir',
             value: pinSet ? 'Sudah diatur' : 'Belum diatur',
             onTap: onOpenPinSettings,
@@ -197,7 +198,7 @@ class PengaturanScreen extends StatelessWidget {
           child: Column(
             children: [
               _SettingRow(
-                icon: Icons.room_service_outlined,
+                icon: Ikon.room_service_outlined,
                 label: 'Biaya Layanan',
                 value: '$servicePercent%',
                 onTap: () => _editPercent(
@@ -209,7 +210,7 @@ class PengaturanScreen extends StatelessWidget {
               ),
               const Divider(height: 1, indent: 68),
               _SettingRow(
-                icon: Icons.receipt_long_outlined,
+                icon: Ikon.receipt_long_outlined,
                 label: 'Pajak',
                 value: '$taxPercent%',
                 onTap: () => _editPercent(
@@ -235,7 +236,7 @@ class PengaturanScreen extends StatelessWidget {
           child: Column(
             children: [
               _SettingSwitchRow(
-                icon: Icons.table_restaurant_outlined,
+                icon: Ikon.table_restaurant_outlined,
                 label: 'Manajemen Meja',
                 subtitle: tablesEnabled
                     ? 'Aktif — ada menu Meja dan pilihan meja di kasir.'
@@ -245,7 +246,7 @@ class PengaturanScreen extends StatelessWidget {
               ),
               const Divider(height: 1, indent: 68),
               _SettingSwitchRow(
-                icon: Icons.soup_kitchen_outlined,
+                icon: Ikon.soup_kitchen_outlined,
                 label: 'Layar Dapur',
                 subtitle: kitchenEnabled
                     ? 'Aktif — pembayaran membuat tiket antrean dapur.'
@@ -264,7 +265,7 @@ class PengaturanScreen extends StatelessWidget {
           child: Column(
             children: [
               _SettingRow(
-                icon: Icons.restaurant_menu_outlined,
+                icon: Ikon.restaurant_menu_outlined,
                 label: 'Kelola Menu',
                 value: '$menuCount menu',
                 onTap: onManageMenus,
@@ -273,7 +274,7 @@ class PengaturanScreen extends StatelessWidget {
               if (tablesEnabled) ...[
                 const Divider(height: 1, indent: 68),
                 _SettingRow(
-                  icon: Icons.table_restaurant_outlined,
+                  icon: Ikon.table_restaurant_outlined,
                   label: 'Kelola Meja',
                   value: '$tableCount meja',
                   onTap: onManageTables,
@@ -281,7 +282,7 @@ class PengaturanScreen extends StatelessWidget {
               ],
               const Divider(height: 1, indent: 68),
               _SettingRow(
-                icon: Icons.inventory_2_outlined,
+                icon: Ikon.inventory_2_outlined,
                 label: 'Kelola Stok Bahan',
                 value: '$ingredientCount bahan',
                 onTap: onManageIngredients,
@@ -302,7 +303,7 @@ class PengaturanScreen extends StatelessWidget {
           child: Column(
             children: [
               _SettingSwitchRow(
-                icon: Icons.cloud_outlined,
+                icon: Ikon.cloud_outlined,
                 label: 'Cloud Sync',
                 subtitle: cloudSyncEnabled
                     ? 'Aktif — data tersinkron ke Supabase secara otomatis.'
@@ -312,7 +313,7 @@ class PengaturanScreen extends StatelessWidget {
               ),
               const Divider(height: 1, indent: 68),
               _SettingRow(
-                icon: Icons.cloud_sync_outlined,
+                icon: Ikon.cloud_sync_outlined,
                 label: 'Status Sinkronisasi',
                 value: statusSinkronRingkasan,
                 onTap: onOpenSyncStatus,
@@ -329,7 +330,7 @@ class PengaturanScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.brightness_6_outlined, color: AppColors.accentDark, size: 22),
+                  const Icon(Ikon.brightness_6_outlined, color: AppColors.accentDark, size: 22),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text('Mode Terang / Gelap', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
@@ -363,7 +364,7 @@ class PengaturanScreen extends StatelessWidget {
         AppCard(
           padding: EdgeInsets.zero,
           child: _SettingRow(
-            icon: Icons.info_outlined,
+            icon: Ikon.info_outlined,
             label: 'Info Aplikasi',
             value: 'Versi $appVersion',
             onTap: () => showAppInfoDialog(context),
@@ -374,7 +375,7 @@ class PengaturanScreen extends StatelessWidget {
           AppCard(
             padding: EdgeInsets.zero,
             child: _SettingRow(
-              icon: Icons.system_update_alt_outlined,
+              icon: Ikon.system_update_alt_outlined,
               label: 'Pembaruan Aplikasi',
               value: 'Periksa',
               onTap: () => onCekUpdate!(),
@@ -547,7 +548,7 @@ class _SettingRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
-            Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
+            Icon(Ikon.chevron_right, size: 20, color: AppColors.muted),
           ],
         ),
       ),
@@ -569,7 +570,7 @@ void showAppInfoDialog(BuildContext context) {
               width: 64,
               height: 64,
               decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.lg)),
-              child: Icon(Icons.local_cafe, color: AppColors.card, size: 32),
+              child: Icon(Ikon.local_cafe, color: AppColors.card, size: 32),
             ),
             const SizedBox(height: AppSpacing.lg),
             const Text(appName, style: AppText.pageTitle),
@@ -613,7 +614,7 @@ class _FotoProfilMini extends StatelessWidget {
       width: 52,
       height: 52,
       decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.md)),
-      child: Icon(Icons.storefront, color: AppColors.card, size: 26),
+      child: Icon(Ikon.storefront, color: AppColors.card, size: 26),
     );
     if (path == null || path!.isEmpty) return fallback;
     return ClipRRect(

@@ -9,6 +9,7 @@ import '../media_store.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart';
+import '../ikon.dart';
 
 /// Palet warna kartu menu yang bisa dipilih (pengganti foto produk).
 const menuPalette = <Color>[
@@ -65,7 +66,7 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
       children: [
         Expanded(
           child: widget.menus.isEmpty
-              ? const EmptyState(message: 'Belum ada menu.\nKetuk Tambah Menu untuk membuat yang pertama.', icon: Icons.restaurant_menu_outlined)
+              ? const EmptyState(message: 'Belum ada menu.\nKetuk Tambah Menu untuk membuat yang pertama.', icon: Ikon.restaurant_menu_outlined)
               : ListView.builder(
                   padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
                   itemCount: widget.menus.length,
@@ -87,7 +88,7 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            icon: const Icon(Ikon.edit_outlined, size: 20),
                             color: AppColors.accentDark,
                             onPressed: () => _openEditor(m),
                           ),
@@ -103,7 +104,7 @@ class _KelolaMenuScreenState extends State<KelolaMenuScreen> {
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: SizedBox(
               width: double.infinity,
-              child: PrimaryButton(label: 'Tambah Menu', icon: Icons.add, onPressed: () => _openEditor(null)),
+              child: PrimaryButton(label: 'Tambah Menu', icon: Ikon.add, onPressed: () => _openEditor(null)),
             ),
           ),
         ),
@@ -379,8 +380,8 @@ Future<void> showMenuEditor(
                         Wrap(
                           spacing: AppSpacing.sm,
                           children: [
-                            OutlinedButton.icon(onPressed: () => pilihFoto(ImageSource.camera), icon: const Icon(Icons.photo_camera_outlined, size: 18), label: const Text('Kamera')),
-                            OutlinedButton.icon(onPressed: () => pilihFoto(ImageSource.gallery), icon: const Icon(Icons.photo_library_outlined, size: 18), label: const Text('Galeri')),
+                            OutlinedButton.icon(onPressed: () => pilihFoto(ImageSource.camera), icon: const Icon(Ikon.photo_camera_outlined, size: 18), label: const Text('Kamera')),
+                            OutlinedButton.icon(onPressed: () => pilihFoto(ImageSource.gallery), icon: const Icon(Ikon.photo_library_outlined, size: 18), label: const Text('Galeri')),
                           ],
                         ),
                         if (imagePath != null)
@@ -515,7 +516,7 @@ Future<void> showMenuEditor(
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, size: 18),
+                          icon: const Icon(Ikon.close, size: 18),
                           color: AppColors.danger,
                           tooltip: 'Hapus dari resep',
                           onPressed: () => setSheet(() => resep.remove(r)),
@@ -526,7 +527,7 @@ Future<void> showMenuEditor(
                 if (resep.length < ingredients.length)
                   OutlinedButton.icon(
                     onPressed: tambahBahanResep,
-                    icon: const Icon(Icons.add, size: 18),
+                    icon: const Icon(Ikon.add, size: 18),
                     label: const Text('Tambah Bahan'),
                   ),
                 const SizedBox(height: AppSpacing.sm),
@@ -558,7 +559,7 @@ Future<void> showMenuEditor(
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, size: 18),
+                          icon: const Icon(Ikon.close, size: 18),
                           color: AppColors.danger,
                           tooltip: 'Hapus dari bundle',
                           onPressed: () => setSheet(() => isiBundle.remove(b)),
@@ -568,7 +569,7 @@ Future<void> showMenuEditor(
                   ),
                 OutlinedButton.icon(
                   onPressed: tambahIsiBundle,
-                  icon: const Icon(Icons.add, size: 18),
+                  icon: const Icon(Ikon.add, size: 18),
                   label: const Text('Tambah Isi Bundle'),
                 ),
                 const SizedBox(height: AppSpacing.sm),

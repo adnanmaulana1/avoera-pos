@@ -4,6 +4,7 @@ import '../data.dart';
 import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 const _bulanPanjang = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -69,7 +70,7 @@ class LaporanBulananScreen extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: AppSpacing.lg),
               child: Row(
                 children: [
-                  const Icon(Icons.emoji_events_outlined, color: AppColors.accentDark),
+                  const Icon(Ikon.emoji_events_outlined, color: AppColors.accentDark),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
@@ -253,7 +254,7 @@ class LaporanPiutangScreen extends StatelessWidget {
         actions: [if (utang.isNotEmpty) TombolEkspor(onPressed: ekspor)],
       ),
       body: utang.isEmpty
-          ? const EmptyState(message: 'Tidak ada piutang.\nSemua tagihan meja sudah lunas.', icon: Icons.check_circle_outline)
+          ? const EmptyState(message: 'Tidak ada piutang.\nSemua tagihan meja sudah lunas.', icon: Ikon.check_circle_outline)
           : ListView(
               padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
               children: [

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // v0.8.0: saklar dapur, CRUD langsung di Stok, cari di Produk,
 // angka besar Beranda menyesuaikan, simulasi dialog persen.
@@ -72,7 +73,7 @@ void main() {
     await tester.tap(find.widgetWithText(ListTile, 'Stok Bahan'));
     await tester.pumpAndSettle();
     expect(find.byType(StokScreen), findsOneWidget);
-    await tester.tap(find.descendant(of: find.byType(StokScreen), matching: find.byIcon(Icons.add)));
+    await tester.tap(find.descendant(of: find.byType(StokScreen), matching: find.byIcon(Ikon.add)));
     await tester.pumpAndSettle();
     final kolom = find.descendant(of: find.byType(BottomSheet), matching: find.byType(TextField));
     await tester.enterText(kolom.at(0), 'Susu UHT Uji');

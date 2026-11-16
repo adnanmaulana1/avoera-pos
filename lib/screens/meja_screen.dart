@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 class MejaScreen extends StatefulWidget {
   const MejaScreen({super.key, required this.tables, required this.selectedTable, required this.onSelect, required this.onGoKasir});
@@ -63,7 +64,7 @@ class _MejaScreenState extends State<MejaScreen> {
         ),
         const SizedBox(height: AppSpacing.lg),
         if (tampil.isEmpty)
-          const EmptyState(message: 'Tidak ada meja pada filter ini.', icon: Icons.table_restaurant_outlined),
+          const EmptyState(message: 'Tidak ada meja pada filter ini.', icon: Ikon.table_restaurant_outlined),
         LayoutBuilder(
           builder: (context, constraints) {
             final cross = constraints.maxWidth >= 900 ? 6 : (constraints.maxWidth >= 560 ? 4 : 3);
@@ -131,7 +132,7 @@ class _MejaScreenState extends State<MejaScreen> {
             width: double.infinity,
             child: PrimaryButton(
               label: 'Pakai Meja ${selectedTable.number} & Buka Kasir',
-              icon: Icons.point_of_sale,
+              icon: Ikon.point_of_sale,
               onPressed: onGoKasir,
             ),
           ),

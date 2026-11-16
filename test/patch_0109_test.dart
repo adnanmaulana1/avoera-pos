@@ -17,6 +17,7 @@ import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:avoera_pos/ikon.dart';
 
 TxRecord txContoh({required String id, required int total, required String method, required DateTime at, List<TxLine> lines = const [], int items = 1}) => TxRecord(
       id: id,
@@ -115,7 +116,7 @@ void main() {
     // Saringan: tidak ada lagi chip teks "Pilih Tanggal";
     // kalender berupa ikon.
     expect(find.text('Pilih Tanggal'), findsNothing);
-    expect(find.byIcon(Icons.calendar_month_outlined), findsOneWidget);
+    expect(find.byIcon(Ikon.calendar_month_outlined), findsOneWidget);
     // Semua chip periode + metode tetap ada.
     for (final label in ['Semua', 'Hari Ini', 'Minggu Ini', 'Bulan Ini', 'Semua Metode', 'Tunai', 'QRIS']) {
       expect(find.text(label), findsWidgets, reason: 'chip $label ada');
@@ -140,7 +141,7 @@ void main() {
     expect(find.text('Lunas'), findsNothing);
 
     // App bar: tombol kembali ada; label total dinamis.
-    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+    expect(find.byIcon(Ikon.arrow_back), findsOneWidget);
     expect(find.text('Total semua transaksi'), findsOneWidget);
     expect(find.text('Cari no. transaksi atau nominal'), findsOneWidget);
 

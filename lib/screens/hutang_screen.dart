@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart';
 import 'laporan_bersama.dart';
+import '../ikon.dart';
 
 /// Laporan Hutang (update besar v0.11.0): catatan hutang
 /// usaha yang dicatat manual pemilik — pemasok, orang, atau
@@ -104,7 +105,7 @@ class HutangScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           if (belum.isNotEmpty) ...[
-            const JudulSeksi(ikon: Icons.schedule_outlined, teks: 'Belum Lunas'),
+            const JudulSeksi(ikon: Ikon.schedule_outlined, teks: 'Belum Lunas'),
             const SizedBox(height: AppSpacing.sm),
             AppCard(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
@@ -120,7 +121,7 @@ class HutangScreen extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
           ],
           if (lunas.isNotEmpty) ...[
-            const JudulSeksi(ikon: Icons.check_circle_outline, teks: 'Sudah Lunas'),
+            const JudulSeksi(ikon: Ikon.check_circle_outline, teks: 'Sudah Lunas'),
             const SizedBox(height: AppSpacing.sm),
             AppCard(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
@@ -258,7 +259,7 @@ Future<void> showHutangSheet(
                     decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(AppRadius.md)),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_month_outlined, size: 18, color: AppColors.muted),
+                        Icon(Ikon.calendar_month_outlined, size: 18, color: AppColors.muted),
                         const SizedBox(width: AppSpacing.sm),
                         Text(labelTgl(nilai), style: AppText.body.copyWith(color: AppColors.ink)),
                       ],

@@ -4,6 +4,7 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_menu_screen.dart' show MenuThumb;
+import '../ikon.dart';
 
 /// Layar Resep (permintaan Adnan 2026-11-15 — fitur yang dulu
 /// 'Segera'): ringkasan resep semua menu + HPP & margin dari
@@ -34,7 +35,7 @@ class _ResepScreenState extends State<ResepScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           if (widget.menus.isEmpty)
-            const EmptyState(message: 'Belum ada menu.', icon: Icons.restaurant_menu_outlined),
+            const EmptyState(message: 'Belum ada menu.', icon: Ikon.restaurant_menu_outlined),
           for (final m in widget.menus)
             Builder(
               builder: (_) {
@@ -117,7 +118,7 @@ class _BundleScreenState extends State<BundleScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           if (bundles.isEmpty)
-            const EmptyState(message: 'Belum ada bundle.\nBuat menu baru lalu isi bagian Isi Bundle di editornya.', icon: Icons.card_giftcard_outlined),
+            const EmptyState(message: 'Belum ada bundle.\nBuat menu baru lalu isi bagian Isi Bundle di editornya.', icon: Ikon.card_giftcard_outlined),
           for (final m in bundles)
             AppCard(
               margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -153,7 +154,7 @@ class _BundleScreenState extends State<BundleScreen> {
           const SizedBox(height: AppSpacing.md),
           PrimaryButton(
             label: 'Buat Bundle Baru',
-            icon: Icons.add,
+            icon: Ikon.add,
             onPressed: () async {
               await widget.onEditMenu(null);
               if (mounted) setState(() {});

@@ -9,6 +9,7 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart' show FormLabel;
+import '../ikon.dart';
 
 /// Hash PIN kasir (tidak pernah menyimpan PIN mentah).
 String hashPin(String pin) => sha256.convert(utf8.encode('avoera:$pin')).toString();
@@ -236,7 +237,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(14)),
-                      child: const Icon(Icons.storefront_outlined, color: Colors.white, size: 24),
+                      child: const Icon(Ikon.storefront_outlined, color: Colors.white, size: 24),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
@@ -269,7 +270,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                   decoration: _dekorWizard(
                     'Untuk persetujuan penting di kasir',
                     suffix: IconButton(
-                      icon: Icon(_pinTerlihat ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: AppColors.muted),
+                      icon: Icon(_pinTerlihat ? Ikon.visibility_off_outlined : Ikon.visibility_outlined, size: 20, color: AppColors.muted),
                       onPressed: () => setState(() => _pinTerlihat = !_pinTerlihat),
                     ),
                   ),
@@ -284,7 +285,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                   decoration: _dekorWizard(
                     'Ketik ulang PIN yang sama',
                     suffix: IconButton(
-                      icon: Icon(_pin2Terlihat ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: AppColors.muted),
+                      icon: Icon(_pin2Terlihat ? Ikon.visibility_off_outlined : Ikon.visibility_outlined, size: 20, color: AppColors.muted),
                       onPressed: () => setState(() => _pin2Terlihat = !_pin2Terlihat),
                     ),
                   ),
@@ -299,7 +300,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                     child: Column(
                       children: [
                         SwitchListTile(
-                          secondary: _ikonSamping(Icons.table_restaurant_outlined),
+                          secondary: _ikonSamping(Ikon.table_restaurant_outlined),
                           title: Text('Memakai meja', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
                           subtitle: Text('Matikan bila kedai tanpa meja (hanya pesan & bayar).', style: AppText.small.copyWith(color: AppColors.muted)),
                           value: _tables,
@@ -308,7 +309,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                         ),
                         const Divider(height: 1),
                         SwitchListTile(
-                          secondary: _ikonSamping(Icons.soup_kitchen_outlined),
+                          secondary: _ikonSamping(Ikon.soup_kitchen_outlined),
                           title: Text('Memakai layar dapur', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
                           subtitle: Text('Matikan bila pesanan tidak perlu antre di dapur.', style: AppText.small.copyWith(color: AppColors.muted)),
                           value: _kitchen,
@@ -330,7 +331,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline, size: 18, color: AppColors.danger),
+                        const Icon(Ikon.error_outline, size: 18, color: AppColors.danger),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(child: Text(_error!, style: AppText.small.copyWith(color: AppColors.danger, fontWeight: FontWeight.w600))),
                       ],
@@ -340,7 +341,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                 const SizedBox(height: AppSpacing.xl),
                 SizedBox(
                   width: double.infinity,
-                  child: PrimaryButton(label: 'Mulai Berjualan', icon: Icons.rocket_launch_outlined, onPressed: _finish),
+                  child: PrimaryButton(label: 'Mulai Berjualan', icon: Ikon.rocket_launch_outlined, onPressed: _finish),
                 ),
               ],
             ),

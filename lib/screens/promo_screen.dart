@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart';
 import 'laporan_bersama.dart';
+import '../ikon.dart';
 
 /// Promo & Diskon (update besar v0.11.0): kelola promo yang
 /// bisa dipakai kasir saat pembayaran (persen atau potongan
@@ -84,7 +85,7 @@ class PromoScreen extends StatelessWidget {
             keterangan: '$totalKali transaksi memakai promo · ${promos.where((p) => p.aktif).length} promo aktif dari ${promos.length}',
           ),
           const SizedBox(height: AppSpacing.lg),
-          const JudulSeksi(ikon: Icons.local_offer_outlined, teks: 'Daftar Promo'),
+          const JudulSeksi(ikon: Ikon.local_offer_outlined, teks: 'Daftar Promo'),
           const SizedBox(height: AppSpacing.sm),
           if (promos.isEmpty)
             Padding(
@@ -128,7 +129,7 @@ class PromoScreen extends StatelessWidget {
             onPressed: () => showPromoSheet(context, onSimpan: onAdd),
           ),
           const SizedBox(height: AppSpacing.lg),
-          const JudulSeksi(ikon: Icons.bar_chart_outlined, teks: 'Pemakaian Promo'),
+          const JudulSeksi(ikon: Ikon.bar_chart_outlined, teks: 'Pemakaian Promo'),
           const SizedBox(height: AppSpacing.sm),
           if (pemakaian.isEmpty)
             Text('Belum ada transaksi yang memakai promo.', style: AppText.body.copyWith(color: AppColors.muted))

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -64,7 +65,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tiga yang bertujuan berpanah; info biasa tidak.
-    expect(find.byIcon(Icons.chevron_right), findsNWidgets(3));
+    expect(find.byIcon(Ikon.chevron_right), findsNWidgets(3));
 
     await tester.tap(find.text('Stok habis: Bubuk Matcha'));
     await tester.pump();

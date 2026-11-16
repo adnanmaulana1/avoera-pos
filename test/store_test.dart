@@ -3,6 +3,7 @@ import 'package:avoera_pos/store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // Bukti simpan permanen: data yang disimpan LocalStore harus kembali
 // persis sama saat dimuat lagi (seperti aplikasi ditutup lalu dibuka).
@@ -11,13 +12,13 @@ void main() {
 
   test('Model bolak-balik JSON tanpa ada yang berubah', () {
     final menu = MenuItem.fromJson(
-      MenuItem(id: 'x1', name: 'Es Kopi', category: 'Kopi', price: 21000, color: const Color(0xFF00695C), icon: Icons.coffee, isDrink: true).toJson(),
+      MenuItem(id: 'x1', name: 'Es Kopi', category: 'Kopi', price: 21000, color: const Color(0xFF00695C), icon: Ikon.coffee, isDrink: true).toJson(),
     );
     expect(menu.id, 'x1');
     expect(menu.name, 'Es Kopi');
     expect(menu.price, 21000);
     expect(menu.color, const Color(0xFF00695C));
-    expect(menu.icon.codePoint, Icons.coffee.codePoint);
+    expect(menu.icon.codePoint, Ikon.coffee.codePoint);
     expect(menu.isDrink, isTrue);
 
     final table = CafeTable.fromJson(
@@ -40,7 +41,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
 
     final menus = seedMenus()
-      ..add(MenuItem(id: 'baru1', name: 'Menu Uji', category: 'Paket', price: 99000, color: const Color(0xFF4527A0), icon: Icons.cake));
+      ..add(MenuItem(id: 'baru1', name: 'Menu Uji', category: 'Paket', price: 99000, color: const Color(0xFF4527A0), icon: Ikon.cake));
     await LocalStore.saveMenus(menus);
     await LocalStore.saveTables([CafeTable(number: 99, capacity: 10, status: TableStatus.kosong)]);
     await LocalStore.saveIngredients([Ingredient(name: 'Bahan Uji', stock: 7, unit: 'pcs', minStock: 2, maxStock: 50)]);
@@ -66,14 +67,14 @@ void main() {
       'category': 'Paket',
       'price': 50000,
       'color': 0xFF00897B,
-      'icon': Icons.groups.codePoint,
+      'icon': 58094, // codePoint Material 'groups' lama (≤0.3.2), dibekukan di data.dart
       'isDrink': false,
     };
     final item = MenuItem.fromJson(legacy);
-    expect(item.icon, Icons.groups, reason: 'Ikon groups dari data lama harus utuh');
+    expect(item.icon, Ikon.groups, reason: 'Ikon groups dari data lama harus utuh');
     // Simpan ulang → format baru berisi iconIndex dan tetap terbaca.
     final roundTrip = MenuItem.fromJson(item.toJson());
-    expect(roundTrip.icon, Icons.groups);
+    expect(roundTrip.icon, Ikon.groups);
   });
 
   test('LocalStore: belum pernah simpan → dapat data contoh', () async {

@@ -5,6 +5,7 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'pembayaran_screen.dart';
+import '../ikon.dart';
 
 class KasirScreen extends StatefulWidget {
   const KasirScreen({
@@ -163,7 +164,7 @@ class _KasirScreenState extends State<KasirScreen> {
                   onChanged: (v) => setState(() => _query = v),
                   decoration: const InputDecoration(
                     hintText: 'Cari menu…',
-                    prefixIcon: Icon(Icons.search, size: 20),
+                    prefixIcon: Icon(Ikon.search, size: 20),
                   ),
                 ),
               ),
@@ -195,7 +196,7 @@ class _KasirScreenState extends State<KasirScreen> {
           const SizedBox(height: AppSpacing.md),
           Expanded(
             child: _filtered.isEmpty
-                ? const EmptyState(message: 'Menu tidak ditemukan.\nCoba kata kunci atau kategori lain.', icon: Icons.search_off_outlined)
+                ? const EmptyState(message: 'Menu tidak ditemukan.\nCoba kata kunci atau kategori lain.', icon: Ikon.search_off_outlined)
                 : GridView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -235,13 +236,13 @@ class _KasirScreenState extends State<KasirScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.table_restaurant_outlined, size: 20, color: AppColors.accent),
+            const Icon(Ikon.table_restaurant_outlined, size: 20, color: AppColors.accent),
             const SizedBox(width: AppSpacing.sm),
             Text(
               widget.selectedTable == null ? 'Pilih Meja' : 'Meja ${widget.selectedTable!.number}',
               style: AppText.body.copyWith(fontWeight: FontWeight.w700),
             ),
-            const Icon(Icons.expand_more, size: 20),
+            const Icon(Ikon.expand_more, size: 20),
           ],
         ),
       ),
@@ -387,12 +388,12 @@ class _KasirScreenState extends State<KasirScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: [
-                    QtyButton(icon: Icons.remove, onPressed: qty > 1 ? () => setSheet(() => qty--) : null),
+                    QtyButton(icon: Ikon.remove, onPressed: qty > 1 ? () => setSheet(() => qty--) : null),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                       child: Text('$qty', style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
                     ),
-                    QtyButton(icon: Icons.add, onPressed: () => setSheet(() => qty++)),
+                    QtyButton(icon: Ikon.add, onPressed: () => setSheet(() => qty++)),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: PrimaryButton(
@@ -519,7 +520,7 @@ class _KasirScreenState extends State<KasirScreen> {
             Container(
               width: 64, height: 64,
               decoration: BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
-              child: const Icon(Icons.check, color: AppColors.accent, size: 36),
+              child: const Icon(Ikon.check, color: AppColors.accent, size: 36),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text('Pembayaran Berhasil', style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
@@ -646,7 +647,7 @@ class _MenuCardState extends State<_MenuCard> {
                   _Denyut(
                     pemicu: _tekanan,
                     child: QtyButton(
-                      icon: Icons.add,
+                      icon: Ikon.add,
                       filled: true,
                       onPressed: () {
                         setState(() => _tekanan++);
@@ -732,7 +733,7 @@ class _CartPanel extends StatelessWidget {
         const Divider(height: 1),
         Expanded(
           child: cart.isEmpty
-              ? const EmptyState(message: 'Keranjang masih kosong.\nKetuk menu untuk menambah.', icon: Icons.shopping_basket_outlined)
+              ? const EmptyState(message: 'Keranjang masih kosong.\nKetuk menu untuk menambah.', icon: Ikon.shopping_basket_outlined)
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   itemCount: cart.length,
@@ -755,14 +756,14 @@ class _CartPanel extends StatelessWidget {
                           const SizedBox(height: AppSpacing.xs),
                           Row(
                             children: [
-                              QtyButton(icon: Icons.remove, onPressed: () => onDec(c)),
+                              QtyButton(icon: Ikon.remove, onPressed: () => onDec(c)),
                               Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs), child: Text('${c.qty}', style: const TextStyle(fontWeight: FontWeight.w800))),
-                              QtyButton(icon: Icons.add, onPressed: () => onInc(c)),
+                              QtyButton(icon: Ikon.add, onPressed: () => onInc(c)),
                               const Spacer(),
                               TextButton.icon(
                                 onPressed: () => onRemove(c),
                                 style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-                                icon: const Icon(Icons.delete_outline, size: 20),
+                                icon: const Icon(Ikon.delete_outline, size: 20),
                                 label: const Text('Hapus'),
                               ),
                             ],
@@ -788,7 +789,7 @@ class _CartPanel extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                     child: Row(
                       children: [
-                        Icon(Icons.local_offer_outlined, size: 17, color: AppColors.accentDark),
+                        Icon(Ikon.local_offer_outlined, size: 17, color: AppColors.accentDark),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
@@ -799,7 +800,7 @@ class _CartPanel extends StatelessWidget {
                         if (promoKurang > 0)
                           Text('kurang ${rupiah(promoKurang)} lagi', style: AppText.caption.copyWith(color: AppColors.warning, fontWeight: FontWeight.w700))
                         else
-                          Icon(Icons.chevron_right, size: 17, color: AppColors.muted),
+                          Icon(Ikon.chevron_right, size: 17, color: AppColors.muted),
                       ],
                     ),
                   ),
@@ -869,7 +870,7 @@ class _BarisPilihPromo extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
         child: Row(
           children: [
-            Icon(terpilih ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 21, color: terpilih ? AppColors.accentDark : AppColors.muted),
+            Icon(terpilih ? Ikon.radio_button_checked : Ikon.radio_button_unchecked, size: 21, color: terpilih ? AppColors.accentDark : AppColors.muted),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(

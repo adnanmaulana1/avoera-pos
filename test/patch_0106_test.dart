@@ -10,6 +10,7 @@ import 'package:avoera_pos/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:avoera_pos/ikon.dart';
 
 TxRecord txContoh({required String id, required DateTime at, List<TxLine> lines = const []}) => TxRecord(
       id: id,
@@ -131,7 +132,7 @@ void main() {
 
       // Sejak v0.10.11 ikon kalender ada di app bar, di
       // sebelah ikon bagikan — selalu terlihat, tanpa geser.
-      await tester.tap(find.byIcon(Icons.calendar_month_outlined));
+      await tester.tap(find.byIcon(Ikon.calendar_month_outlined));
       await tester.pumpAndSettle();
       expect(find.byType(DateRangePickerDialog), findsOneWidget);
 
@@ -147,13 +148,13 @@ void main() {
       expect(find.textContaining('A-BARU ·'), findsOneWidget);
       expect(find.textContaining('A-LAMA ·'), findsNothing, reason: 'Transaksi 10 hari lalu tersaring keluar oleh rentang hari ini');
       // Pil rentang aktif: ada tombol silang untuk menghapus.
-      expect(find.byIcon(Icons.close), findsOneWidget);
+      expect(find.byIcon(Ikon.close), findsOneWidget);
 
       // Hapus saringan → semua tampil lagi. (Pil rentang juga
       // di ujung baris geser — pastikan terlihat dulu.)
-      await tester.ensureVisible(find.byIcon(Icons.close));
+      await tester.ensureVisible(find.byIcon(Ikon.close));
       await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.close));
+      await tester.tap(find.byIcon(Ikon.close));
       await tester.pumpAndSettle();
       expect(find.textContaining('A-LAMA ·'), findsOneWidget);
     });

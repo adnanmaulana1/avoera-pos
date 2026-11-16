@@ -4,6 +4,7 @@ import '../data.dart';
 import '../theme.dart';
 import '../update.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 /// Beranda: layar pembuka ala referensi Bisakasir (permintaan Adnan
 /// 2026-11-14), diisi ANGKA ASLI dari transaksi yang tercatat.
@@ -113,14 +114,14 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final latest = [...tx]..sort((a, b) => b.at.compareTo(a.at));
 
     final tiles = <(IconData, String, VoidCallback)>[
-      if (widget.tablesEnabled) (Icons.table_restaurant_outlined, 'Meja', () => widget.onNavigate(3)),
-      if (widget.kitchenEnabled) (Icons.soup_kitchen_outlined, 'Dapur', () => widget.onNavigate(4)),
-      (Icons.inventory_2_outlined, 'Produk', () => widget.onNavigate(2)),
-      (Icons.bar_chart_outlined, 'Laporan', () => widget.onNavigate(5)),
-      (Icons.inventory_outlined, 'Stok Bahan', () => widget.onNavigate(6)),
-      (Icons.settings_outlined, 'Pengaturan', () => widget.onNavigate(7)),
-      if (widget.tablesEnabled) (Icons.table_bar_outlined, 'Atur Meja', widget.onManageTables),
-      (Icons.fact_check_outlined, 'Atur Stok', widget.onManageIngredients),
+      if (widget.tablesEnabled) (Ikon.table_restaurant_outlined, 'Meja', () => widget.onNavigate(3)),
+      if (widget.kitchenEnabled) (Ikon.soup_kitchen_outlined, 'Dapur', () => widget.onNavigate(4)),
+      (Ikon.inventory_2_outlined, 'Produk', () => widget.onNavigate(2)),
+      (Ikon.bar_chart_outlined, 'Laporan', () => widget.onNavigate(5)),
+      (Ikon.inventory_outlined, 'Stok Bahan', () => widget.onNavigate(6)),
+      (Ikon.settings_outlined, 'Pengaturan', () => widget.onNavigate(7)),
+      if (widget.tablesEnabled) (Ikon.table_bar_outlined, 'Atur Meja', widget.onManageTables),
+      (Ikon.fact_check_outlined, 'Atur Stok', widget.onManageIngredients),
     ];
 
     return ListView(
@@ -150,14 +151,14 @@ class _BerandaScreenState extends State<BerandaScreen> {
               },
               onPressed: widget.onSyncTap,
               icon: switch (widget.syncStatus) {
-                StatusSinkron.belumDiatur => Icon(Icons.cloud_off_outlined, color: AppColors.muted),
+                StatusSinkron.belumDiatur => Icon(Ikon.cloud_off_outlined, color: AppColors.muted),
                 StatusSinkron.menyinkron => const SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.accent),
                   ),
-                StatusSinkron.tersinkron => const Icon(Icons.cloud_done_outlined, color: AppColors.accentDark),
-                StatusSinkron.gagal => const Icon(Icons.cloud_off_outlined, color: AppColors.danger),
+                StatusSinkron.tersinkron => const Icon(Ikon.cloud_done_outlined, color: AppColors.accentDark),
+                StatusSinkron.gagal => const Icon(Ikon.cloud_off_outlined, color: AppColors.danger),
               },
             ),
             IconButton(
@@ -167,7 +168,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 isLabelVisible: widget.noticeCount > 0,
                 label: Text('${widget.noticeCount}'),
                 backgroundColor: AppColors.danger,
-                child: const Icon(Icons.notifications_outlined),
+                child: const Icon(Ikon.notifications_outlined),
               ),
             ),
           ],
@@ -189,7 +190,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(widget.branch.name, style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
-                      const Icon(Icons.expand_more, size: 16, color: AppColors.accentDark),
+                      const Icon(Ikon.expand_more, size: 16, color: AppColors.accentDark),
                     ],
                   ),
                 ),
@@ -275,7 +276,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(pct >= 0 ? Icons.trending_up : Icons.trending_down, size: 14, color: Colors.white),
+                                  Icon(pct >= 0 ? Ikon.trending_up : Ikon.trending_down, size: 14, color: Colors.white),
                                   const SizedBox(width: 4),
                                   Text(
                                     pct >= 0 ? '+$pct%' : '$pct%',
@@ -297,7 +298,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.show_chart, size: 14, color: Colors.white),
+                                  const Icon(Ikon.show_chart, size: 14, color: Colors.white),
                                   const SizedBox(width: 4),
                                   Text('Mulai tercatat', style: AppText.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                                 ],
@@ -348,7 +349,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
-                child: const Icon(Icons.point_of_sale_outlined, color: AppColors.accentDark),
+                child: const Icon(Ikon.point_of_sale_outlined, color: AppColors.accentDark),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -394,7 +395,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
-                        child: const Icon(Icons.receipt_long_outlined, color: AppColors.accentDark, size: 28),
+                        child: const Icon(Ikon.receipt_long_outlined, color: AppColors.accentDark, size: 28),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       Text('Belum ada transaksi', style: AppText.subtitle),
@@ -416,7 +417,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                          child: Icon(t.method == 'QRIS' ? Icons.qr_code_2_outlined : Icons.payments_outlined, color: AppColors.accentDark, size: 20),
+                          child: Icon(t.method == 'QRIS' ? Ikon.qr_code_2_outlined : Ikon.payments_outlined, color: AppColors.accentDark, size: 20),
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(

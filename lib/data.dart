@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.12.1';
+const appVersion = '0.13.0';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 49;
+const appBuild = 50;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -174,23 +175,23 @@ String ringkas(int v) {
 /// Urutan daftar ini TIDAK BOLEH digeser — nomor urut tersimpan di
 /// data pengguna. Boleh menambah di paling belakang.
 const menuIconChoices = <IconData>[
-  Icons.local_cafe,
-  Icons.coffee,
-  Icons.coffee_maker,
-  Icons.emoji_food_beverage,
-  Icons.local_drink,
-  Icons.rice_bowl,
-  Icons.dinner_dining,
-  Icons.ramen_dining,
-  Icons.set_meal,
-  Icons.fastfood,
-  Icons.bakery_dining,
-  Icons.breakfast_dining,
-  Icons.tapas,
-  Icons.card_giftcard,
-  Icons.group,
-  Icons.cake,
-  Icons.groups, // dipakai menu paket contoh lama
+  Ikon.local_cafe,
+  Ikon.coffee,
+  Ikon.coffee_maker,
+  Ikon.emoji_food_beverage,
+  Ikon.local_drink,
+  Ikon.rice_bowl,
+  Ikon.dinner_dining,
+  Ikon.ramen_dining,
+  Ikon.set_meal,
+  Ikon.fastfood,
+  Ikon.bakery_dining,
+  Ikon.breakfast_dining,
+  Ikon.tapas,
+  Ikon.card_giftcard,
+  Ikon.group,
+  Ikon.cake,
+  Ikon.groups, // dipakai menu paket contoh lama
 ];
 
 int _iconIndexOf(IconData icon) {
@@ -198,8 +199,15 @@ int _iconIndexOf(IconData icon) {
   return i < 0 ? 0 : i;
 }
 
+/// Kode ikon Material LAMA untuk daftar [menuIconChoices], dibekukan
+/// apa adanya. Sejak v0.13.0 pilihan ikon memakai huruf Phosphor
+/// (kodenya beda total), jadi data sangat lama (≤0.3.2) yang hanya
+/// menyimpan codePoint Material dipetakan lewat daftar beku ini —
+/// urutannya sama persis dengan [menuIconChoices].
+const _kodeIkonMenuLama = <int>[58253, 57720, 57721, 57902, 58257, 58680, 57808, 58630, 58750, 57946, 57545, 57604, 58948, 57662, 58091, 57632, 58094];
+
 int _iconIndexFromCodePoint(int codePoint) {
-  final i = menuIconChoices.indexWhere((c) => c.codePoint == codePoint);
+  final i = _kodeIkonMenuLama.indexOf(codePoint);
   return i < 0 ? 0 : i;
 }
 
@@ -365,26 +373,26 @@ String skuOf(MenuItem m) => 'PRD-${(m.id.hashCode.abs() % 900) + 100}';
 const categories = ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Camilan', 'Paket'];
 
 List<MenuItem> seedMenus() => <MenuItem>[
-  MenuItem(id: 'k1', name: 'Kopi Susu Gula Aren', category: 'Kopi', price: 18000, color: Color(0xFF8D6E63), icon: Icons.local_cafe, isDrink: true),
-  MenuItem(id: 'k2', name: 'Americano', category: 'Kopi', price: 15000, color: Color(0xFF4E342E), icon: Icons.coffee, isDrink: true),
-  MenuItem(id: 'k3', name: 'Caffe Latte', category: 'Kopi', price: 22000, color: Color(0xFFA1887F), icon: Icons.local_cafe, isDrink: true),
-  MenuItem(id: 'k4', name: 'Butterscotch Latte', category: 'Kopi', price: 24000, color: Color(0xFFBCAAA4), icon: Icons.coffee_maker, isDrink: true),
-  MenuItem(id: 'k5', name: 'Kopi Tubruk', category: 'Kopi', price: 12000, color: Color(0xFF3E2723), icon: Icons.coffee, isDrink: true),
-  MenuItem(id: 'n1', name: 'Matcha Latte', category: 'Non-Kopi', price: 22000, color: Color(0xFF7CB342), icon: Icons.emoji_food_beverage, isDrink: true),
-  MenuItem(id: 'n2', name: 'Coklat Klasik', category: 'Non-Kopi', price: 20000, color: Color(0xFF6D4C41), icon: Icons.emoji_food_beverage, isDrink: true),
-  MenuItem(id: 'n3', name: 'Es Teh Lemon', category: 'Non-Kopi', price: 12000, color: Color(0xFFF9A825), icon: Icons.local_drink, isDrink: true),
-  MenuItem(id: 'n4', name: 'Red Velvet Latte', category: 'Non-Kopi', price: 22000, color: Color(0xFFC62828), icon: Icons.local_drink, isDrink: true),
-  MenuItem(id: 'm1', name: 'Nasi Ayam Geprek', category: 'Makanan', price: 25000, color: Color(0xFFEF6C00), icon: Icons.rice_bowl),
-  MenuItem(id: 'm2', name: 'Nasi Goreng Kampung', category: 'Makanan', price: 28000, color: Color(0xFFD84315), icon: Icons.dinner_dining),
-  MenuItem(id: 'm3', name: 'Mie Goreng Telur', category: 'Makanan', price: 22000, color: Color(0xFFFF8F00), icon: Icons.ramen_dining),
-  MenuItem(id: 'm4', name: 'Nasi Ayam Teriyaki', category: 'Makanan', price: 30000, color: Color(0xFF5D4037), icon: Icons.set_meal),
-  MenuItem(id: 'c1', name: 'Kentang Goreng', category: 'Camilan', price: 15000, color: Color(0xFFFBC02D), icon: Icons.fastfood),
-  MenuItem(id: 'c2', name: 'Pisang Goreng Coklat', category: 'Camilan', price: 16000, color: Color(0xFFFFA000), icon: Icons.bakery_dining),
-  MenuItem(id: 'c3', name: 'Roti Bakar Coklat Keju', category: 'Camilan', price: 18000, color: Color(0xFF8D6E63), icon: Icons.breakfast_dining),
-  MenuItem(id: 'c4', name: 'Dimsum Ayam (4 pcs)', category: 'Camilan', price: 17000, color: Color(0xFFAD1457), icon: Icons.tapas),
-  MenuItem(id: 'p1', name: 'Paket Hemat Kopi + Roti', category: 'Paket', price: 32000, color: Color(0xFF00695C), icon: Icons.card_giftcard),
-  MenuItem(id: 'p2', name: 'Paket Berdua', category: 'Paket', price: 68000, color: Color(0xFF00838F), icon: Icons.group),
-  MenuItem(id: 'p3', name: 'Paket Nongkrong Berempat', category: 'Paket', price: 119000, color: Color(0xFF4527A0), icon: Icons.groups),
+  MenuItem(id: 'k1', name: 'Kopi Susu Gula Aren', category: 'Kopi', price: 18000, color: Color(0xFF8D6E63), icon: Ikon.local_cafe, isDrink: true),
+  MenuItem(id: 'k2', name: 'Americano', category: 'Kopi', price: 15000, color: Color(0xFF4E342E), icon: Ikon.coffee, isDrink: true),
+  MenuItem(id: 'k3', name: 'Caffe Latte', category: 'Kopi', price: 22000, color: Color(0xFFA1887F), icon: Ikon.local_cafe, isDrink: true),
+  MenuItem(id: 'k4', name: 'Butterscotch Latte', category: 'Kopi', price: 24000, color: Color(0xFFBCAAA4), icon: Ikon.coffee_maker, isDrink: true),
+  MenuItem(id: 'k5', name: 'Kopi Tubruk', category: 'Kopi', price: 12000, color: Color(0xFF3E2723), icon: Ikon.coffee, isDrink: true),
+  MenuItem(id: 'n1', name: 'Matcha Latte', category: 'Non-Kopi', price: 22000, color: Color(0xFF7CB342), icon: Ikon.emoji_food_beverage, isDrink: true),
+  MenuItem(id: 'n2', name: 'Coklat Klasik', category: 'Non-Kopi', price: 20000, color: Color(0xFF6D4C41), icon: Ikon.emoji_food_beverage, isDrink: true),
+  MenuItem(id: 'n3', name: 'Es Teh Lemon', category: 'Non-Kopi', price: 12000, color: Color(0xFFF9A825), icon: Ikon.local_drink, isDrink: true),
+  MenuItem(id: 'n4', name: 'Red Velvet Latte', category: 'Non-Kopi', price: 22000, color: Color(0xFFC62828), icon: Ikon.local_drink, isDrink: true),
+  MenuItem(id: 'm1', name: 'Nasi Ayam Geprek', category: 'Makanan', price: 25000, color: Color(0xFFEF6C00), icon: Ikon.rice_bowl),
+  MenuItem(id: 'm2', name: 'Nasi Goreng Kampung', category: 'Makanan', price: 28000, color: Color(0xFFD84315), icon: Ikon.dinner_dining),
+  MenuItem(id: 'm3', name: 'Mie Goreng Telur', category: 'Makanan', price: 22000, color: Color(0xFFFF8F00), icon: Ikon.ramen_dining),
+  MenuItem(id: 'm4', name: 'Nasi Ayam Teriyaki', category: 'Makanan', price: 30000, color: Color(0xFF5D4037), icon: Ikon.set_meal),
+  MenuItem(id: 'c1', name: 'Kentang Goreng', category: 'Camilan', price: 15000, color: Color(0xFFFBC02D), icon: Ikon.fastfood),
+  MenuItem(id: 'c2', name: 'Pisang Goreng Coklat', category: 'Camilan', price: 16000, color: Color(0xFFFFA000), icon: Ikon.bakery_dining),
+  MenuItem(id: 'c3', name: 'Roti Bakar Coklat Keju', category: 'Camilan', price: 18000, color: Color(0xFF8D6E63), icon: Ikon.breakfast_dining),
+  MenuItem(id: 'c4', name: 'Dimsum Ayam (4 pcs)', category: 'Camilan', price: 17000, color: Color(0xFFAD1457), icon: Ikon.tapas),
+  MenuItem(id: 'p1', name: 'Paket Hemat Kopi + Roti', category: 'Paket', price: 32000, color: Color(0xFF00695C), icon: Ikon.card_giftcard),
+  MenuItem(id: 'p2', name: 'Paket Berdua', category: 'Paket', price: 68000, color: Color(0xFF00838F), icon: Ikon.group),
+  MenuItem(id: 'p3', name: 'Paket Nongkrong Berempat', category: 'Paket', price: 119000, color: Color(0xFF4527A0), icon: Ikon.groups),
 ];
 
 // ---------- Meja ----------

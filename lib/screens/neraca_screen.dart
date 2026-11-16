@@ -5,6 +5,7 @@ import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'laporan_bersama.dart';
+import '../ikon.dart';
 
 /// Neraca — laporan posisi keuangan usaha pada satu tanggal
 /// (update besar v0.11.0, diminta Adnan "detail"). Aktiva:
@@ -107,7 +108,7 @@ class _NeracaScreenState extends State<NeracaScreen> {
                   );
                   if (pilih != null && mounted) setState(() => _tanggal = pilih);
                 },
-                icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                icon: const Icon(Ikon.calendar_month_outlined, size: 18),
                 label: const Text('Ganti'),
               ),
             ],
@@ -119,7 +120,7 @@ class _NeracaScreenState extends State<NeracaScreen> {
             keterangan: 'Total Pasiva ${rupiah(hasil.totalPasiva)} · ${hasil.seimbang ? 'SEIMBANG ✓' : 'BELUM SEIMBANG'}',
           ),
           const SizedBox(height: AppSpacing.lg),
-          const JudulSeksi(ikon: Icons.account_balance_wallet_outlined, teks: 'Aktiva (yang dimiliki usaha)'),
+          const JudulSeksi(ikon: Ikon.account_balance_wallet_outlined, teks: 'Aktiva (yang dimiliki usaha)'),
           const SizedBox(height: AppSpacing.sm),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
@@ -138,7 +139,7 @@ class _NeracaScreenState extends State<NeracaScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          const JudulSeksi(ikon: Icons.inventory_2_outlined, teks: 'Rincian Persediaan'),
+          const JudulSeksi(ikon: Ikon.inventory_2_outlined, teks: 'Rincian Persediaan'),
           const SizedBox(height: AppSpacing.sm),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
@@ -165,7 +166,7 @@ class _NeracaScreenState extends State<NeracaScreen> {
                   ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          const JudulSeksi(ikon: Icons.balance_outlined, teks: 'Kewajiban & Modal'),
+          const JudulSeksi(ikon: Ikon.balance_outlined, teks: 'Kewajiban & Modal'),
           const SizedBox(height: AppSpacing.sm),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
@@ -186,7 +187,7 @@ class _NeracaScreenState extends State<NeracaScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          const JudulSeksi(ikon: Icons.trending_up_outlined, teks: 'Rincian Laba Ditahan'),
+          const JudulSeksi(ikon: Ikon.trending_up_outlined, teks: 'Rincian Laba Ditahan'),
           const SizedBox(height: AppSpacing.sm),
           AppCard(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),

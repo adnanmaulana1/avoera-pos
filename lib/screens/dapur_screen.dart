@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 class DapurScreen extends StatefulWidget {
   const DapurScreen({super.key, required this.orders, required this.onAdvance});
@@ -95,7 +96,7 @@ class _Column extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final empty = EmptyState(message: 'Tidak ada pesanan.', icon: Icons.receipt_long_outlined);
+    final empty = EmptyState(message: 'Tidak ada pesanan.', icon: Ikon.receipt_long_outlined);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

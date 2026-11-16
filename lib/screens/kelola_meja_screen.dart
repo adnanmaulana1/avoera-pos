@@ -5,6 +5,7 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart';
+import '../ikon.dart';
 
 /// Kelola Meja: tambah, ubah (nomor & kapasitas), hapus meja.
 /// Perubahan langsung tampil di layar Meja dan tersimpan permanen.
@@ -29,7 +30,7 @@ class _KelolaMejaScreenState extends State<KelolaMejaScreen> {
         children: [
           Expanded(
             child: widget.tables.isEmpty
-                ? const EmptyState(message: 'Belum ada meja.\nKetuk Tambah Meja untuk membuat yang pertama.', icon: Icons.table_restaurant_outlined)
+                ? const EmptyState(message: 'Belum ada meja.\nKetuk Tambah Meja untuk membuat yang pertama.', icon: Ikon.table_restaurant_outlined)
                 : ListView.builder(
                     padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, paddingBawahAman(context)),
                     itemCount: widget.tables.length,
@@ -55,7 +56,7 @@ class _KelolaMejaScreenState extends State<KelolaMejaScreen> {
                             ),
                             StatusChip(label: t.status.label, color: t.status.color),
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              icon: const Icon(Ikon.edit_outlined, size: 20),
                               color: AppColors.accentDark,
                               onPressed: () => _openEditor(t),
                             ),
@@ -71,7 +72,7 @@ class _KelolaMejaScreenState extends State<KelolaMejaScreen> {
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: SizedBox(
                 width: double.infinity,
-                child: PrimaryButton(label: 'Tambah Meja', icon: Icons.add, onPressed: () => _openEditor(null)),
+                child: PrimaryButton(label: 'Tambah Meja', icon: Ikon.add, onPressed: () => _openEditor(null)),
               ),
             ),
           ),

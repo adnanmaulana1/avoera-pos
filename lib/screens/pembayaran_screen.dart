@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 /// Satu baris pesanan yang ditampilkan di halaman Pembayaran
 /// (nama, keterangan varian/catatan, jumlah, total baris).
@@ -159,9 +160,9 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              Expanded(child: _kartuMetode('Tunai', Icons.payments_outlined)),
+              Expanded(child: _kartuMetode('Tunai', Ikon.payments_outlined)),
               const SizedBox(width: AppSpacing.md),
-              Expanded(child: _kartuMetode('QRIS', Icons.qr_code_2)),
+              Expanded(child: _kartuMetode('QRIS', Ikon.qr_code_2)),
             ],
           ),
           if (_method == 'Tunai') ...[
@@ -203,7 +204,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: AppColors.warning, size: 20),
+                      Icon(Ikon.error_outline, color: AppColors.warning, size: 20),
                       const SizedBox(width: AppSpacing.sm),
                       Text('Masih kurang ${rupiah(widget.grandTotal - _paid!)}', style: AppText.body.copyWith(color: AppColors.warning, fontWeight: FontWeight.w700)),
                     ],
@@ -215,7 +216,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
                   decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.md)),
                   child: Row(
                     children: [
-                      Icon(Icons.savings_outlined, color: AppColors.accentDark, size: 20),
+                      Icon(Ikon.savings_outlined, color: AppColors.accentDark, size: 20),
                       const SizedBox(width: AppSpacing.sm),
                       Text('Kembalian: ${rupiah(change)}', style: AppText.body.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w800)),
                     ],
@@ -233,7 +234,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(AppRadius.md)),
-                    child: Icon(Icons.qr_code_2, size: 120, color: AppColors.ink),
+                    child: Icon(Ikon.qr_code_2, size: 120, color: AppColors.ink),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text('Tampilkan QR ini ke pelanggan', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),

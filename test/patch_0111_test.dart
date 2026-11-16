@@ -11,6 +11,7 @@ import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:avoera_pos/ikon.dart';
 
 TxRecord txContoh({
   required String id,
@@ -123,7 +124,7 @@ void main() {
     expect(find.text('Alpukat Kocok Coklat'), findsNothing);
 
     // Hapus pencarian lewat tombol silang di kolom cari.
-    await tester.tap(find.descendant(of: find.byType(TextField), matching: find.byIcon(Icons.close)));
+    await tester.tap(find.descendant(of: find.byType(TextField), matching: find.byIcon(Ikon.close)));
     await tester.pumpAndSettle();
     expect(find.text('Alpukat Kocok Coklat'), findsOneWidget);
     expect(find.text('Alpukat Kocok Original'), findsOneWidget);

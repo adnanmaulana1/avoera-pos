@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 /// Label kecil tebal di atas kolom isian formulir kelola.
 class FormLabel extends StatelessWidget {
@@ -79,7 +80,7 @@ class FormSheet extends StatelessWidget {
                     // PopScope GuardBack (dialog buang perubahan
                     // tidak muncul); maybePop menanyakannya dulu.
                     onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Ikon.close),
                     tooltip: 'Tutup',
                     visualDensity: VisualDensity.compact,
                   ),

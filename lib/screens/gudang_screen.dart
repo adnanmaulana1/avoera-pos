@@ -5,6 +5,7 @@ import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart' show FormLabel, FormSheet;
+import '../ikon.dart';
 
 /// Modul Gudang (v0.10.0, permintaan Adnan 2026-11-15): barang
 /// masuk, opname, dan riwayat mutasi stok (kartu stok). Semua
@@ -39,7 +40,7 @@ Future<Ingredient?> pilihBahan(BuildContext context, List<Ingredient> ingredient
                 const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: cari,
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari bahan…'),
+                  decoration: const InputDecoration(prefixIcon: Icon(Ikon.search), hintText: 'Cari bahan…'),
                   onChanged: (_) => setSheet(() {}),
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -57,7 +58,7 @@ Future<Ingredient?> pilihBahan(BuildContext context, List<Ingredient> ingredient
                           contentPadding: EdgeInsets.zero,
                           title: Text(ing.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
                           subtitle: Text('Sisa ${stockText(ing.stock)} ${ing.unit}', style: AppText.small.copyWith(color: AppColors.muted)),
-                          trailing: const Icon(Icons.chevron_right, size: 20),
+                          trailing: const Icon(Ikon.chevron_right, size: 20),
                           onTap: () => Navigator.of(ctx).pop(ing),
                         ),
                     ],
@@ -95,7 +96,7 @@ class _KolomBahan extends StatelessWidget {
                 style: terpilih == null ? AppText.body.copyWith(color: AppColors.muted) : AppText.body,
               ),
             ),
-            const Icon(Icons.expand_more, size: 20),
+            const Icon(Ikon.expand_more, size: 20),
           ],
         ),
       ),
@@ -264,10 +265,10 @@ Future<void> showOpnameSheet(
 
 /// Ikon + warna + label per jenis mutasi.
 (IconData, Color, String) _gayaMutasi(String jenis) => switch (jenis) {
-      'masuk' => (Icons.add_box_outlined, AppColors.accent, 'Barang Masuk'),
-      'jual' => (Icons.point_of_sale_outlined, AppColors.warning, 'Penjualan'),
-      'opname' => (Icons.fact_check_outlined, AppColors.ink, 'Opname'),
-      _ => (Icons.edit_outlined, AppColors.muted, 'Ubah Manual'),
+      'masuk' => (Ikon.add_box_outlined, AppColors.accent, 'Barang Masuk'),
+      'jual' => (Ikon.point_of_sale_outlined, AppColors.warning, 'Penjualan'),
+      'opname' => (Ikon.fact_check_outlined, AppColors.ink, 'Opname'),
+      _ => (Ikon.edit_outlined, AppColors.muted, 'Ubah Manual'),
     };
 
 String _waktuMutasi(DateTime w) {
@@ -328,13 +329,13 @@ class _RiwayatMutasiScreenState extends State<RiwayatMutasiScreen> {
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 onPressed: () => setState(() => _bahan = null),
-                icon: const Icon(Icons.clear, size: 16),
+                icon: const Icon(Ikon.clear, size: 16),
                 label: const Text('Tampilkan semua bahan'),
               ),
             ),
           const SizedBox(height: AppSpacing.md),
           if (list.isEmpty)
-            const EmptyState(message: 'Belum ada mutasi tercatat.\nBarang masuk, penjualan beresep, dan opname akan tampil di sini.', icon: Icons.history)
+            const EmptyState(message: 'Belum ada mutasi tercatat.\nBarang masuk, penjualan beresep, dan opname akan tampil di sini.', icon: Ikon.history)
           else
             for (final m in list)
               Builder(builder: (_) {

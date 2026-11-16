@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'data.dart';
 import 'theme.dart';
 import 'widgets.dart';
+import 'package:avoera_pos/ikon.dart';
 
 /// Ekspor laporan (permintaan Adnan 2026-11-14): setiap laporan &
 /// daftar penting bisa dibagikan sebagai ringkasan teks (langsung
@@ -232,7 +233,7 @@ class PratinjauLaporanScreen extends StatelessWidget {
                       width: double.infinity,
                       child: PrimaryButton(
                         label: 'Bagikan PDF',
-                        icon: Icons.share_outlined,
+                        icon: Ikon.share_outlined,
                         onPressed: () async {
                           final bytes = await _pdf();
                           await _bagikanBerkas('$_namaDasar.pdf', bytes);
@@ -245,7 +246,7 @@ class PratinjauLaporanScreen extends StatelessWidget {
                         Expanded(
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
-                            icon: const Icon(Icons.save_alt, size: 16),
+                            icon: const Icon(Ikon.save_alt, size: 16),
                             label: const Text('Simpan PDF', style: TextStyle(fontSize: 12), maxLines: 1),
                             onPressed: () async {
                               final bytes = await _pdf();
@@ -264,7 +265,7 @@ class PratinjauLaporanScreen extends StatelessWidget {
                         Expanded(
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
-                            icon: const Icon(Icons.table_chart_outlined, size: 16),
+                            icon: const Icon(Ikon.table_chart_outlined, size: 16),
                             label: const Text('CSV', style: TextStyle(fontSize: 12), maxLines: 1),
                             onPressed: () => _bagikanBerkas('$_namaDasar.csv', toCsv([kepala, ...baris]).codeUnits),
                           ),
@@ -273,7 +274,7 @@ class PratinjauLaporanScreen extends StatelessWidget {
                         Expanded(
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
-                            icon: const Icon(Icons.chat_outlined, size: 16),
+                            icon: const Icon(Ikon.chat_outlined, size: 16),
                             label: const Text('Teks WA', style: TextStyle(fontSize: 12), maxLines: 1),
                             onPressed: () => _bagikanTeks(ringkasan),
                           ),
@@ -298,7 +299,7 @@ class TombolEkspor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(icon: const Icon(Icons.share_outlined), tooltip: 'Bagikan / ekspor', onPressed: onPressed);
+    return IconButton(icon: const Icon(Ikon.share_outlined), tooltip: 'Bagikan / ekspor', onPressed: onPressed);
   }
 }
 

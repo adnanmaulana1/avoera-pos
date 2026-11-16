@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // AUDIT FUNGSI menyeluruh (diminta Adnan 2026-11-14): setiap tombol dan
 // alur utama disentuh seperti jari pengguna, bukan cuma dibaca kodenya.
@@ -215,7 +216,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Tambah · Rp26.000'), findsOneWidget, reason: 'Harga Besar = 22.000 + 4.000');
 
-    await tester.tap(inSheet(find.widgetWithIcon(IconButton, Icons.add)));
+    await tester.tap(inSheet(find.widgetWithIcon(IconButton, Ikon.add)));
     await tester.pumpAndSettle();
     expect(find.text('Tambah · Rp52.000'), findsOneWidget, reason: 'Jumlah 2 harus melipatgandakan harga tombol');
 
@@ -239,7 +240,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     final kartu = find.ancestor(of: find.text('Nasi Goreng Kampung'), matching: find.byType(Material)).first;
-    await tester.tap(find.descendant(of: kartu, matching: find.widgetWithIcon(IconButton, Icons.add)));
+    await tester.tap(find.descendant(of: kartu, matching: find.widgetWithIcon(IconButton, Ikon.add)));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Lihat Keranjang'));

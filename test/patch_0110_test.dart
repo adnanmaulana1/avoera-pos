@@ -21,6 +21,7 @@ import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:avoera_pos/ikon.dart';
 
 Ingredient _bahan({String id = 'b1', String nama = 'Alpukat', double stok = 50, int harga = 3000, double min = 5}) =>
     Ingredient(id: id, name: nama, stock: stok, unit: 'kg', minStock: min, maxStock: 100, costPerUnit: harga);
@@ -31,7 +32,7 @@ MenuItem _menu() => MenuItem(
       category: 'Minuman',
       price: 15000,
       color: const Color(0xFF33691E),
-      icon: Icons.local_drink,
+      icon: Ikon.local_drink,
       isDrink: true,
       recipe: [RecipeLine(ingredientId: 'b1', qty: 0.2)],
     );

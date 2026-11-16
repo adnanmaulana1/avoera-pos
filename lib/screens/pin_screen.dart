@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart' show FormLabel;
 import 'onboarding_screen.dart' show hashPin;
+import '../ikon.dart';
 
 /// Gerbang PIN kasir (permintaan Adnan 2026-11-14): selama PIN
 /// diatur, layar Kasir terkunci — kasir wajib memasukkan PIN dulu.
@@ -257,7 +258,7 @@ class _TombolPinState extends State<_TombolPin> {
         ),
         child: Center(
           child: widget.label == '<'
-              ? Icon(Icons.backspace_outlined, size: 26, color: AppColors.ink)
+              ? Icon(Ikon.backspace_outlined, size: 26, color: AppColors.ink)
               : Text(widget.label, style: AppText.number.copyWith(fontSize: 28, fontWeight: FontWeight.w500, color: AppColors.ink)),
         ),
       ),
@@ -352,7 +353,7 @@ class _PinSettingsScreenState extends State<PinSettingsScreen> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                    child: const Icon(Icons.pin_outlined, color: AppColors.accentDark, size: 22),
+                    child: const Icon(Ikon.pin_outlined, color: AppColors.accentDark, size: 22),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(

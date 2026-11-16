@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // AUDIT FUNGSI kelompok 2: Pengaturan + Kelola Data + popup info +
 // bukti permanen sesudah aplikasi "dimatikan" dan dibuka lagi.
@@ -111,7 +112,7 @@ void main() {
     expect(find.text('3 kursi'), findsOneWidget);
 
     Finder baris13() => find.ancestor(of: find.text('Meja 13'), matching: find.byType(AppCard));
-    Finder tombolUbah13() => find.descendant(of: baris13(), matching: find.byIcon(Icons.edit_outlined));
+    Finder tombolUbah13() => find.descendant(of: baris13(), matching: find.byIcon(Ikon.edit_outlined));
     // Pastikan tombol ubah terlihat PENUH — kalau cuma sepotong, ketukan
     // bisa mendarat di kartu/bar bawah dan membuka sheet yang salah.
     await tester.ensureVisible(tombolUbah13());
@@ -187,7 +188,7 @@ void main() {
 
     Finder barisMenu(String nama) => find.ancestor(of: find.text(nama), matching: find.byType(AppCard));
     await tester.scrollUntilVisible(find.text('Kopi Tubruk'), 100, scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.descendant(of: barisMenu('Kopi Tubruk'), matching: find.byIcon(Icons.edit_outlined)));
+    await tester.tap(find.descendant(of: barisMenu('Kopi Tubruk'), matching: find.byIcon(Ikon.edit_outlined)));
     await tester.pumpAndSettle();
     await tester.enterText(inSheet(find.byType(TextField)).at(1), '13500');
     await tester.ensureVisible(inSheet(find.text('Simpan Perubahan')));
@@ -200,7 +201,7 @@ void main() {
     expect(data.menus.firstWhere((m) => m.name == 'Kopi Tubruk').price, 13500, reason: 'Harga baru harus tersimpan');
 
     await tester.scrollUntilVisible(find.text('Paket Berdua'), 100, scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.descendant(of: barisMenu('Paket Berdua'), matching: find.byIcon(Icons.edit_outlined)));
+    await tester.tap(find.descendant(of: barisMenu('Paket Berdua'), matching: find.byIcon(Ikon.edit_outlined)));
     await tester.pumpAndSettle();
     await tester.ensureVisible(inSheet(find.text('Hapus')));
     await tester.pumpAndSettle();
@@ -228,7 +229,7 @@ void main() {
     await tester.tap(find.text('Info Aplikasi'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsOneWidget);
-    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.12.1')), findsOneWidget);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Versi 0.13.0')), findsOneWidget);
     await tester.tap(find.text('Tutup'));
     await tester.pumpAndSettle();
     expect(find.text('by Webtales Studio'), findsNothing, reason: 'Popup harus tertutup');

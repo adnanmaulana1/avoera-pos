@@ -5,6 +5,7 @@ import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'laporan_bersama.dart';
+import '../ikon.dart';
 
 /// Laporan Pembelian (update besar v0.11.0): semua barang
 /// masuk gudang per periode = pembelian bahan usaha. Nilai
@@ -68,7 +69,7 @@ class _PembelianScreenState extends State<PembelianScreen> {
               child: Text('Tidak ada barang masuk pada periode ini. Pembelian tercatat otomatis setiap "Barang Masuk" diisi di Stok Bahan.', textAlign: TextAlign.center, style: AppText.body.copyWith(color: AppColors.muted)),
             ),
           if (hasil.perBahan.isNotEmpty) ...[
-            const JudulSeksi(ikon: Icons.inventory_outlined, teks: 'Rekap per Bahan'),
+            const JudulSeksi(ikon: Ikon.inventory_outlined, teks: 'Rekap per Bahan'),
             const SizedBox(height: AppSpacing.sm),
             AppCard(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
@@ -86,7 +87,7 @@ class _PembelianScreenState extends State<PembelianScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            const JudulSeksi(ikon: Icons.receipt_long_outlined, teks: 'Daftar Pembelian'),
+            const JudulSeksi(ikon: Ikon.receipt_long_outlined, teks: 'Daftar Pembelian'),
             const SizedBox(height: AppSpacing.sm),
             AppCard(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),

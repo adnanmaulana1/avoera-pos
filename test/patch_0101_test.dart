@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:avoera_pos/ikon.dart';
 
 // Patch gabungan v0.10.1 (permintaan Adnan 2026-11-15):
 // 1) sheet bisa ditutup 3 cara (X, ketuk luar, tombol kembali),
@@ -60,7 +61,7 @@ void main() {
     await tester.tap(find.text('Opname'));
     await tester.pumpAndSettle();
     expect(inSheet(find.text('Opname Stok')), findsOneWidget);
-    await tester.tap(inSheet(find.byIcon(Icons.close)));
+    await tester.tap(inSheet(find.byIcon(Ikon.close)));
     await tester.pumpAndSettle();
     expect(find.byType(BottomSheet), findsNothing);
 
@@ -94,7 +95,7 @@ void main() {
     expect(inSheet(find.text('Ubah Bahan')), findsOneWidget);
     await tester.enterText(inSheet(find.byType(TextField)).first, 'Nama Diubah');
     await tester.pumpAndSettle();
-    await tester.tap(inSheet(find.byIcon(Icons.close)));
+    await tester.tap(inSheet(find.byIcon(Ikon.close)));
     await tester.pumpAndSettle();
     expect(find.text('Perubahan belum disimpan'), findsOneWidget);
     await tester.tap(find.text('Buang'));

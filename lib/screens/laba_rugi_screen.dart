@@ -6,6 +6,7 @@ import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart' show FormLabel, FormSheet, showConfirmDelete;
+import '../ikon.dart';
 
 const _bulan = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -190,7 +191,7 @@ class _LabaRugiScreenState extends State<LabaRugiScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline, size: 18, color: AppColors.warning),
+                  const Icon(Ikon.info_outline, size: 18, color: AppColors.warning),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
@@ -388,7 +389,7 @@ Future<void> showPengeluaranSheet(
                 decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(AppRadius.md)),
                 child: Row(
                   children: [
-                    Icon(Icons.calendar_month_outlined, size: 18, color: AppColors.muted),
+                    Icon(Ikon.calendar_month_outlined, size: 18, color: AppColors.muted),
                     const SizedBox(width: AppSpacing.sm),
                     Text(_tgl(tanggal), style: AppText.body.copyWith(color: AppColors.ink)),
                   ],

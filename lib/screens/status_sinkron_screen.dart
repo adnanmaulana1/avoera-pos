@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../sync.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../ikon.dart';
 
 /// Halaman Status Sinkronisasi (permintaan Adnan 2026-11-15):
 /// Pengaturan kini cukup menampilkan saklar Cloud Sync + pintu ke
@@ -121,14 +122,14 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
     final bisaSinkron = widget.siap && widget.cloudSyncEnabled && !sedang;
 
     final (ikonStatus, warnaStatus) = !widget.siap
-        ? (Icons.cloud_off_outlined, AppColors.muted)
+        ? (Ikon.cloud_off_outlined, AppColors.muted)
         : !widget.cloudSyncEnabled
-            ? (Icons.cloud_off_outlined, AppColors.muted)
+            ? (Ikon.cloud_off_outlined, AppColors.muted)
             : gagal.isNotEmpty
-                ? (Icons.cloud_off_outlined, AppColors.danger)
+                ? (Ikon.cloud_off_outlined, AppColors.danger)
                 : sedang
-                    ? (Icons.sync, AppColors.accentDark)
-                    : (Icons.cloud_done_outlined, AppColors.accent);
+                    ? (Ikon.sync, AppColors.accentDark)
+                    : (Ikon.cloud_done_outlined, AppColors.accent);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Status Sinkronisasi')),
@@ -186,7 +187,7 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
                       for (var i = 0; i < menunggu.length; i++) ...[
                         if (i > 0) const Divider(height: 1, indent: 68),
                         _BarisStatus(
-                          icon: Icons.schedule_outlined,
+                          icon: Ikon.schedule_outlined,
                           warna: AppColors.warning,
                           label: labelTabelSinkron(menunggu[i].key),
                           nilai: '${menunggu[i].value} perubahan',
@@ -210,7 +211,7 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
                       for (var i = 0; i < laporan.length; i++) ...[
                         if (i > 0) const Divider(height: 1, indent: 68),
                         _BarisStatus(
-                          icon: laporan[i].berhasil ? Icons.check_circle_outline : Icons.error_outline,
+                          icon: laporan[i].berhasil ? Ikon.check_circle_outline : Ikon.error_outline,
                           warna: laporan[i].berhasil ? AppColors.accent : AppColors.danger,
                           label: laporan[i].label,
                           nilai: laporan[i].berhasil ? '${laporan[i].jumlah} data' : 'Gagal',
@@ -223,7 +224,7 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
           const SizedBox(height: AppSpacing.xl),
           PrimaryButton(
             label: sedang ? 'Sedang Menyinkron…' : 'Sinkronkan Sekarang',
-            icon: Icons.sync,
+            icon: Ikon.sync,
             onPressed: bisaSinkron ? () => widget.onSinkron() : null,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -231,7 +232,7 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: bisaSinkron ? _perbaruiSemua : null,
-              icon: const Icon(Icons.cloud_sync_outlined, size: 19),
+              icon: const Icon(Ikon.cloud_sync_outlined, size: 19),
               label: const Text('Perbarui Semua Data'),
             ),
           ),
@@ -243,7 +244,7 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
             child: Column(
               children: [
                 _BarisAtur(
-                  icon: Icons.cloud_outlined,
+                  icon: Ikon.cloud_outlined,
                   label: 'URL Proyek Supabase',
                   nilai: widget.supabaseUrl.isEmpty ? 'Belum diisi' : 'Sudah diisi',
                   onTap: () => _editText(
@@ -255,7 +256,7 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
                 ),
                 const Divider(height: 1, indent: 68),
                 _BarisAtur(
-                  icon: Icons.key_outlined,
+                  icon: Ikon.key_outlined,
                   label: 'Kunci Anon Supabase',
                   nilai: widget.supabaseAnonKey.isEmpty ? 'Belum diisi' : 'Sudah diisi',
                   onTap: () => _editText(
@@ -267,7 +268,7 @@ class _StatusSinkronScreenState extends State<StatusSinkronScreen> {
                 ),
                 const Divider(height: 1, indent: 68),
                 _BarisAtur(
-                  icon: Icons.qr_code_2_outlined,
+                  icon: Ikon.qr_code_2_outlined,
                   label: 'Kode Usaha',
                   nilai: widget.businessKey.isEmpty ? 'Belum ada' : widget.businessKey,
                   onTap: () => _editText(
@@ -362,7 +363,7 @@ class _BarisAtur extends StatelessWidget {
             Expanded(child: Text(label, style: AppText.body.copyWith(fontWeight: FontWeight.w600))),
             Text(nilai, style: AppText.small.copyWith(color: AppColors.muted)),
             const SizedBox(width: AppSpacing.xs),
-            Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
+            Icon(Ikon.chevron_right, size: 20, color: AppColors.muted),
           ],
         ),
       ),

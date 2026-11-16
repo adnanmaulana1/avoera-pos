@@ -7,6 +7,7 @@ import '../media_store.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'kelola_widgets.dart' show FormLabel;
+import '../ikon.dart';
 
 /// Halaman Profil Usaha (permintaan Adnan 2026-11-14): data usaha
 /// diedit di halaman sendiri — Pengaturan cukup menampilkan kartu
@@ -59,18 +60,18 @@ class _ProfilUsahaScreenState extends State<ProfilUsahaScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
+              leading: const Icon(Ikon.photo_camera_outlined),
               title: const Text('Ambil dari Kamera'),
               onTap: () => Navigator.of(ctx).pop('kamera'),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
+              leading: const Icon(Ikon.photo_library_outlined),
               title: const Text('Pilih dari Galeri'),
               onTap: () => Navigator.of(ctx).pop('galeri'),
             ),
             if (_fotoPath != null)
               ListTile(
-                leading: Icon(Icons.delete_outline, color: AppColors.danger),
+                leading: Icon(Ikon.delete_outline, color: AppColors.danger),
                 title: Text('Hapus Foto', style: TextStyle(color: AppColors.danger)),
                 onTap: () => Navigator.of(ctx).pop('hapus'),
               ),
@@ -168,7 +169,7 @@ class _PemilihFoto extends StatelessWidget {
             width: 88,
             height: 88,
             decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.lg)),
-            child: Icon(Icons.storefront, color: AppColors.card, size: 40),
+            child: Icon(Ikon.storefront, color: AppColors.card, size: 40),
           )
         : ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -181,7 +182,7 @@ class _PemilihFoto extends StatelessWidget {
                 width: 88,
                 height: 88,
                 decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.lg)),
-                child: Icon(Icons.storefront, color: AppColors.card, size: 40),
+                child: Icon(Ikon.storefront, color: AppColors.card, size: 40),
               ),
             ),
           );
@@ -202,7 +203,7 @@ class _PemilihFoto extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.border),
               ),
-              child: const Icon(Icons.photo_camera_outlined, size: 16, color: AppColors.accentDark),
+              child: const Icon(Ikon.photo_camera_outlined, size: 16, color: AppColors.accentDark),
             ),
           ),
         ],
