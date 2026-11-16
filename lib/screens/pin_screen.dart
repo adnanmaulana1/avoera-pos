@@ -135,12 +135,22 @@ class _PinGateScreenState extends State<PinGateScreen> with SingleTickerProvider
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Expanded(flex: 2, child: SizedBox()),
+                    // Logo aplikasi (karya Avorea transparan yang
+                    // sama dengan splash) BESAR di tengah — dulu
+                    // ubin ikon toko 54px, diganti atas permintaan
+                    // Adnan 2026-11-16 ("harusnya logo aplikasi,
+                    // besarin skalanya"). Gagal muat → ubin lama.
                     Center(
-                      child: Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
-                        child: const Icon(Icons.storefront, color: Colors.white, size: 27),
+                      child: Image.asset(
+                        'assets/branding/avorea-segar.png',
+                        width: 205,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                          child: const Icon(Icons.storefront, color: Colors.white, size: 27),
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),

@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.10.20';
+const appVersion = '0.11.0';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 46;
+const appBuild = 47;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -622,6 +622,8 @@ class TxRecord {
     this.uuid = '',
     this.lines = const [],
     this.status = 'Lunas',
+    this.diskon = 0,
+    this.promoNama = '',
   });
   final String id;
 
@@ -653,6 +655,13 @@ class TxRecord {
   /// Adnan: baris biasa TANPA badge).
   final String status;
 
+  /// Diskon promo yang dipakai pada transaksi ini (Rp, 0 =
+  /// tanpa promo) + nama promonya. Fitur Promo & Diskon
+  /// v0.11.0. [total] SUDAH dikurangi diskon ini. Transaksi
+  /// lama tidak punya kolomnya → 0 / ''.
+  final int diskon;
+  final String promoNama;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'total': total,
@@ -666,6 +675,8 @@ class TxRecord {
         'uuid': uuid.isEmpty ? id : uuid,
         'lines': lines.map((l) => l.toJson()).toList(),
         'status': status,
+        'diskon': diskon,
+        'promoNama': promoNama,
       };
 
   factory TxRecord.fromJson(Map<String, dynamic> j) => TxRecord(
@@ -683,6 +694,8 @@ class TxRecord {
             .map((e) => TxLine.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList(),
         status: j['status'] as String? ?? 'Lunas',
+        diskon: (j['diskon'] as num?)?.toInt() ?? 0,
+        promoNama: j['promoNama'] as String? ?? '',
       );
 }
 
@@ -845,6 +858,515 @@ HasilLabaRugi hitungLabaRugi({
     barisTakDikenal: takDikenal,
     adaTxTanpaRincian: adaTxLama,
   );
+}
+
+// ---------- Hutang ----------
+
+/// Satu catatan hutang usaha (fitur Laporan Hutang v0.11.0,
+/// diminta Adnan sebagai bagian update besar): uang yang
+/// dipinjam usaha dari pemasok / orang / pihak lain, dicatat
+/// manual oleh pemilik. Tersimpan LOKAL di perangkat (belum
+/// ikut sinkron, seperti pengeluaran & mutasi) dan tercatat
+/// per cabang. Dipakai juga oleh Neraca (total belum lunas)
+/// dan Arus Kas (hutang baru = masuk, pelunasan = keluar).
+class Hutang {
+  Hutang({
+    String? id,
+    required this.tanggal,
+    required this.kreditur,
+    this.keterangan = '',
+    required this.jumlah,
+    this.jatuhTempo,
+    this.lunas = false,
+    this.tanggalLunas,
+    this.branchId = '',
+  }) : id = id ?? 'h${DateTime.now().microsecondsSinceEpoch}';
+
+  final String id;
+
+  /// Tanggal hutang dibuat / uang diterima.
+  final DateTime tanggal;
+
+  /// Nama pihak yang memberi hutang (pemasok, orang, bank).
+  final String kreditur;
+  final String keterangan;
+
+  /// Jumlah hutang (Rp, selalu positif).
+  final int jumlah;
+
+  /// Batas waktu bayar (boleh kosong).
+  final DateTime? jatuhTempo;
+  final bool lunas;
+
+  /// Tanggal dilunasi (terisi saat ditandai lunas).
+  final DateTime? tanggalLunas;
+  final String branchId;
+
+  /// Sudah lewat jatuh tempo & belum lunas pada [pada].
+  bool terlambat(DateTime pada) => !lunas && jatuhTempo != null && DateTime(pada.year, pada.month, pada.day).isAfter(DateTime(jatuhTempo!.year, jatuhTempo!.month, jatuhTempo!.day));
+
+  Hutang salin({DateTime? tanggal, String? kreditur, String? keterangan, int? jumlah, DateTime? jatuhTempo, bool adaJatuhTempo = true, bool? lunas, DateTime? tanggalLunas, bool adaTanggalLunas = true, String? branchId}) => Hutang(
+        id: id,
+        tanggal: tanggal ?? this.tanggal,
+        kreditur: kreditur ?? this.kreditur,
+        keterangan: keterangan ?? this.keterangan,
+        jumlah: jumlah ?? this.jumlah,
+        jatuhTempo: adaJatuhTempo ? (jatuhTempo ?? this.jatuhTempo) : null,
+        lunas: lunas ?? this.lunas,
+        tanggalLunas: adaTanggalLunas ? (tanggalLunas ?? this.tanggalLunas) : null,
+        branchId: branchId ?? this.branchId,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'tanggal': tanggal.toIso8601String(),
+        'kreditur': kreditur,
+        'keterangan': keterangan,
+        'jumlah': jumlah,
+        'jatuhTempo': jatuhTempo?.toIso8601String(),
+        'lunas': lunas,
+        'tanggalLunas': tanggalLunas?.toIso8601String(),
+        'branchId': branchId,
+      };
+
+  factory Hutang.fromJson(Map<String, dynamic> j) => Hutang(
+        id: j['id'] as String? ?? '',
+        tanggal: DateTime.tryParse(j['tanggal'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+        kreditur: j['kreditur'] as String? ?? '',
+        keterangan: j['keterangan'] as String? ?? '',
+        jumlah: (j['jumlah'] as num?)?.toInt() ?? 0,
+        jatuhTempo: DateTime.tryParse(j['jatuhTempo'] as String? ?? ''),
+        lunas: j['lunas'] as bool? ?? false,
+        tanggalLunas: DateTime.tryParse(j['tanggalLunas'] as String? ?? ''),
+        branchId: j['branchId'] as String? ?? '',
+      );
+}
+
+/// Total hutang BELUM lunas sampai akhir hari [tanggal]
+/// (aturan cabang sama seperti laporan lain: cabang kosong
+/// ikut di semua cabang).
+int totalHutangBelumLunas(List<Hutang> hutang, {required String branchId, required DateTime tanggal}) {
+  final batas = DateTime(tanggal.year, tanggal.month, tanggal.day).add(const Duration(days: 1));
+  var total = 0;
+  for (final h in hutang) {
+    if (h.lunas) continue;
+    if (h.branchId.isNotEmpty && h.branchId != branchId) continue;
+    if (!h.tanggal.isBefore(batas)) continue;
+    total += h.jumlah;
+  }
+  return total;
+}
+
+// ---------- Promo & Diskon ----------
+
+/// Satu promo yang bisa dipakai di kasir (fitur Promo &
+/// Diskon v0.11.0). [jenis] 'persen' (nilai = persen dari
+/// subtotal) atau 'nominal' (nilai = Rp potongan langsung).
+/// Tersimpan LOKAL di perangkat (belum ikut sinkron).
+class Promo {
+  Promo({
+    String? id,
+    required this.nama,
+    required this.jenis,
+    required this.nilai,
+    this.minBelanja = 0,
+    this.aktif = true,
+  }) : id = id ?? 'pr${DateTime.now().microsecondsSinceEpoch}';
+
+  final String id;
+  final String nama;
+  final String jenis; // 'persen' | 'nominal'
+  final int nilai;
+  final int minBelanja;
+  final bool aktif;
+
+  Promo salin({String? nama, String? jenis, int? nilai, int? minBelanja, bool? aktif}) => Promo(
+        id: id,
+        nama: nama ?? this.nama,
+        jenis: jenis ?? this.jenis,
+        nilai: nilai ?? this.nilai,
+        minBelanja: minBelanja ?? this.minBelanja,
+        aktif: aktif ?? this.aktif,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'nama': nama,
+        'jenis': jenis,
+        'nilai': nilai,
+        'minBelanja': minBelanja,
+        'aktif': aktif,
+      };
+
+  factory Promo.fromJson(Map<String, dynamic> j) => Promo(
+        id: j['id'] as String? ?? '',
+        nama: j['nama'] as String? ?? '',
+        jenis: j['jenis'] as String? ?? 'persen',
+        nilai: (j['nilai'] as num?)?.toInt() ?? 0,
+        minBelanja: (j['minBelanja'] as num?)?.toInt() ?? 0,
+        aktif: j['aktif'] as bool? ?? true,
+      );
+}
+
+/// Besar diskon (Rp) untuk [promo] pada [subtotal]. 0 bila
+/// promo kosong / nonaktif / subtotal di bawah syarat minimal
+/// belanja. Hasil TIDAK PERNAH melebihi subtotal dan tidak
+/// pernah negatif — satu-satunya sumber kebenaran hitungan
+/// diskon, dipakai tampilan kasir DAN pencatatan transaksi
+/// supaya keduanya tidak pernah berbeda.
+int hitungDiskonPromo(Promo? promo, int subtotal) {
+  if (promo == null || !promo.aktif || subtotal <= 0) return 0;
+  if (subtotal < promo.minBelanja) return 0;
+  final mentah = promo.jenis == 'persen' ? (subtotal * promo.nilai.clamp(0, 100) / 100).round() : promo.nilai;
+  if (mentah < 0) return 0;
+  return mentah > subtotal ? subtotal : mentah;
+}
+
+// ---------- Persediaan ----------
+
+/// Nilai persediaan satu bahan: stok kini × harga pokok.
+class RincianPersediaan {
+  RincianPersediaan({required this.bahan, required this.stok, required this.satuan, required this.hargaPokok, required this.nilai});
+  final Ingredient bahan;
+  final double stok;
+  final String satuan;
+  final int hargaPokok;
+  final int nilai;
+}
+
+/// Nilai persediaan semua bahan dari stok & harga pokok
+/// TERKINI. Mengembalikan (total, rincian terurut nilai
+/// terbesar dulu). Dipakai Laporan Persediaan & Neraca.
+(int, List<RincianPersediaan>) nilaiPersediaan(List<Ingredient> ingredients) {
+  final rincian = <RincianPersediaan>[];
+  var total = 0;
+  for (final ing in ingredients) {
+    final nilai = ing.stock <= 0 ? 0 : (ing.stock * ing.costPerUnit).round();
+    total += nilai;
+    rincian.add(RincianPersediaan(bahan: ing, stok: ing.stock, satuan: ing.unit, hargaPokok: ing.costPerUnit, nilai: nilai));
+  }
+  rincian.sort((a, b) => b.nilai.compareTo(a.nilai));
+  return (total, rincian);
+}
+
+// ---------- Neraca ----------
+
+/// Hasil hitung Neraca (laporan posisi keuangan) per akhir
+/// hari [tanggal]. Semua angka diturunkan dari catatan yang
+/// ADA di aplikasi — kas adalah PERKIRAAN (penjualan tunai
+/// lunas tercatat dikurangi pengeluaran tercatat; pembelian
+/// bahan & pergerakan di luar aplikasi tidak tercatat).
+/// Modal pemilik adalah angka PENYEIMBANG (aktiva −
+/// kewajiban − laba ditahan) supaya neraca selalu seimbang;
+/// layar menuliskannya apa adanya.
+class HasilNeraca {
+  HasilNeraca({
+    required this.kasTunai,
+    required this.saldoQris,
+    required this.nilaiPersediaan,
+    required this.rincianPersediaan,
+    required this.piutang,
+    required this.jumlahPiutang,
+    required this.utang,
+    required this.jumlahUtang,
+    required this.labaDitahan,
+    required this.pendapatanKumulatif,
+    required this.hppKumulatif,
+    required this.biayaKumulatif,
+  });
+
+  final int kasTunai;
+  final int saldoQris;
+  final int nilaiPersediaan;
+  final List<RincianPersediaan> rincianPersediaan;
+  final int piutang;
+  final int jumlahPiutang;
+  final int utang;
+  final int jumlahUtang;
+  final int labaDitahan;
+  final int pendapatanKumulatif;
+  final int hppKumulatif;
+  final int biayaKumulatif;
+
+  int get totalAktiva => kasTunai + saldoQris + nilaiPersediaan + piutang;
+  int get totalKewajiban => utang;
+
+  /// Angka penyeimbang: modal awal pemilik yang tersirat
+  /// dari catatan (aktiva − kewajiban − laba ditahan).
+  int get modalPenyeimbang => totalAktiva - totalKewajiban - labaDitahan;
+  int get totalModal => modalPenyeimbang + labaDitahan;
+  int get totalPasiva => totalKewajiban + totalModal;
+  bool get seimbang => totalAktiva == totalPasiva;
+}
+
+HasilNeraca hitungNeraca({
+  required List<TxRecord> transactions,
+  required List<MenuItem> menus,
+  required List<Ingredient> ingredients,
+  required List<Pengeluaran> expenses,
+  required List<Hutang> hutang,
+  required String branchId,
+  required DateTime tanggal,
+}) {
+  final batas = DateTime(tanggal.year, tanggal.month, tanggal.day).add(const Duration(days: 1));
+  bool sampaikah(DateTime t) => t.isBefore(batas);
+  bool diCabang(String b) => b.isEmpty || b == branchId;
+
+  var kasMasuk = 0;
+  var qris = 0;
+  var piutang = 0;
+  var jumlahPiutang = 0;
+  for (final t in transactions) {
+    if (!diCabang(t.branchId) || !sampaikah(t.at)) continue;
+    if (t.status == 'Lunas') {
+      if (t.method == 'QRIS') {
+        qris += t.total;
+      } else {
+        kasMasuk += t.total;
+      }
+    } else if (t.status == 'Belum bayar') {
+      piutang += t.total;
+      jumlahPiutang++;
+    }
+  }
+  var biaya = 0;
+  for (final e in expenses) {
+    if (diCabang(e.branchId) && sampaikah(e.tanggal)) biaya += e.jumlah;
+  }
+  var utangTotal = 0;
+  var jumlahUtang = 0;
+  for (final h in hutang) {
+    if (h.lunas || !diCabang(h.branchId) || !sampaikah(h.tanggal)) continue;
+    utangTotal += h.jumlah;
+    jumlahUtang++;
+  }
+  final (totalStok, rincianStok) = nilaiPersediaan(ingredients);
+  final laba = hitungLabaRugi(
+    transactions: transactions,
+    menus: menus,
+    ingredients: ingredients,
+    expenses: expenses,
+    branchId: branchId,
+    dari: DateTime(2000),
+    sampai: tanggal,
+  );
+  return HasilNeraca(
+    kasTunai: kasMasuk - biaya,
+    saldoQris: qris,
+    nilaiPersediaan: totalStok,
+    rincianPersediaan: rincianStok,
+    piutang: piutang,
+    jumlahPiutang: jumlahPiutang,
+    utang: utangTotal,
+    jumlahUtang: jumlahUtang,
+    labaDitahan: laba.labaBersih,
+    pendapatanKumulatif: laba.pendapatan,
+    hppKumulatif: laba.hpp,
+    biayaKumulatif: laba.totalBiaya,
+  );
+}
+
+// ---------- Arus Kas ----------
+
+/// Hasil hitung Laporan Arus Kas satu periode & cabang.
+/// Masuk: penjualan tunai + QRIS lunas + hutang baru. Keluar:
+/// pembelian bahan (mutasi barang masuk, dinilai harga pokok
+/// kini), pengeluaran operasional, pelunasan hutang. Mutasi
+/// gudang tidak tercatat per cabang → pembelian bahan selalu
+/// angka seluruh usaha (dijelaskan di layar). [saldoAwal]
+/// dihitung dengan aturan yang sama untuk semua catatan
+/// SEBELUM periode mulai, jadi saldo akhir = saldo awal +
+/// arus bersih konsisten.
+class HasilArusKas {
+  HasilArusKas({
+    required this.masukTunai,
+    required this.masukQris,
+    required this.hutangBaru,
+    required this.pembelianBahan,
+    required this.biayaOperasional,
+    required this.rincianBiaya,
+    required this.bayarHutang,
+    required this.saldoAwal,
+  });
+
+  final int masukTunai;
+  final int masukQris;
+  final int hutangBaru;
+  final int pembelianBahan;
+  final int biayaOperasional;
+  final List<(String, int)> rincianBiaya;
+  final int bayarHutang;
+  final int saldoAwal;
+
+  int get totalMasuk => masukTunai + masukQris + hutangBaru;
+  int get totalKeluar => pembelianBahan + biayaOperasional + bayarHutang;
+  int get arusBersih => totalMasuk - totalKeluar;
+  int get saldoAkhir => saldoAwal + arusBersih;
+}
+
+HasilArusKas hitungArusKas({
+  required List<TxRecord> transactions,
+  required List<Pengeluaran> expenses,
+  required List<MutasiStok> mutasi,
+  required List<Ingredient> ingredients,
+  required List<Hutang> hutang,
+  required String branchId,
+  required DateTime dari,
+  required DateTime sampai,
+}) {
+  final awal = DateTime(dari.year, dari.month, dari.day);
+  final akhir = DateTime(sampai.year, sampai.month, sampai.day).add(const Duration(days: 1));
+  bool diCabang(String b) => b.isEmpty || b == branchId;
+  final hargaPokok = <String, int>{for (final i in ingredients) i.id: i.costPerUnit};
+  final hargaPerNama = <String, int>{for (final i in ingredients) i.name: i.costPerUnit};
+  int nilaiMasuk(MutasiStok m) {
+    final harga = hargaPokok[m.ingredientId] ?? hargaPerNama[m.namaBahan] ?? 0;
+    return (m.jumlah * harga).round();
+  }
+
+  /// (tunai, qris, hutangBaru, pembelian, biaya, bayarHutang)
+  /// untuk catatan yang tanggalnya lolos [uji].
+  (int, int, int, int, int, int) jumlahkan(bool Function(DateTime) uji) {
+    var tunai = 0, qris = 0, hBaru = 0, beli = 0, biaya = 0, bayar = 0;
+    for (final t in transactions) {
+      if (t.status != 'Lunas' || !diCabang(t.branchId) || !uji(t.at)) continue;
+      if (t.method == 'QRIS') {
+        qris += t.total;
+      } else {
+        tunai += t.total;
+      }
+    }
+    for (final m in mutasi) {
+      if (m.jenis == 'masuk' && uji(m.waktu)) beli += nilaiMasuk(m);
+    }
+    for (final e in expenses) {
+      if (diCabang(e.branchId) && uji(e.tanggal)) biaya += e.jumlah;
+    }
+    for (final h in hutang) {
+      if (!diCabang(h.branchId)) continue;
+      if (uji(h.tanggal)) hBaru += h.jumlah;
+      if (h.lunas && h.tanggalLunas != null && uji(h.tanggalLunas!)) bayar += h.jumlah;
+    }
+    return (tunai, qris, hBaru, beli, biaya, bayar);
+  }
+
+  final (tunai, qris, hBaru, beli, biaya, bayar) = jumlahkan((t) => !t.isBefore(awal) && t.isBefore(akhir));
+  final (aTunai, aQris, aHBaru, aBeli, aBiaya, aBayar) = jumlahkan((t) => t.isBefore(awal));
+  final perKategori = <String, int>{};
+  for (final e in expenses) {
+    if (diCabang(e.branchId) && !e.tanggal.isBefore(awal) && e.tanggal.isBefore(akhir)) {
+      perKategori[e.kategori] = (perKategori[e.kategori] ?? 0) + e.jumlah;
+    }
+  }
+  final rincian = perKategori.entries.map((e) => (e.key, e.value)).toList()..sort((a, b) => b.$2.compareTo(a.$2));
+  return HasilArusKas(
+    masukTunai: tunai,
+    masukQris: qris,
+    hutangBaru: hBaru,
+    pembelianBahan: beli,
+    biayaOperasional: biaya,
+    rincianBiaya: rincian,
+    bayarHutang: bayar,
+    saldoAwal: (aTunai + aQris + aHBaru) - (aBeli + aBiaya + aBayar),
+  );
+}
+
+// ---------- Arus Stok & Pembelian ----------
+
+/// Rekap pergerakan stok satu bahan dalam periode (dari
+/// riwayat mutasi gudang). [terpakai] = jumlah terjual
+/// (mutasi 'jual' tersimpan negatif → dibalik positif).
+class RekapArusStok {
+  RekapArusStok({required this.nama, required this.satuan, required this.masuk, required this.terpakai, required this.opname, required this.edit, required this.peristiwa});
+  final String nama;
+  final String satuan;
+  final double masuk;
+  final double terpakai;
+  final double opname;
+  final double edit;
+  final int peristiwa;
+  double get perubahanBersih => masuk - terpakai + opname + edit;
+}
+
+/// Ringkas mutasi stok per bahan untuk periode [dari]–[sampai]
+/// (inklusif per hari). Terurut nama bahan.
+List<RekapArusStok> ringkasArusStok(List<MutasiStok> mutasi, {required DateTime dari, required DateTime sampai}) {
+  final awal = DateTime(dari.year, dari.month, dari.day);
+  final akhir = DateTime(sampai.year, sampai.month, sampai.day).add(const Duration(days: 1));
+  final per = <String, ({String nama, String satuan, double masuk, double jual, double opname, double edit, int peristiwa})>{};
+  for (final m in mutasi) {
+    if (m.waktu.isBefore(awal) || !m.waktu.isBefore(akhir)) continue;
+    final lama = per[m.ingredientId];
+    var masuk = lama?.masuk ?? 0.0;
+    var jual = lama?.jual ?? 0.0;
+    var opname = lama?.opname ?? 0.0;
+    var edit = lama?.edit ?? 0.0;
+    switch (m.jenis) {
+      case 'masuk':
+        masuk += m.jumlah;
+      case 'jual':
+        jual += m.jumlah;
+      case 'opname':
+        opname += m.jumlah;
+      default:
+        edit += m.jumlah;
+    }
+    per[m.ingredientId] = (
+      nama: m.namaBahan,
+      satuan: m.satuan,
+      masuk: masuk,
+      jual: jual,
+      opname: opname,
+      edit: edit,
+      peristiwa: (lama?.peristiwa ?? 0) + 1,
+    );
+  }
+  final hasil = per.values
+      .map((r) => RekapArusStok(nama: r.nama, satuan: r.satuan, masuk: r.masuk, terpakai: -r.jual, opname: r.opname, edit: r.edit, peristiwa: r.peristiwa))
+      .toList()
+    ..sort((a, b) => a.nama.compareTo(b.nama));
+  return hasil;
+}
+
+/// Hasil hitung Laporan Pembelian: semua mutasi barang masuk
+/// dalam periode, dinilai harga pokok bahan SAAT INI (mutasi
+/// tidak menyimpan harga saat kejadian — dijelaskan di
+/// layar). [entri] terurut terbaru dulu.
+class HasilPembelian {
+  HasilPembelian({required this.totalNilai, required this.totalQty, required this.entri, required this.perBahan});
+  final int totalNilai;
+  final double totalQty;
+  final List<(MutasiStok, int)> entri; // (mutasi, nilai Rp)
+  final List<(String, String, double, int)> perBahan; // (nama, satuan, qty, nilai)
+}
+
+HasilPembelian ringkasPembelian(List<MutasiStok> mutasi, List<Ingredient> ingredients, {required DateTime dari, required DateTime sampai}) {
+  final awal = DateTime(dari.year, dari.month, dari.day);
+  final akhir = DateTime(sampai.year, sampai.month, sampai.day).add(const Duration(days: 1));
+  final hargaPokok = <String, int>{for (final i in ingredients) i.id: i.costPerUnit};
+  final hargaPerNama = <String, int>{for (final i in ingredients) i.name: i.costPerUnit};
+  final entri = <(MutasiStok, int)>[];
+  final per = <String, ({String nama, String satuan, double qty, int nilai})>{};
+  var totalNilai = 0;
+  var totalQty = 0.0;
+  final masuk = mutasi.where((m) => m.jenis == 'masuk' && !m.waktu.isBefore(awal) && m.waktu.isBefore(akhir)).toList()
+    ..sort((a, b) => b.waktu.compareTo(a.waktu));
+  for (final m in masuk) {
+    final harga = hargaPokok[m.ingredientId] ?? hargaPerNama[m.namaBahan] ?? 0;
+    final nilai = (m.jumlah * harga).round();
+    entri.add((m, nilai));
+    totalNilai += nilai;
+    totalQty += m.jumlah;
+    final lama = per[m.ingredientId];
+    per[m.ingredientId] = (
+      nama: m.namaBahan,
+      satuan: m.satuan,
+      qty: (lama?.qty ?? 0) + m.jumlah,
+      nilai: (lama?.nilai ?? 0) + nilai,
+    );
+  }
+  final perBahan = per.values.map((r) => (r.nama, r.satuan, r.qty, r.nilai)).toList()..sort((a, b) => b.$4.compareTo(a.$4));
+  return HasilPembelian(totalNilai: totalNilai, totalQty: totalQty, entri: entri, perBahan: perBahan);
 }
 
 // ---------- Cabang ----------

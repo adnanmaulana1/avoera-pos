@@ -5,10 +5,9 @@ import '../theme.dart';
 import '../widgets.dart';
 
 /// Hub Laporan (v0.7.0): ringkasan hari ini dari ANGKA ASLI kasir
-/// (dulu layar ini data contoh) + daftar semua laporan. Laporan
-/// yang datanya sudah ada bisa dibuka; sisanya ditandai 'Segera'
-/// dengan keterangan data apa yang dibutuhkan — jujur, tidak
-/// dipalsukan.
+/// (dulu layar ini data contoh) + daftar semua laporan. Sejak
+/// update besar v0.11.0 SEMUA laporan di daftar ini hidup —
+/// tidak ada lagi baris 'Segera'.
 class LaporanScreen extends StatelessWidget {
   const LaporanScreen({
     super.key,
@@ -20,6 +19,13 @@ class LaporanScreen extends StatelessWidget {
     required this.onOpenPajak,
     required this.onOpenPiutang,
     this.onOpenLabaRugi,
+    this.onOpenNeraca,
+    this.onOpenArusKas,
+    this.onOpenArusStok,
+    this.onOpenPersediaan,
+    this.onOpenPembelian,
+    this.onOpenHutang,
+    this.onOpenPromo,
   });
 
   final List<TxRecord> transactions;
@@ -32,6 +38,13 @@ class LaporanScreen extends StatelessWidget {
 
   /// Opsional supaya konstruksi lama (tes) tetap sah.
   final VoidCallback? onOpenLabaRugi;
+  final VoidCallback? onOpenNeraca;
+  final VoidCallback? onOpenArusKas;
+  final VoidCallback? onOpenArusStok;
+  final VoidCallback? onOpenPersediaan;
+  final VoidCallback? onOpenPembelian;
+  final VoidCallback? onOpenHutang;
+  final VoidCallback? onOpenPromo;
 
   @override
   Widget build(BuildContext context) {
@@ -48,13 +61,13 @@ class LaporanScreen extends StatelessWidget {
       (Icons.account_balance_outlined, 'Laporan Pajak', 'Pajak & biaya layanan yang terkumpul per bulan.', onOpenPajak),
       (Icons.person_outline, 'Laporan Piutang', 'Tagihan meja yang belum dibayar.', onOpenPiutang),
       (Icons.trending_up_outlined, 'Laporan Laba Rugi', 'Pendapatan, HPP, biaya operasional & laba bersih per periode.', onOpenLabaRugi),
-      (Icons.scale_outlined, 'Neraca', 'Butuh data aset, hutang & modal — tahap berikutnya.', null),
-      (Icons.payments_outlined, 'Arus Kas', 'Butuh catatan uang masuk/keluar di luar kasir — tahap berikutnya.', null),
-      (Icons.swap_horiz_outlined, 'Arus Stok', 'Butuh catatan keluar-masuk bahan — tahap berikutnya.', null),
-      (Icons.warehouse_outlined, 'Persediaan Barang', 'Butuh harga beli bahan — tahap berikutnya.', null),
-      (Icons.shopping_bag_outlined, 'Laporan Pembelian', 'Butuh modul pembelian ke pemasok — tahap berikutnya.', null),
-      (Icons.store_outlined, 'Laporan Hutang', 'Butuh modul pembelian belum lunas — tahap berikutnya.', null),
-      (Icons.percent_outlined, 'Promo & Diskon', 'Fitur promo di kasir — tahap berikutnya.', null),
+      (Icons.scale_outlined, 'Neraca', 'Posisi aset, utang & modal usaha pada tanggal tertentu.', onOpenNeraca),
+      (Icons.payments_outlined, 'Arus Kas', 'Uang masuk & keluar per periode + saldo awal-akhir.', onOpenArusKas),
+      (Icons.swap_horiz_outlined, 'Arus Stok', 'Rekap masuk, terpakai & penyesuaian bahan per periode.', onOpenArusStok),
+      (Icons.warehouse_outlined, 'Persediaan Barang', 'Nilai stok semua bahan + status kritis & habis.', onOpenPersediaan),
+      (Icons.shopping_bag_outlined, 'Laporan Pembelian', 'Semua barang masuk gudang per periode + nilainya.', onOpenPembelian),
+      (Icons.store_outlined, 'Laporan Hutang', 'Catatan hutang usaha: tambah, lunasi, pantau jatuh tempo.', onOpenHutang),
+      (Icons.percent_outlined, 'Promo & Diskon', 'Kelola promo kasir + total diskon yang sudah diberikan.', onOpenPromo),
       (Icons.show_chart_outlined, 'Margin Tipis', 'Menu dengan untung paling tipis — butuh resep/HPP per menu.', null),
       (Icons.groups_outlined, 'Laporan Pengunjung', 'Butuh catatan jumlah tamu per transaksi.', null),
     ];

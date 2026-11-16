@@ -198,10 +198,15 @@ ThemeData buildTheme() {
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      // Sewarna latar aplikasi (bukan putih kartu): bar bawah +
-      // area navbar Android menyatu tanpa pita putih terpisah
-      // (keluhan Adnan 2026-11-15).
-      backgroundColor: AppColors.bg,
+      // Permukaan KARTU (putih di mode terang): bar bawah jadi
+      // satu blok tegas sampai tepi bawah layar. Riwayat: 2026-
+      // 11-15 Adnan minta bar sewarna latar (tanpa pita putih),
+      // tapi di HP-nya yang memakai tombol navigasi 3 tombol,
+      // area tombol Android ±48dp ikut sewarna latar → halaman
+      // terasa "ketutupan navbar" dan berjarak (keluhan Adnan
+      // 2026-11-16). Warna kartu membuat seluruh blok bawah
+      // terbaca sebagai bar, bukan ruang kosong.
+      backgroundColor: AppColors.card,
       indicatorColor: AppColors.accentSoft,
       iconTheme: WidgetStateProperty.resolveWith(
         (s) => IconThemeData(

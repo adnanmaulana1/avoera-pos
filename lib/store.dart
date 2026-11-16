@@ -6,7 +6,7 @@ import 'data.dart';
 
 /// Data aplikasi yang tersimpan permanen di perangkat.
 class AppData {
-  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings, this.transactions = const [], this.notifications = const [], this.mutasi = const [], this.expenses = const []});
+  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings, this.transactions = const [], this.notifications = const [], this.mutasi = const [], this.expenses = const [], this.hutang = const [], this.promos = const []});
   final List<MenuItem> menus;
   final List<CafeTable> tables;
   final List<Ingredient> ingredients;
@@ -15,6 +15,8 @@ class AppData {
   final List<AppNotification> notifications;
   final List<MutasiStok> mutasi;
   final List<Pengeluaran> expenses;
+  final List<Hutang> hutang;
+  final List<Promo> promos;
 }
 
 /// Tempat simpan lokal (SharedPreferences + JSON).
@@ -31,6 +33,8 @@ class LocalStore {
   static const _kNotif = 'avoera.notifications.v1';
   static const _kMutasi = 'avoera.mutasi.v1';
   static const _kExpenses = 'avoera.expenses.v1';
+  static const _kHutang = 'avoera.hutang.v1';
+  static const _kPromos = 'avoera.promos.v1';
   static const _kSyncMeta = 'avoera.syncmeta.v1';
   static const _kUpdateMeta = 'avoera.updatemeta.v1';
 
@@ -46,6 +50,8 @@ class LocalStore {
         notifications: _decodeList(prefs.getString(_kNotif), AppNotification.fromJson) ?? <AppNotification>[],
         mutasi: _decodeList(prefs.getString(_kMutasi), MutasiStok.fromJson) ?? <MutasiStok>[],
         expenses: _decodeList(prefs.getString(_kExpenses), Pengeluaran.fromJson) ?? <Pengeluaran>[],
+        hutang: _decodeList(prefs.getString(_kHutang), Hutang.fromJson) ?? <Hutang>[],
+        promos: _decodeList(prefs.getString(_kPromos), Promo.fromJson) ?? <Promo>[],
       );
     } catch (_) {
       // Penyimpanan tidak tersedia (mis. lingkungan tes) → data contoh.
@@ -89,6 +95,8 @@ class LocalStore {
   static Future<void> saveNotifications(List<AppNotification> n) => _save(_kNotif, n.map((e) => e.toJson()).toList());
   static Future<void> saveMutasi(List<MutasiStok> m) => _save(_kMutasi, m.map((e) => e.toJson()).toList());
   static Future<void> saveExpenses(List<Pengeluaran> e) => _save(_kExpenses, e.map((x) => x.toJson()).toList());
+  static Future<void> saveHutang(List<Hutang> h) => _save(_kHutang, h.map((x) => x.toJson()).toList());
+  static Future<void> savePromos(List<Promo> p) => _save(_kPromos, p.map((x) => x.toJson()).toList());
 
   /// Meta sinkron untuk halaman Status Sinkronisasi: jumlah
   /// perubahan yang menunggu per tabel + laporan sinkron terakhir.

@@ -149,6 +149,7 @@ class DetailTransaksiScreen extends StatelessWidget {
                 _barisUang('Subtotal', tx.subtotal),
                 _barisUang('Biaya layanan', tx.service),
                 _barisUang('Pajak', tx.tax),
+                if (tx.diskon > 0) _barisUang('Diskon${tx.promoNama.isNotEmpty ? ' · ${tx.promoNama}' : ' promo'}', -tx.diskon),
                 const Divider(height: 17),
                 _barisUang('Total', tx.total, tebal: true),
               ],

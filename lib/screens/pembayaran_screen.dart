@@ -35,6 +35,8 @@ class PembayaranScreen extends StatefulWidget {
     required this.servicePercent,
     required this.taxPercent,
     this.items = const [],
+    this.diskon = 0,
+    this.promoNama = '',
   });
 
   final int subtotal;
@@ -44,6 +46,12 @@ class PembayaranScreen extends StatefulWidget {
   final int servicePercent;
   final int taxPercent;
   final List<BarisBayar> items;
+
+  /// Diskon promo yang sudah dikurangkan dari [grandTotal]
+  /// (v0.11.0; 0 = tanpa promo) + nama promonya untuk baris
+  /// rincian di kartu total.
+  final int diskon;
+  final String promoNama;
 
   @override
   State<PembayaranScreen> createState() => _PembayaranScreenState();
@@ -104,6 +112,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
                 _totalRow('Subtotal', widget.subtotal),
                 _totalRow('Biaya layanan (${widget.servicePercent}%)', widget.service),
                 _totalRow('Pajak (${widget.taxPercent}%)', widget.tax),
+                if (widget.diskon > 0) _totalRow('Diskon${widget.promoNama.isNotEmpty ? ' · ${widget.promoNama}' : ''}', -widget.diskon),
               ],
             ),
           ),

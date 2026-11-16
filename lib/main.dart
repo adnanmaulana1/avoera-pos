@@ -35,6 +35,13 @@ import 'screens/splash_screen.dart';
 import 'screens/status_sinkron_screen.dart';
 import 'screens/laba_rugi_screen.dart';
 import 'screens/gudang_screen.dart';
+import 'screens/neraca_screen.dart';
+import 'screens/arus_kas_screen.dart';
+import 'screens/arus_stok_screen.dart';
+import 'screens/persediaan_screen.dart';
+import 'screens/pembelian_screen.dart';
+import 'screens/hutang_screen.dart';
+import 'screens/promo_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -266,6 +273,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   // ---------- Pengeluaran operasional (Laba Rugi) ----------
   List<Pengeluaran> _expenses = [];
+
+  // ---------- Hutang & Promo (update besar v0.11.0) ----------
+  List<Hutang> _hutang = [];
+  List<Promo> _promos = [];
   final Map<String, double> _stokDikenal = {};
   int get _belumDibaca => _notifications.where((n) => !n.dibaca).length;
 
@@ -338,6 +349,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _notifications = data.notifications;
       _mutasi = data.mutasi;
       _expenses = data.expenses;
+      _hutang = data.hutang;
+      _promos = data.promos;
       _stokDikenal
         ..clear()
         ..addAll({for (final i in _ingredients) i.id: i.stock});
@@ -911,6 +924,105 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     LocalStore.saveExpenses(_expenses);
   }
 
+  // ---------- Hutang & Promo: simpan lokal ----------
+
+  void _addHutang(Hutang h) {
+    setState(() => _hutang = [h, ..._hutang]);
+    LocalStore.saveHutang(_hutang);
+  }
+
+  void _editHutang(Hutang h) {
+    setState(() => _hutang = [for (final x in _hutang) x.id == h.id ? h : x]);
+    LocalStore.saveHutang(_hutang);
+  }
+
+  void _deleteHutang(Hutang h) {
+    setState(() => _hutang = _hutang.where((x) => x.id != h.id).toList());
+    LocalStore.saveHutang(_hutang);
+  }
+
+  void _addPromo(Promo p) {
+    setState(() => _promos = [p, ..._promos]);
+    LocalStore.savePromos(_promos);
+  }
+
+  void _editPromo(Promo p) {
+    setState(() => _promos = [for (final x in _promos) x.id == p.id ? p : x]);
+    LocalStore.savePromos(_promos);
+  }
+
+  void _deletePromo(Promo p) {
+    setState(() => _promos = _promos.where((x) => x.id != p.id).toList());
+    LocalStore.savePromos(_promos);
+  }
+
+  // ---------- Pembuka laporan baru (v0.11.0) ----------
+
+  void _openNeraca() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => NeracaScreen(
+            transactions: _transactions,
+            menus: _menus,
+            ingredients: _ingredients,
+            expenses: _expenses,
+            hutang: _hutang,
+            branchId: _settings.activeBranchId,
+            branchName: _settings.activeBranch.name,
+          ),
+        ),
+      );
+
+  void _openArusKas() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ArusKasScreen(
+            transactions: _transactions,
+            expenses: _expenses,
+            mutasi: _mutasi,
+            ingredients: _ingredients,
+            hutang: _hutang,
+            branchId: _settings.activeBranchId,
+            branchName: _settings.activeBranch.name,
+          ),
+        ),
+      );
+
+  void _openArusStok() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ArusStokScreen(mutasi: _mutasi)),
+      );
+
+  void _openPersediaan() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => PersediaanScreen(ingredients: _ingredients)),
+      );
+
+  void _openPembelian() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => PembelianScreen(mutasi: _mutasi, ingredients: _ingredients)),
+      );
+
+  void _openHutang() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => HutangScreen(
+            hutang: _hutang,
+            branchId: _settings.activeBranchId,
+            branchName: _settings.activeBranch.name,
+            onAdd: _addHutang,
+            onEdit: _editHutang,
+            onDelete: _deleteHutang,
+          ),
+        ),
+      );
+
+  void _openPromo() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PromoScreen(
+            promos: _promos,
+            transactions: _transactions,
+            onAdd: _addPromo,
+            onEdit: _editPromo,
+            onDelete: _deletePromo,
+          ),
+        ),
+      );
+
   /// Tambah pemberitahuan tersimpan. Kunci yang sama & belum
   /// dibaca = tidak ditambah lagi (mencegah banjir duplikat untuk
   /// keadaan yang sama, mis. stok yang memang sedang habis).
@@ -1245,13 +1357,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       });
   void _remove(CartItem c) => setState(() => _cart.remove(c));
 
-  void _checkout(String paymentMethod, String tableLabel, String orderType) {
+  void _checkout(String paymentMethod, String tableLabel, String orderType, Promo? promo) {
     // Total dihitung SEBELUM keranjang dikosongkan, untuk catatan
     // tagihan berjalan di kartu meja.
     final subtotal = _cart.fold(0, (a, c) => a + c.total);
     final serviceAmt = (subtotal * _settings.servicePercent / 100).round();
     final taxAmt = (subtotal * _settings.taxPercent / 100).round();
-    final grandTotal = subtotal + serviceAmt + taxAmt;
+    // Diskon promo dihitung dari fungsi yang sama dengan yang
+    // dipakai tampilan kasir (hitungDiskonPromo) — tidak boleh
+    // ada dua hitungan yang bisa berbeda.
+    final diskonAmt = hitungDiskonPromo(promo, subtotal);
+    final grandTotal = subtotal + serviceAmt + taxAmt - diskonAmt;
     final orderId = 'A-${_orderCounter++}';
     final itemCount = _cart.fold(0, (a, c) => a + c.qty);
     setState(() {
@@ -1293,6 +1409,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         subtotal: subtotal,
         service: serviceAmt,
         tax: taxAmt,
+        diskon: diskonAmt,
+        promoNama: diskonAmt > 0 ? (promo?.nama ?? '') : '',
         branchId: _settings.activeBranchId,
         uuid: 'u${DateTime.now().millisecondsSinceEpoch}-$_orderCounter',
         // Rincian item disimpan sejak v0.10.6 supaya halaman
@@ -1503,6 +1621,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onDec: _dec,
         onRemove: _remove,
         onCheckout: _checkout,
+        promos: _promos,
       ),
       ProdukScreen(
         menus: _menus,
@@ -1532,6 +1651,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onOpenPajak: _openPajak,
         onOpenPiutang: _openPiutang,
         onOpenLabaRugi: _openLabaRugi,
+        onOpenNeraca: _openNeraca,
+        onOpenArusKas: _openArusKas,
+        onOpenArusStok: _openArusStok,
+        onOpenPersediaan: _openPersediaan,
+        onOpenPembelian: _openPembelian,
+        onOpenHutang: _openHutang,
+        onOpenPromo: _openPromo,
       ),
       StokScreen(
         ingredients: _ingredients,

@@ -23,6 +23,7 @@ class KasirScreen extends StatefulWidget {
     required this.onDec,
     required this.onRemove,
     required this.onCheckout,
+    this.promos = const [],
   });
 
   final List<CartItem> cart;
@@ -51,7 +52,12 @@ class KasirScreen extends StatefulWidget {
   final ValueChanged<CartItem> onInc;
   final ValueChanged<CartItem> onDec;
   final ValueChanged<CartItem> onRemove;
-  final void Function(String paymentMethod, String tableLabel, String orderType) onCheckout;
+  final void Function(String paymentMethod, String tableLabel, String orderType, Promo? promo) onCheckout;
+
+  /// Promo yang bisa dipilih kasir (v0.11.0). Pilihan kasir
+  /// hidup di state layar ini dan diteruskan ke onCheckout;
+  /// besar diskon selalu dihitung hitungDiskonPromo.
+  final List<Promo> promos;
 
   @override
   State<KasirScreen> createState() => _KasirScreenState();
@@ -62,10 +68,28 @@ class _KasirScreenState extends State<KasirScreen> {
   String _query = '';
   String _orderType = 'Dine-in';
 
+  /// Promo pilihan kasir untuk pesanan ini (v0.11.0). Direset
+  /// sesudah pembayaran berhasil supaya tidak terbawa ke
+  /// pelanggan berikutnya.
+  Promo? _promo;
+
+  /// Promo pilihan yang MASIH berlaku (ada di daftar & aktif).
+  /// Promo yang dihapus/dinonaktifkan pemilik di tengah jalan
+  /// berhenti berlaku tanpa kasir sadar ada yang berubah.
+  Promo? get _promoBerlaku {
+    final p = _promo;
+    if (p == null) return null;
+    for (final x in widget.promos) {
+      if (x.id == p.id && x.aktif) return x;
+    }
+    return null;
+  }
+
   int get _subtotal => widget.cart.fold(0, (a, c) => a + c.total);
   int get _service => (_subtotal * widget.servicePercent / 100).round();
   int get _tax => (_subtotal * widget.taxPercent / 100).round();
-  int get _grandTotal => _subtotal + _service + _tax;
+  int get _diskon => hitungDiskonPromo(_promoBerlaku, _subtotal);
+  int get _grandTotal => _subtotal + _service + _tax - _diskon;
   int get _itemCount => widget.cart.fold(0, (a, c) => a + c.qty);
 
   List<MenuItem> get _filtered => widget.menus.where((m) {
@@ -106,6 +130,10 @@ class _KasirScreenState extends State<KasirScreen> {
             servicePercent: widget.servicePercent,
             taxPercent: widget.taxPercent,
             grandTotal: _grandTotal,
+            diskon: _diskon,
+            promoNama: _promoBerlaku?.nama ?? '',
+            promoKurang: _promoBerlaku != null && _diskon == 0 ? _promoBerlaku!.minBelanja - _subtotal : 0,
+            onTapPromo: widget.promos.where((p) => p.aktif).isEmpty ? null : () => _pilihPromo(context, () {}),
             onInc: widget.onInc,
             onDec: widget.onDec,
             onRemove: widget.onRemove,
@@ -277,6 +305,10 @@ class _KasirScreenState extends State<KasirScreen> {
                   servicePercent: widget.servicePercent,
                   taxPercent: widget.taxPercent,
                   grandTotal: _grandTotal,
+                  diskon: _diskon,
+                  promoNama: _promoBerlaku?.nama ?? '',
+                  promoKurang: _promoBerlaku != null && _diskon == 0 ? _promoBerlaku!.minBelanja - _subtotal : 0,
+                  onTapPromo: widget.promos.where((p) => p.aktif).isEmpty ? null : () => _pilihPromo(sheetCtx, () => setSheet(() {})),
                   onInc: (c) { widget.onInc(c); setSheet(() {}); },
                   onDec: (c) { widget.onDec(c); setSheet(() {}); },
                   onRemove: (c) { widget.onRemove(c); setSheet(() {}); },
@@ -385,6 +417,56 @@ class _KasirScreenState extends State<KasirScreen> {
     disposeControllersLater([noteCtrl]);
   }
 
+  /// Sheet pemilih promo (v0.11.0): daftar promo aktif dengan
+  /// besar diskon untuk subtotal SAAT INI + pilihan Tanpa
+  /// Promo. [segarkanInduk] menyegarkan sheet keranjang di
+  /// belakangnya (di panel lebar tidak perlu — setState layar
+  /// ini sudah menggambar ulang panelnya).
+  Future<void> _pilihPromo(BuildContext ctx, VoidCallback segarkanInduk) async {
+    final aktif = widget.promos.where((p) => p.aktif).toList();
+    // Hasil dibungkus record: pop dengan pilihan mengembalikan
+    // (dipilih: true, promo: ...) — termasuk 'Tanpa Promo' yang
+    // promonya null. Geser-tutup mengembalikan null polos dan
+    // TIDAK mengubah pilihan yang sudah ada.
+    final hasil = await showAppSheet<({bool dipilih, Promo? promo})>(
+      context: ctx,
+      isScrollControlled: true,
+      builder: (sheetCtx) => Padding(
+        padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.lg + MediaQuery.viewInsetsOf(sheetCtx).bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SheetHandle(),
+            const SizedBox(height: AppSpacing.md),
+            Text('Pilih Promo', style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: AppSpacing.sm),
+            _BarisPilihPromo(
+              nama: 'Tanpa Promo',
+              keterangan: 'Harga normal',
+              nilaiKanan: '',
+              terpilih: _promoBerlaku == null,
+              onTap: () => Navigator.of(sheetCtx).pop((dipilih: true, promo: null)),
+            ),
+            for (final p in aktif)
+              _BarisPilihPromo(
+                nama: p.nama,
+                keterangan: p.minBelanja > 0 && _subtotal < p.minBelanja
+                    ? 'Min. belanja ${rupiah(p.minBelanja)} · kurang ${rupiah(p.minBelanja - _subtotal)} lagi'
+                    : (p.jenis == 'persen' ? 'Diskon ${p.nilai}% dari subtotal' : 'Potongan langsung'),
+                nilaiKanan: hitungDiskonPromo(p, _subtotal) > 0 ? '-${rupiah(hitungDiskonPromo(p, _subtotal))}' : '',
+                terpilih: _promoBerlaku?.id == p.id,
+                onTap: () => Navigator.of(sheetCtx).pop((dipilih: true, promo: p)),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (hasil == null || !hasil.dipilih || !ctx.mounted) return;
+    setState(() => _promo = hasil.promo);
+    segarkanInduk();
+  }
+
   Future<void> _openPayment(BuildContext context) async {
     // v0.10.1: pembayaran kini HALAMAN penuh (PembayaranScreen),
     // bukan dialog — permintaan Adnan 2026-11-15 (dialog sempit,
@@ -396,6 +478,8 @@ class _KasirScreenState extends State<KasirScreen> {
           service: _service,
           tax: _tax,
           grandTotal: _grandTotal,
+          diskon: _diskon,
+          promoNama: _promoBerlaku?.nama ?? '',
           servicePercent: widget.servicePercent,
           taxPercent: widget.taxPercent,
           items: widget.cart
@@ -422,7 +506,10 @@ class _KasirScreenState extends State<KasirScreen> {
     final orderTypeLabel = widget.selectedTable != null
         ? 'Dine-in'
         : (_orderType == 'Bungkus' ? 'Takeaway' : 'Dine-in');
-    widget.onCheckout(methodResult, tableLabel, orderTypeLabel);
+    widget.onCheckout(methodResult, tableLabel, orderTypeLabel, _promoBerlaku);
+    // Promo sekali pakai per pesanan: kosongkan pilihan supaya
+    // pelanggan berikutnya mulai dari harga normal.
+    if (mounted) setState(() => _promo = null);
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -602,6 +689,10 @@ class _CartPanel extends StatelessWidget {
     required this.onDec,
     required this.onRemove,
     required this.onPay,
+    this.diskon = 0,
+    this.promoNama = '',
+    this.promoKurang = 0,
+    this.onTapPromo,
   });
 
   final List<CartItem> cart;
@@ -611,6 +702,16 @@ class _CartPanel extends StatelessWidget {
   final int servicePercent, taxPercent;
   final ValueChanged<CartItem> onInc, onDec, onRemove;
   final VoidCallback onPay;
+
+  /// Promo di panel keranjang (v0.11.0): [diskon] yang sedang
+  /// berlaku, nama promo terpilih, sisa belanja untuk memenuhi
+  /// syaratnya (0 = syarat terpenuhi / tanpa promo), dan aksi
+  /// membuka pemilih (null = tidak ada promo aktif sama sekali,
+  /// baris promo disembunyikan).
+  final int diskon;
+  final String promoNama;
+  final int promoKurang;
+  final VoidCallback? onTapPromo;
 
   @override
   Widget build(BuildContext context) {
@@ -680,6 +781,40 @@ class _CartPanel extends StatelessWidget {
               _row('Subtotal', subtotal),
               _row('Biaya layanan ($servicePercent%)', service),
               _row('Pajak ($taxPercent%)', tax),
+              if (onTapPromo != null)
+                InkWell(
+                  onTap: onTapPromo,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                    child: Row(
+                      children: [
+                        Icon(Icons.local_offer_outlined, size: 17, color: AppColors.accentDark),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            promoNama.isEmpty ? 'Pakai Promo' : 'Promo · $promoNama',
+                            style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (promoKurang > 0)
+                          Text('kurang ${rupiah(promoKurang)} lagi', style: AppText.caption.copyWith(color: AppColors.warning, fontWeight: FontWeight.w700))
+                        else
+                          Icon(Icons.chevron_right, size: 17, color: AppColors.muted),
+                      ],
+                    ),
+                  ),
+                ),
+              if (diskon > 0)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Diskon promo', style: AppText.small.copyWith(color: AppColors.muted)),
+                      Text('-${rupiah(diskon)}', style: AppText.small.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
               const Divider(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -713,4 +848,42 @@ class _CartPanel extends StatelessWidget {
           ],
         ),
       );
+}
+
+/// Satu baris pilihan di sheet pemilih promo kasir.
+class _BarisPilihPromo extends StatelessWidget {
+  const _BarisPilihPromo({required this.nama, required this.keterangan, required this.nilaiKanan, required this.terpilih, required this.onTap});
+  final String nama;
+  final String keterangan;
+  final String nilaiKanan;
+  final bool terpilih;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final _ = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+        child: Row(
+          children: [
+            Icon(terpilih ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 21, color: terpilih ? AppColors.accentDark : AppColors.muted),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(nama, style: AppText.body.copyWith(fontWeight: FontWeight.w700, color: AppColors.ink)),
+                  Text(keterangan, style: AppText.caption.copyWith(color: AppColors.muted)),
+                ],
+              ),
+            ),
+            if (nilaiKanan.isNotEmpty) Text(nilaiKanan, style: AppText.body.copyWith(fontWeight: FontWeight.w800, color: AppColors.accentDark)),
+          ],
+        ),
+      ),
+    );
+  }
 }
