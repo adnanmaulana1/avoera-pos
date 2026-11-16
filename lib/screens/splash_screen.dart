@@ -4,15 +4,16 @@ import 'package:flutter/material.dart';
 
 /// Layar sambut: tampil selama data dimuat + sekejap sesudahnya.
 ///
-/// Desain "Fill + Hijau" (dipilih Adnan 2026-11-16 dari 4
-/// kandidat + usul efek fill dari Adnan sendiri): latar hijau
-/// brand POLOS, karya logo transparan baru
-/// (avorea-segar.png — "Bikin Harimu Lebih Segar!") di tengah,
-/// dan logonya SENDIRI menjadi penanda muat: mulai pudar
-/// abu-abu, warnanya MENGISI dari bawah ke atas dengan batas
-/// gelombang tipis selama splash tampil (±1,5 detik, seirama
-/// timer splash di shell). Tanpa garis muat terpisah, tanpa
-/// teks slogan terpisah (sudah ada di dalam karya logo).
+/// Desain "Fill + Putih + Spinner" (Adnan memilih Fill + Hijau
+/// 2026-11-16 10:58, lalu menggantinya sendiri ke PUTIH +
+/// spinner pukul 11:35 hari yang sama): latar putih bersih,
+/// karya logo transparan (avorea-segar.png — "Bikin Harimu
+/// Lebih Segar!") di tengah dengan efek ISI (usul Adnan):
+/// mulai pudar abu-abu, warnanya MENGISI dari bawah ke atas
+/// dengan batas gelombang tipis selama splash tampil (±1,5
+/// detik, seirama timer splash di shell), plus spinner hijau
+/// kecil berputar di bawah logo. Tanpa teks slogan terpisah
+/// (sudah ada di dalam karya logo).
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -24,7 +25,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late final AnimationController _anim;
 
   static const _hijauBrand = Color(0xFF1E3A2A);
-  static const _kremBrand = Color(0xFFF7F8F2);
+  static const _mutedLabel = Color(0xFF6B7268);
 
   @override
   void initState() {
@@ -45,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     final logoMasuk = CurvedAnimation(parent: _anim, curve: const Interval(0, 0.2, curve: Curves.easeOut));
     final teksMasuk = CurvedAnimation(parent: _anim, curve: const Interval(0.3, 0.8, curve: Curves.easeOut));
     return Scaffold(
-      backgroundColor: _hijauBrand,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SizedBox.expand(
           child: Column(
@@ -61,12 +62,21 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   },
                 ),
               ),
+              const SizedBox(height: 30),
+              FadeTransition(
+                opacity: teksMasuk,
+                child: const SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(strokeWidth: 3, color: _hijauBrand),
+                ),
+              ),
               const Spacer(flex: 6),
               FadeTransition(
                 opacity: teksMasuk,
-                child: Text(
+                child: const Text(
                   'AVOERA POS · BY WEBTALES STUDIO',
-                  style: TextStyle(color: _kremBrand.withValues(alpha: 0.45), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 2.2),
+                  style: TextStyle(color: _mutedLabel, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 2.2),
                 ),
               ),
               const SizedBox(height: 22),
@@ -103,7 +113,7 @@ class _LogoIsi extends StatelessWidget {
       fit: BoxFit.contain,
       errorBuilder: (_, _, _) => const Text(
         'AVOREA',
-        style: TextStyle(color: Color(0xFFF7F8F2), fontSize: 40, fontWeight: FontWeight.w900, letterSpacing: 3),
+        style: TextStyle(color: Color(0xFF1E3A2A), fontSize: 40, fontWeight: FontWeight.w900, letterSpacing: 3),
       ),
     );
     return Stack(
