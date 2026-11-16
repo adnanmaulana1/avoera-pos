@@ -33,6 +33,17 @@ import java.io.File
 /// pengecualian versi lama ditelan Dart ('gagal' polos), jadi
 /// v0.10.15 membuka alasannya + menambah jalur cadangan
 /// ACTION_INSTALL_PACKAGE bila ACTION_VIEW tidak dikenal ROM.
+///
+/// v0.10.19: uji v0.10.18 di HP Adnan membuktikan folder
+/// code_cache TETAP ditolak FileProvider (pesan PROVIDER yang
+/// sama) walau <code-cache-path> sudah terdaftar sejak
+/// v0.10.17 — terverifikasi ada di dalam APK terbit; penolakan
+/// itu khas ROM (dugaan beda bentuk alamat folder). Maka dua
+/// lapis obat: (1) Dart kini mengunduh ke folder CACHE biasa
+/// (path_provider), bukan Directory.systemTemp; (2) di sini,
+/// bila getUriForFile tetap menolak jalur berkas, berkas
+/// DISALIN ke cacheDir (akar <cache-path>) lalu dicoba lagi
+/// dari sana sebelum menyerah dengan error PROVIDER.
 class MainActivity : FlutterActivity() {
     private fun deskripsi(e: Exception): String =
         "${e.javaClass.simpleName}: ${e.message ?: "(tanpa pesan)"}"
@@ -77,15 +88,23 @@ class MainActivity : FlutterActivity() {
                     }
                     return@setMethodCallHandler
                 }
+                val otoritas = "${applicationContext.packageName}.fileprovider"
                 val uri = try {
-                    FileProvider.getUriForFile(
-                        this,
-                        "${applicationContext.packageName}.fileprovider",
-                        File(path)
-                    )
+                    FileProvider.getUriForFile(this, otoritas, File(path))
                 } catch (e: Exception) {
-                    result.error("PROVIDER", deskripsi(e), null)
-                    return@setMethodCallHandler
+                    // Cadangan v0.10.19: jalur berkas di luar
+                    // akar yang dikenal FileProvider — salin ke
+                    // cacheDir (akar <cache-path>, selalu
+                    // terdaftar) lalu coba lagi dari sana.
+                    try {
+                        val asal = File(path)
+                        val salinan = File(cacheDir, asal.name)
+                        asal.copyTo(salinan, overwrite = true)
+                        FileProvider.getUriForFile(this, otoritas, salinan)
+                    } catch (e2: Exception) {
+                        result.error("PROVIDER", "${deskripsi(e)} | salin-gagal: ${deskripsi(e2)}", null)
+                        return@setMethodCallHandler
+                    }
                 }
                 try {
                     val intent = Intent(Intent.ACTION_VIEW).apply {

@@ -60,6 +60,7 @@ void main() {
       final file = await unduhApk(
         InfoUpdate(kode: 99, nama: '9.9.9', urlApk: 'https://x/avoera.apk'),
         onProgres: (_) {},
+        ambilFolder: () async => Directory.systemTemp,
         client: _KlienPalsu(_RespPalsu(bytes, panjangKlaim: 9000)),
       );
       expect(file, isNull);
@@ -70,9 +71,32 @@ void main() {
       final file = await unduhApk(
         InfoUpdate(kode: 99, nama: '9.9.9', urlApk: 'https://x/avoera.apk'),
         onProgres: (_) {},
+        ambilFolder: () async => Directory.systemTemp,
         client: _KlienPalsu(_RespPalsu(bytes)),
       );
       expect(file, isNull);
+    });
+
+    // v0.10.19: folder tujuan unduhan bisa ditentukan lewat
+    // jahitan ambilFolder — di aplikasi aslinya folder CACHE
+    // (path_provider), BUKAN lagi Directory.systemTemp yang
+    // di Android adalah folder code_cache yang ditolak
+    // FileProvider HP Adnan.
+    test('Berkas mendarat di folder dari ambilFolder', () async {
+      final bytes = List<int>.generate(3000, (i) => i % 251)..[0] = 0x50..[1] = 0x4B;
+      final folder = await Directory.systemTemp.createTemp('avoera-uji-');
+      addTearDown(() async {
+        if (await folder.exists()) await folder.delete(recursive: true);
+      });
+      final file = await unduhApk(
+        InfoUpdate(kode: 77, nama: '9.9.9', urlApk: 'https://x/avoera.apk'),
+        onProgres: (_) {},
+        ambilFolder: () async => folder,
+        client: _KlienPalsu(_RespPalsu(bytes)),
+      );
+      expect(file, isNotNull);
+      expect(file!.path, '${folder.path}/avoera-77.apk');
+      expect(await file.readAsBytes(), bytes);
     });
   });
 

@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'theme.dart';
 import 'widgets.dart';
@@ -76,6 +77,11 @@ String urlApkUntukPerangkat(InfoUpdate info, Abi abi) {
 /// Jahitan uji: pengambil teks HTTP bisa diganti di tes.
 typedef AmbilTeks = Future<String?> Function(Uri url);
 
+/// Jahitan uji: penentu folder tujuan unduhan APK bisa
+/// diganti di tes. Bawaannya folder cache aplikasi
+/// (path_provider) — lihat catatan di [unduhApk].
+typedef AmbilFolderUnduh = Future<Directory> Function();
+
 Future<String?> _ambilTeksHttp(Uri url) async {
   final client = HttpClient();
   try {
@@ -103,17 +109,29 @@ Future<InfoUpdate?> ambilInfoUpdate({AmbilTeks? ambil, Uri? url}) async {
   }
 }
 
-/// Unduh APK ke folder sementara sistem (cache aplikasi —
-/// FileProvider native melayani dari sana). [onProgres]
-/// menerima 0..1, atau null bila ukuran unduhan tak diketahui.
-/// Mengembalikan null bila unduhan gagal.
-Future<File?> unduhApk(InfoUpdate info, {required void Function(double?) onProgres, HttpClient? client}) async {
+/// Unduh APK ke folder CACHE aplikasi (path_provider =
+/// context.cacheDir di Android; FileProvider melayani dari
+/// sana lewat akar `<cache-path>`). [onProgres] menerima 0..1,
+/// atau null bila ukuran unduhan tak diketahui. Mengembalikan
+/// null bila unduhan gagal.
+///
+/// Folder tujuan TIDAK BOLEH Directory.systemTemp
+/// (v0.10.19): di Android folder itu adalah CODE cache
+/// (…/code_cache) dan FileProvider di HP Adnan (HyperOS)
+/// TETAP menolak berkas dari sana — pesan PROVIDER yang sama
+/// pada uji v0.10.18 — walau `<code-cache-path>` sudah
+/// terdaftar di file_paths.xml sejak v0.10.17 (terverifikasi
+/// ada di dalam APK terbit). Berkas dipindah ke folder cache
+/// biasa; sisi native juga punya cadangan menyalin ke
+/// cacheDir bila jalur berkas ditolak.
+Future<File?> unduhApk(InfoUpdate info, {required void Function(double?) onProgres, HttpClient? client, AmbilFolderUnduh? ambilFolder}) async {
   final c = client ?? HttpClient();
   try {
     final req = await c.getUrl(Uri.parse(urlApkUntukPerangkat(info, Abi.current())));
     final resp = await req.close();
     if (resp.statusCode != 200) return null;
-    final file = File('${Directory.systemTemp.path}/avoera-${info.kode}.apk');
+    final folder = await (ambilFolder ?? getTemporaryDirectory)();
+    final file = File('${folder.path}/avoera-${info.kode}.apk');
     final total = resp.contentLength;
     var diterima = 0;
     final sink = file.openWrite();

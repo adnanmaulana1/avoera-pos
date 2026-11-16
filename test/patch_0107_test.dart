@@ -86,6 +86,7 @@ void main() {
       final file = await unduhApk(
         InfoUpdate(kode: 99, nama: '9.9.9', urlApk: 'https://x/avoera.apk'),
         onProgres: (p) => terakhir = p,
+        ambilFolder: () async => Directory.systemTemp,
         client: _KlienPalsu(_RespPalsu(bytes)),
       );
       expect(file, isNotNull);
@@ -98,6 +99,7 @@ void main() {
       final file = await unduhApk(
         InfoUpdate(kode: 99, nama: '9.9.9', urlApk: 'https://x/avoera.apk'),
         onProgres: (_) {},
+        ambilFolder: () async => Directory.systemTemp,
         client: _KlienPalsu(_RespPalsu(const [], statusCode: 500)),
       );
       expect(file, isNull);
