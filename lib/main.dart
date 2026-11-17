@@ -776,6 +776,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void _addMenu(MenuItem m) {
     setState(() => _menus.add(m));
     LocalStore.saveMenus(_menus);
+    _daftarkanKategoriMenu();
     _tandaiKotor('menus');
     _jadwalkanSinkron();
   }
@@ -783,6 +784,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void _menuChanged() {
     setState(() {});
     LocalStore.saveMenus(_menus);
+    _daftarkanKategoriMenu();
     _tandaiKotor('menus');
     _jadwalkanSinkron();
   }
@@ -1536,6 +1538,66 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void _importMenus(List<MenuItem> items) {
     setState(() => _menus.addAll(items));
     LocalStore.saveMenus(_menus);
+    _daftarkanKategoriMenu();
+    _jadwalkanSinkron();
+  }
+
+  // ---------- Kategori menu (v0.17.0) ----------
+
+  /// Daftar kategori efektif saat ini (daftar tersimpan +
+  /// kategori apa pun yang sedang dipakai menu).
+  List<String> get _kategoriEfektif => kategoriEfektif(_settings, _menus);
+
+  /// Daftarkan kategori yang dipakai menu tapi belum ada di
+  /// daftar tersimpan (dibuat dari editor menu / hasil impor).
+  /// Dipanggil sesudah menu disimpan.
+  void _daftarkanKategoriMenu() {
+    final eff = _kategoriEfektif;
+    if (eff.length != _settings.menuCategories.length) {
+      _settings.menuCategories = eff;
+      LocalStore.saveSettings(_settings);
+      _tandaiKotor('settings');
+    }
+  }
+
+  void _tambahKategori(String nama) {
+    setState(() => _settings.menuCategories = [..._kategoriEfektif, nama]);
+    LocalStore.saveSettings(_settings);
+    _tandaiKotor('settings');
+    _jadwalkanSinkron();
+  }
+
+  void _ubahNamaKategori(String lama, String baru) {
+    setState(() {
+      _settings.menuCategories = [for (final k in _kategoriEfektif) k == lama ? baru : k];
+      for (final m in _menus) {
+        if (m.category == lama) m.category = baru;
+      }
+    });
+    LocalStore.saveSettings(_settings);
+    LocalStore.saveMenus(_menus);
+    _tandaiKotor('settings');
+    _tandaiKotor('menus');
+    _jadwalkanSinkron();
+  }
+
+  void _hapusKategori(String nama) {
+    setState(() {
+      final sisa = _kategoriEfektif.where((k) => k != nama).toList();
+      // Menu di kategori terhapus pindah ke 'Lainnya' (dibuat
+      // bila belum ada); menghapus 'Lainnya' sendiri → pindah
+      // ke kategori pertama yang tersisa.
+      final tujuan = nama == 'Lainnya' ? (sisa.isNotEmpty ? sisa.first : 'Lainnya') : 'Lainnya';
+      if (!sisa.contains(tujuan)) sisa.add(tujuan);
+      _settings.menuCategories = sisa;
+      for (final m in _menus) {
+        if (m.category == nama) m.category = tujuan;
+      }
+    });
+    LocalStore.saveSettings(_settings);
+    LocalStore.saveMenus(_menus);
+    _tandaiKotor('settings');
+    _tandaiKotor('menus');
     _jadwalkanSinkron();
   }
 
@@ -1882,6 +1944,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         promoIdAwal: _ready ? _draftPromoId : null,
         onJenisBerubah: _jenisBerubah,
         onPromoBerubah: _promoBerubah,
+        kategoriList: _ready ? _kategoriEfektif : null,
       ),
       ProdukScreen(
         menus: _menus,
@@ -1893,6 +1956,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onBulkPrice: _applyBulkPrice,
         onImport: _importMenus,
         businessName: _settings.businessName,
+        kategoriList: _ready ? _kategoriEfektif : null,
+        onTambahKategori: _tambahKategori,
+        onUbahNamaKategori: _ubahNamaKategori,
+        onHapusKategori: _hapusKategori,
       ),
       MejaScreen(
         tables: _tables,

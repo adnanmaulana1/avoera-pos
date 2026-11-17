@@ -31,6 +31,7 @@ class KasirScreen extends StatefulWidget {
     this.promoIdAwal,
     this.onJenisBerubah,
     this.onPromoBerubah,
+    this.kategoriList,
   });
 
   final List<CartItem> cart;
@@ -82,6 +83,10 @@ class KasirScreen extends StatefulWidget {
   final String? promoIdAwal;
   final ValueChanged<String>? onJenisBerubah;
   final ValueChanged<String?>? onPromoBerubah;
+
+  /// Daftar kategori efektif dari induk (CRUD kategori
+  /// v0.17.0, tanpa 'Semua'); null = pakai bawaan.
+  final List<String>? kategoriList;
 
   @override
   State<KasirScreen> createState() => _KasirScreenState();
@@ -265,7 +270,7 @@ class _KasirScreenState extends State<KasirScreen> {
           const SizedBox(height: AppSpacing.md),
           FilterChipRow(
             children: [
-              for (final c in categories)
+              for (final c in ['Semua', ...(widget.kategoriList ?? kategoriBawaan)])
                 AppChip(
                   label: c,
                   selected: c == _category,

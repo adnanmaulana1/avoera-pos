@@ -4,13 +4,13 @@ import 'package:avoera_pos/ikon.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.16.0';
+const appVersion = '0.17.0';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 56;
+const appBuild = 57;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -37,7 +37,9 @@ class AppSettings {
     // Bawaan pemasangan pertama = TERANG (permintaan Adnan
     // 2026-11-14). Pilihan yang sudah tersimpan tidak ditimpa.
     this.modeTema = 'terang',
-  }) : branches = branches ?? [Branch(id: 'c1', name: 'Cabang Utama')];
+    List<String>? menuCategories,
+  })  : branches = branches ?? [Branch(id: 'c1', name: 'Cabang Utama')],
+        menuCategories = menuCategories ?? [];
   String businessName;
   String businessAddress;
   String businessPhone;
@@ -88,6 +90,14 @@ class AppSettings {
   /// diunggah ke server), sama seperti foto menu.
   String? businessPhotoPath;
 
+  /// Daftar kategori menu yang dikelola pemilik (CRUD kategori,
+  /// permintaan Adnan 2026-11-17). Kosong = belum pernah diatur
+  /// → pakai [kategoriBawaan]. Daftar EFEKTIF selalu lewat
+  /// [kategoriEfektif] supaya kategori yang dipakai menu lama
+  /// tidak pernah hilang dari tampilan. Ikut tersinkron lewat
+  /// pengaturan (bukan data khusus perangkat).
+  List<String> menuCategories;
+
   Branch get activeBranch => branches.firstWhere((b) => b.id == activeBranchId, orElse: () => branches.first);
 
   Map<String, dynamic> toJson() => {
@@ -110,6 +120,7 @@ class AppSettings {
         'modeTema': modeTema,
         'cloudSyncEnabled': cloudSyncEnabled,
         'businessPhotoPath': businessPhotoPath,
+        'menuCategories': menuCategories,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -137,6 +148,8 @@ class AppSettings {
         // Data lama belum punya kunci ini → sinkron awan menyala.
         cloudSyncEnabled: j['cloudSyncEnabled'] as bool? ?? true,
         businessPhotoPath: j['businessPhotoPath'] as String?,
+        // Data lama belum punya kunci ini → kosong (bawaan).
+        menuCategories: (j['menuCategories'] as List?)?.map((e) => e.toString()).toList(),
       );
 }
 
@@ -371,6 +384,25 @@ int hppMenu(MenuItem m, List<MenuItem> semuaMenu, List<Ingredient> bahan) {
 String skuOf(MenuItem m) => 'PRD-${(m.id.hashCode.abs() % 900) + 100}';
 
 const categories = ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Camilan', 'Paket'];
+
+/// Kategori bawaan (tanpa 'Semua' — itu penanda filter UI,
+/// bukan kategori). Dipakai selama pemilik belum mengatur
+/// daftar kategorinya sendiri.
+const kategoriBawaan = ['Kopi', 'Non-Kopi', 'Makanan', 'Camilan', 'Paket'];
+
+/// Daftar kategori EFEKTIF untuk ditampilkan & dipilih:
+/// daftar tersimpan pemilik (atau bawaan bila belum diatur),
+/// DITAMBAH kategori apa pun yang sedang dipakai menu tapi
+/// belum terdaftar — data lama tidak boleh kehilangan
+/// kategorinya hanya karena daftarnya berganti.
+List<String> kategoriEfektif(AppSettings settings, List<MenuItem> menus) {
+  final dasar = settings.menuCategories.isNotEmpty ? settings.menuCategories : kategoriBawaan;
+  final hasil = <String>[...dasar];
+  for (final m in menus) {
+    if (!hasil.contains(m.category)) hasil.add(m.category);
+  }
+  return hasil;
+}
 
 List<MenuItem> seedMenus() => <MenuItem>[
   MenuItem(id: 'k1', name: 'Kopi Susu Gula Aren', category: 'Kopi', price: 18000, color: Color(0xFF8D6E63), icon: Ikon.local_cafe, isDrink: true),

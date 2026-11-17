@@ -5,6 +5,7 @@ import '../data.dart';
 import '../export.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'kategori_screen.dart';
 import 'kelola_menu_screen.dart' show MenuThumb, menuPalette, showMenuEditor;
 import 'label_screen.dart';
 import 'resep_screen.dart';
@@ -28,6 +29,10 @@ class ProdukScreen extends StatefulWidget {
     required this.onBulkPrice,
     required this.onImport,
     this.businessName = '',
+    this.kategoriList,
+    this.onTambahKategori,
+    this.onUbahNamaKategori,
+    this.onHapusKategori,
   });
 
   final List<MenuItem> menus;
@@ -45,11 +50,24 @@ class ProdukScreen extends StatefulWidget {
   /// nama cabang).
   final String businessName;
 
+  /// CRUD kategori (v0.17.0): daftar kategori efektif dari
+  /// induk (tanpa 'Semua'); null = hitung sendiri dari bawaan +
+  /// kategori yang dipakai menu. Callback null = kelola
+  /// kategori tidak tersedia (layar dibangun langsung di tes).
+  final List<String>? kategoriList;
+  final ValueChanged<String>? onTambahKategori;
+  final void Function(String lama, String baru)? onUbahNamaKategori;
+  final ValueChanged<String>? onHapusKategori;
+
   @override
   State<ProdukScreen> createState() => _ProdukScreenState();
 }
 
 class _ProdukScreenState extends State<ProdukScreen> {
+  /// Daftar kategori efektif (tanpa 'Semua') untuk chip saring,
+  /// editor menu, impor, dan layar Kelola Kategori.
+  List<String> get _daftarKategori => widget.kategoriList ?? kategoriEfektif(AppSettings(), widget.menus);
+
   String _kategori = 'Semua';
   String _query = '';
   bool _tampilBahan = false;
@@ -233,7 +251,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
                 hasil.add(MenuItem(
                   id: 'm${DateTime.now().millisecondsSinceEpoch}-$i',
                   name: kolom[0],
-                  category: categories.contains(kolom[1]) ? kolom[1] : 'Makanan',
+                  category: _daftarKategori.contains(kolom[1]) ? kolom[1] : (_daftarKategori.contains('Makanan') ? 'Makanan' : _daftarKategori.first),
                   price: harga,
                   color: menuPalette[i % menuPalette.length],
                   icon: menuIconChoices[i % menuIconChoices.length],
@@ -278,6 +296,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
       onDelete: widget.onDelete,
       ingredients: widget.ingredients,
       allMenus: widget.menus,
+      kategoriList: _daftarKategori,
     );
     // Sesudah editor ditutup fokus jangan kembali ke kolom cari
     // (permintaan Adnan 2026-11-15: keyboard muncul sendiri
@@ -320,6 +339,18 @@ class _ProdukScreenState extends State<ProdukScreen> {
             builder: (_) => LabelHargaScreen(
               menus: widget.menus,
               businessName: widget.businessName.isNotEmpty ? widget.businessName : widget.branchName,
+            ),
+          ),
+        );
+      case 'kategori':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => KategoriScreen(
+              kategori: _daftarKategori,
+              menus: widget.menus,
+              onTambah: widget.onTambahKategori ?? (_) {},
+              onUbahNama: widget.onUbahNamaKategori ?? (_, __) {},
+              onHapus: widget.onHapusKategori ?? (_) {},
             ),
           ),
         );
@@ -370,6 +401,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
         butir('bundle', Ikon.card_giftcard_outlined, 'Bundle'),
         butir('ojol', Ikon.delivery_dining_outlined, 'Tampilkan Harga Ojol', aktif: _tampilOjol),
         butir('label', Ikon.print_outlined, 'Cetak Label Harga'),
+        butir('kategori', Ikon.local_offer_outlined, 'Kelola Kategori'),
       ],
     );
     return Stack(
@@ -402,7 +434,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
                   padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.sm),
                   child: FilterChipRow(
                     children: [
-                      for (final c in categories)
+                      for (final c in ['Semua', ..._daftarKategori])
                         AppChip(label: c, selected: _kategori == c, onSelected: (_) => setState(() => _kategori = c)),
                     ],
                   ),

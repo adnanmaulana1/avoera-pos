@@ -165,6 +165,32 @@ class MenuThumb extends StatelessWidget {
 /// foto produk: ambil dari kamera / galeri (permintaan Adnan
 /// 2026-11-14), harga berformat titik otomatis, dan penjaga tombol
 /// kembali (GuardBack) supaya isian tidak hilang tanpa peringatan.
+/// Dialog kecil "kategori baru" dari editor menu (v0.17.0):
+/// mengembalikan nama ter-trim, atau null bila batal/kosong.
+/// Kategori ini langsung jadi kategori menu yang sedang
+/// diedit; pendaftaran resminya terjadi saat menu disimpan.
+Future<String?> _dialogKategoriBaru(BuildContext context) async {
+  final ctrl = TextEditingController();
+  final nama = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Kategori Baru'),
+      content: TextField(
+        controller: ctrl,
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        decoration: const InputDecoration(hintText: 'Contoh: Minuman Segar'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
+        PrimaryButton(label: 'Pakai', onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim())),
+      ],
+    ),
+  );
+  disposeControllersLater([ctrl]);
+  return (nama == null || nama.isEmpty) ? null : nama;
+}
+
 Future<void> showMenuEditor(
   BuildContext context, {
   MenuItem? initial,
@@ -173,6 +199,7 @@ Future<void> showMenuEditor(
   required ValueChanged<MenuItem> onDelete,
   List<Ingredient> ingredients = const [],
   List<MenuItem> allMenus = const [],
+  List<String> kategoriList = const [],
 }) async {
   final item = initial;
   final menuId = item?.id ?? 'm${DateTime.now().millisecondsSinceEpoch}';
@@ -182,7 +209,11 @@ Future<void> showMenuEditor(
   // Salinan kerja resep & isi bundle (asli hanya berubah saat Simpan).
   final resep = <RecipeLine>[for (final r in item?.recipe ?? const <RecipeLine>[]) RecipeLine(ingredientId: r.ingredientId, qty: r.qty)];
   final isiBundle = <BundleLine>[for (final b in item?.bundle ?? const <BundleLine>[]) BundleLine(menuId: b.menuId, qty: b.qty)];
-  var category = item?.category ?? 'Kopi';
+  // Daftar kategori dari induk (CRUD kategori v0.17.0); kosong
+  // = pakai bawaan. Kategori baru juga bisa dibuat dari sini —
+  // induk mendaftarkannya otomatis saat menu disimpan.
+  final daftarKategori = kategoriList.isNotEmpty ? kategoriList : kategoriBawaan;
+  var category = item?.category ?? (daftarKategori.contains('Kopi') ? 'Kopi' : daftarKategori.first);
   var color = item?.color ?? menuPalette.first;
   var icon = item?.icon ?? menuIconChoices.first;
   var isDrink = item?.isDrink ?? false;
@@ -405,8 +436,20 @@ Future<void> showMenuEditor(
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
-                  for (final c in categories.skip(1))
+                  for (final c in daftarKategori)
                     AppChip(label: c, selected: category == c, onSelected: (_) => setSheet(() => category = c)),
+                  // Kategori menu ini belum terdaftar (baru dibuat
+                  // di bawah / data lama) → tetap tampil terpilih.
+                  if (!daftarKategori.contains(category))
+                    AppChip(label: category, selected: true, onSelected: (_) {}),
+                  AppChip(
+                    label: 'Kategori Baru',
+                    selected: false,
+                    onSelected: (_) async {
+                      final nama = await _dialogKategoriBaru(ctx);
+                      if (nama != null && nama.isNotEmpty) setSheet(() => category = nama);
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
