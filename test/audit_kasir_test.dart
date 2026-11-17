@@ -101,6 +101,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Bayar Sekarang')));
     await tester.pumpAndSettle();
+    // Halaman bayar v0.15.0 lebih panjang (seksi Jenis + Tamu) —
+    // ubin nominal kini di bawah lipatan, gulir dulu.
+    await tester.scrollUntilVisible(find.text('Uang pas'), 150, scrollable: find.descendant(of: find.byType(PembayaranScreen), matching: find.byType(Scrollable)).first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Uang pas'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Proses Bayar'));
@@ -261,6 +265,8 @@ void main() {
     expect(tester.widget<PrimaryButton>(proses).onPressed, isNull, reason: 'Belum pilih uang → Proses Bayar harus terkunci');
 
     final kolom = find.descendant(of: find.byType(PembayaranScreen), matching: find.byType(TextField));
+    await tester.scrollUntilVisible(kolom, 150, scrollable: find.descendant(of: find.byType(PembayaranScreen), matching: find.byType(Scrollable)).first);
+    await tester.pumpAndSettle();
     await tester.enterText(kolom, '50000');
     await tester.pumpAndSettle();
     expect(find.text('Kembalian: Rp13.200'), findsOneWidget, reason: '50.000 − 36.800 = 13.200');
@@ -280,7 +286,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Bayar Sekarang')));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('QRIS'), 150, scrollable: find.descendant(of: find.byType(PembayaranScreen), matching: find.byType(Scrollable)).first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('QRIS'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Tampilkan QR ini ke pelanggan'), 150, scrollable: find.descendant(of: find.byType(PembayaranScreen), matching: find.byType(Scrollable)).first);
     await tester.pumpAndSettle();
     expect(find.text('Tampilkan QR ini ke pelanggan'), findsOneWidget);
     await tester.tap(find.text('Proses Bayar'));
@@ -315,6 +325,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(inSheet(find.text('Meja 1')), findsOneWidget, reason: 'Chip keranjang harus Meja 1');
     await tester.tap(inSheet(find.text('Bayar Sekarang')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Uang pas'), 150, scrollable: find.descendant(of: find.byType(PembayaranScreen), matching: find.byType(Scrollable)).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Uang pas'));
     await tester.pumpAndSettle();

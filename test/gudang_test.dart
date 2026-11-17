@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:avoera_pos/data.dart';
 import 'package:avoera_pos/main.dart';
+import 'package:avoera_pos/screens/pembayaran_screen.dart';
 import 'package:avoera_pos/widgets.dart';
 import 'package:avoera_pos/store.dart';
 import 'package:flutter/material.dart';
@@ -149,6 +150,8 @@ void main() {
     await tester.tap(find.text('Lihat Keranjang'));
     await tester.pumpAndSettle();
     await tester.tap(inSheet(find.text('Bayar Sekarang')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Uang pas'), 150, scrollable: find.descendant(of: find.byType(PembayaranScreen), matching: find.byType(Scrollable)).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Uang pas'));
     await tester.pumpAndSettle();

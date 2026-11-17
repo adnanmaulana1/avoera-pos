@@ -59,7 +59,10 @@ void main() {
 
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Kasir').last);
+    // Ambil 'Kasir' PERTAMA (label sidebar): Pengaturan kini
+    // punya judul bagian 'Kasir' juga (v0.15.0) yang muncul
+    // belakangan di pohon — .last kini salah sasaran.
+    await tester.tap(find.text('Kasir').first);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Es Kopi Uji'),

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:avoera_pos/main.dart';
+import 'package:avoera_pos/screens/pembayaran_screen.dart';
 import 'package:avoera_pos/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -110,6 +111,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Pembayaran'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Uang pas'), 150, scrollable: find.descendant(of: find.byType(PembayaranScreen), matching: find.byType(Scrollable)).first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Uang pas'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Proses Bayar'));
