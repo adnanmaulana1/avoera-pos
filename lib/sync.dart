@@ -124,6 +124,37 @@ Map<String, dynamic> _pengaturanAman(AppSettings s) {
   return j;
 }
 
+/// Jahitan tes untuk Reset Total: bila diisi, dipakai
+/// menggantikan penghapusan awan sungguhan (lingkungan tes
+/// tidak punya jaringan). Produksi selalu null.
+Future<void> Function(AppSettings settings)? jahitanHapusCloud;
+
+/// Hapus SEMUA baris usaha ini di awan (Reset Total, v0.20.0):
+/// transaksi, menu, bahan, cabang, dan pengaturan. Melempar
+/// error bila ada tabel yang gagal dihapus — pemanggil
+/// membatalkan reset lokal, supaya data tidak hilang setengah
+/// (awan kosong tapi HP utuh akan mengunggah ulang semuanya).
+Future<void> hapusSemuaDataCloud(AppSettings settings) async {
+  final kode = settings.businessKey.trim();
+  var url = settings.supabaseUrl.trim();
+  while (url.endsWith('/')) {
+    url = url.substring(0, url.length - 1);
+  }
+  final client = SupabaseClient(
+    url,
+    settings.supabaseAnonKey.trim(),
+    headers: {'x-business-key': kode},
+    authOptions: const AuthClientOptions(autoRefreshToken: false),
+  );
+  try {
+    for (final tabel in ['avoera_transactions', 'avoera_menus', 'avoera_ingredients', 'avoera_branches', 'avoera_settings']) {
+      await client.from(tabel).delete().eq('business_key', kode);
+    }
+  } finally {
+    await client.dispose();
+  }
+}
+
 Future<HasilSinkron> sinkronkanSupabase({
   required AppSettings settings,
   required List<MenuItem> menus,

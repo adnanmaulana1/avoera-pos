@@ -51,6 +51,7 @@ class PengaturanScreen extends StatelessWidget {
     this.onOpenSesiKasir,
     this.statusPrinter = 'Belum diatur',
     this.onOpenStruk,
+    this.onResetTotal,
   });
 
   final String businessName;
@@ -119,6 +120,13 @@ class PengaturanScreen extends StatelessWidget {
   final VoidCallback? onOpenSesiKasir;
   final String statusPrinter;
   final VoidCallback? onOpenStruk;
+
+  /// Reset Total (v0.20.0): hapus semua data di awan + HP ini,
+  /// kembali seperti baru dipasang. Mengembalikan null bila
+  /// berhasil, atau pesan galat bila gagal (data HP tidak
+  /// diubah). Null (callback) = bagian Zona Berbahaya tidak
+  /// ditampilkan.
+  final Future<String?> Function()? onResetTotal;
 
   @override
   Widget build(BuildContext context) {
@@ -434,6 +442,46 @@ class PengaturanScreen extends StatelessWidget {
             ),
           ),
         ],
+        if (onResetTotal != null) ...[
+          const SizedBox(height: AppSpacing.xl),
+          const SectionTitle('Zona Berbahaya'),
+          const SizedBox(height: AppSpacing.sm),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              onTap: () => showResetTotalDialog(context, onKonfirmasi: onResetTotal!),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(color: AppColors.danger.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadius.sm)),
+                      child: Icon(Ikon.delete_outline, size: 20, color: AppColors.danger),
+                    ),
+                    const SizedBox(width: AppSpacing.lg),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Reset Semua Data', style: AppText.body.copyWith(fontWeight: FontWeight.w600, color: AppColors.danger)),
+                          Text(
+                            'Hapus semua data di awan dan di HP ini — kembali seperti baru dipasang.',
+                            style: AppText.caption.copyWith(color: AppColors.muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Icon(Ikon.chevron_right, size: 20, color: AppColors.muted),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -653,6 +701,111 @@ void showAppInfoDialog(BuildContext context) {
   );
 }
 
+
+/// Dialog Reset Total (v0.20.0): penjelasan akibatnya dengan
+/// kata biasa, lalu pengguna wajib mengetik RESET sebelum
+/// tombol hapus menyala — penghapusan ini permanen dan tidak
+/// bisa dibatalkan. [onKonfirmasi] mengembalikan null bila
+/// reset berhasil (dialog tertutup), atau pesan galat yang
+/// ditampilkan di dialog (data HP tidak berubah).
+Future<void> showResetTotalDialog(
+  BuildContext context, {
+  required Future<String?> Function() onKonfirmasi,
+}) async {
+  final ctrl = TextEditingController();
+  var sibuk = false;
+  String? galat;
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDialog) {
+        final pas = ctrl.text.trim().toUpperCase() == 'RESET';
+        return AlertDialog(
+          title: const Text('Reset Semua Data?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Semua data terhapus PERMANEN: menu, bahan, transaksi, cabang, dan pengaturan — di awan dan di HP ini.',
+                style: AppText.small,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Aplikasi kembali seperti baru dipasang: sambutan awal tampil lagi dan PIN dibuat ulang.',
+                style: AppText.small,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'HP atau tablet lain yang memakai aplikasi ini harus ikut direset atau diinstall ulang — kalau tidak, data lamanya bisa naik lagi ke awan.',
+                style: AppText.small,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              TextField(
+                controller: ctrl,
+                enabled: !sibuk,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Ketik RESET untuk lanjut',
+                  hintText: 'RESET',
+                ),
+                onChanged: (_) => setDialog(() {}),
+              ),
+              if (sibuk) ...[
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Text('Menghapus data…', style: AppText.small.copyWith(color: AppColors.muted)),
+                  ],
+                ),
+              ],
+              if (galat != null) ...[
+                const SizedBox(height: AppSpacing.lg),
+                Text(galat!, style: AppText.small.copyWith(color: AppColors.danger)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: sibuk ? null : () => Navigator.of(ctx).pop(),
+              child: const Text('Batal'),
+            ),
+            PrimaryButton(
+              label: sibuk ? 'Menghapus…' : 'Hapus Semua Data',
+              backgroundColor: AppColors.danger,
+              onPressed: (!pas || sibuk)
+                  ? null
+                  : () async {
+                      setDialog(() {
+                        sibuk = true;
+                        galat = null;
+                      });
+                      final hasil = await onKonfirmasi();
+                      if (!ctx.mounted) return;
+                      if (hasil == null) {
+                        Navigator.of(ctx).pop();
+                      } else {
+                        setDialog(() {
+                          sibuk = false;
+                          galat = hasil;
+                        });
+                      }
+                    },
+            ),
+          ],
+        );
+      },
+    ),
+  );
+  disposeControllersLater([ctrl]);
+}
 
 /// Kotak foto profil usaha 52px: foto lokal bila ada & berkasnya
 /// masih ada, selain itu kotak aksen + ikon toko seperti dulu.

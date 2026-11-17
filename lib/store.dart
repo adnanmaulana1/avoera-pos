@@ -188,4 +188,19 @@ class LocalStore {
   }
 
   static Future<void> saveDraftKasir(DraftKasir d) => _save(_kKeranjang, d.toJson());
+
+  /// Hapus SEMUA data lokal aplikasi (Reset Total, v0.20.0):
+  /// semua kunci avoera.* dibuang, jadi pemuatan berikutnya
+  /// berlaku persis seperti pemasangan baru — data contoh,
+  /// pengaturan bawaan, sambutan awal tampil lagi.
+  static Future<void> hapusSemuaData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final k in prefs.getKeys().where((k) => k.startsWith('avoera.')).toList()) {
+        await prefs.remove(k);
+      }
+    } catch (_) {
+      // Gagal hapus tidak boleh menjatuhkan aplikasi.
+    }
+  }
 }

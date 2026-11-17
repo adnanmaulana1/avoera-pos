@@ -260,6 +260,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   // ---------- Sinkronisasi awan (Supabase) ----------
   StatusSinkron _syncStatus = StatusSinkron.belumDiatur;
   bool _syncing = false;
+
+  /// Reset Total sedang berjalan (v0.20.0): sinkron dibekukan
+  /// supaya unggahan lama tidak menimpa penghapusan awan dan
+  /// hasil gabungan lama tidak diterapkan ke data yang baru
+  /// direset.
+  bool _resetBerlangsung = false;
   Timer? _syncDebounce;
   Timer? _syncPeriodik;
   Timer? _syncTimeoutTimer;
@@ -1403,6 +1409,77 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         },
       );
 
+  // ---------- Reset Total (v0.20.0) ----------
+  /// Hapus SEMUA data — awan dulu, lalu HP ini — dan muat
+  /// ulang dari nol seperti pemasangan baru. Mengembalikan
+  /// null bila berhasil, atau pesan galat bila penghapusan
+  /// awan gagal (dalam hal itu data HP TIDAK diubah sama
+  /// sekali, supaya tidak hilang setengah).
+  Future<String?> _resetTotal() async {
+    if (_resetBerlangsung) return 'Reset sedang berjalan.';
+    _resetBerlangsung = true;
+    try {
+      // Bekukan jadwal sinkron, lalu tunggu sinkron yang
+      // sedang terbang selesai — unggahannya harus tuntas
+      // SEBELUM baris awan dihapus, kalau tidak data lama
+      // naik lagi sesudah penghapusan.
+      _syncDebounce?.cancel();
+      var tunggu = 0;
+      while (_syncing && tunggu < 300) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        tunggu++;
+      }
+      if (_syncSiap) {
+        try {
+          await (jahitanHapusCloud ?? hapusSemuaDataCloud)(_settings);
+        } catch (e) {
+          return 'Data di awan gagal dihapus (${ringkasErrorSinkron(e)}). Data di HP ini TIDAK diubah — periksa internet, lalu coba lagi.';
+        }
+      }
+      // Foto usaha adalah berkas lokal: ikut dibuang.
+      final foto = _settings.businessPhotoPath;
+      if (foto != null && foto.isNotEmpty) {
+        try {
+          await File(foto).delete();
+        } catch (_) {
+          // Berkas sudah tidak ada — abaikan.
+        }
+      }
+      await LocalStore.hapusSemuaData();
+      if (!mounted) return null;
+      setState(() {
+        _index = 0;
+        _kasirUnlocked = false;
+        _celebrate = false;
+        _laporanSinkron = [];
+        for (final k in _kotor.keys) {
+          _kotor[k] = 0;
+        }
+        for (final k in _dikenal.keys) {
+          _dikenal[k] = {};
+        }
+      });
+      await _loadData();
+      // _loadData menjalankan sinkron awal dalam keadaan
+      // beku, jadi jalankan sekali lagi di sini — persis
+      // seperti pemasangan baru: data awal naik ke awan yang
+      // sudah kosong.
+      _resetBerlangsung = false;
+      if (_cloudAktif) _syncNow(diam: true);
+      if (mounted) {
+        tampilToast(
+          context,
+          'Semua data sudah direset — aplikasi seperti baru dipasang.',
+          icon: Ikon.delete_outline,
+          durasi: const Duration(seconds: 4),
+        );
+      }
+      return null;
+    } finally {
+      _resetBerlangsung = false;
+    }
+  }
+
   // ---------- Sinkronisasi Supabase ----------
   /// Sinkron dengan batas 25 detik: koneksi menggantung tidak
   /// boleh membuat status 'menyinkron' selamanya — gagalkan saja,
@@ -1436,7 +1513,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _syncNow({bool diam = false, bool perbaruiSemua = false}) async {
-    if (_syncing || !_syncSiap) return;
+    if (_syncing || !_syncSiap || _resetBerlangsung) return;
     if (!_settings.cloudSyncEnabled) {
       if (!diam && mounted) {
         tampilToast(context, 'Cloud Sync sedang mati — nyalakan di Pengaturan.', icon: Ikon.cloud_off_outlined, warna: AppColors.warning);
@@ -1456,6 +1533,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     try {
       final hasil = await _sinkronDenganBatasWaktu(perbaruiSemua: perbaruiSemua);
       if (!mounted) return;
+      // Reset Total mulai saat sinkron ini terbang: hasil
+      // gabungan lama TIDAK diterapkan dan TIDAK disimpan —
+      // datanya sedang dihapus. Unggahannya sendiri sudah
+      // selesai di dalam sinkron, jadi penghapusan awan oleh
+      // reset tetap berjalan sesudahnya dengan urutan benar.
+      if (_resetBerlangsung) {
+        _syncing = false;
+        _penandaSinkron.value++;
+        return;
+      }
       setState(() {
         _menus = hasil.menus;
         _ingredients = hasil.ingredients;
@@ -2077,6 +2164,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onOpenSesiKasir: _openSesiKasir,
         statusPrinter: _desainStruk.printerSiap ? (_desainStruk.namaPrinter.isEmpty ? 'Terhubung' : _desainStruk.namaPrinter) : 'Belum diatur',
         onOpenStruk: _openDesainStruk,
+        onResetTotal: _resetTotal,
       ),
     ];
 
