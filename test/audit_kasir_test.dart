@@ -84,7 +84,7 @@ void main() {
     await tester.tap(find.descendant(of: find.byType(Drawer), matching: find.text('Pengaturan')));
     await tester.pumpAndSettle();
     // v0.8.0: Usaha jadi kartu profil — nama usaha tampil di kartu itu.
-    expect(find.text('Avoera Cafe & Resto'), findsOneWidget, reason: 'Pengaturan harus terbuka dari drawer (kartu profil usaha)');
+    expect(find.text('Avorea Cafe & Resto'), findsOneWidget, reason: 'Pengaturan harus terbuka dari drawer (kartu profil usaha)');
     // Selama di menu drawer, sorotan bar bawah jatuh ke 'Lainnya'.
     expect(tester.widget<BarNavigasiBawah>(find.byType(BarNavigasiBawah)).selectedIndex, 4);
   });

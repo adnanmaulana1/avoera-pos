@@ -3,20 +3,20 @@ import 'package:avoera_pos/ikon.dart';
 
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
-const appName = 'Avoera POS';
-const appVersion = '0.17.0';
+const appName = 'Avorea POS';
+const appVersion = '0.18.0';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 57;
+const appBuild = 58;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
 class AppSettings {
   AppSettings({
-    this.businessName = 'Avoera Cafe & Resto',
+    this.businessName = 'Avorea Cafe & Resto',
     this.businessAddress = 'Jl. Merdeka No. 10, Polewali Mandar',
     this.businessPhone = '0812-3456-7890',
     this.servicePercent = 5,
@@ -124,7 +124,7 @@ class AppSettings {
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
-        businessName: j['businessName'] as String? ?? 'Avoera Cafe & Resto',
+        businessName: j['businessName'] as String? ?? 'Avorea Cafe & Resto',
         businessAddress: j['businessAddress'] as String? ?? '',
         businessPhone: j['businessPhone'] as String? ?? '',
         servicePercent: (j['servicePercent'] as num?)?.toInt() ?? 5,

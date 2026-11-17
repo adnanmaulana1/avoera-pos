@@ -1,5 +1,5 @@
 name: avoera_pos
-description: "Avoera POS - UI aplikasi kasir F&B (resto, cafe, kopi). UI saja dengan data contoh, tanpa backend."
+description: "Avorea POS - UI aplikasi kasir F&B (resto, cafe, kopi). UI saja dengan data contoh, tanpa backend."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.17.0+57
+version: 0.18.0+58
 
 environment:
   sdk: ^3.13.7
@@ -70,7 +70,7 @@ flutter:
     - assets/svg/
     - assets/branding/
 
-  # Huruf khas Avoera (update identitas v0.12.0): Plus Jakarta Sans
+  # Huruf khas Avorea (update identitas v0.12.0): Plus Jakarta Sans
   # untuk judul & angka; isi teks tetap Roboto sistem. Berkas
   # dibundel supaya aman offline dan sama di semua merek HP.
   fonts:

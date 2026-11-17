@@ -63,7 +63,7 @@ Future<Uint8List> buatPdfLaporan({
           pw.Text(catatan, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
         ],
         pw.SizedBox(height: 16),
-        pw.Text('Dibuat oleh Avoera POS · Webtales Studio', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+        pw.Text('Dibuat oleh Avorea POS · Webtales Studio', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
       ],
     ),
   );
@@ -212,7 +212,7 @@ class PratinjauLaporanScreen extends StatelessWidget {
                       Text(catatan, style: const TextStyle(fontFamily: 'Roboto', fontSize: 11, color: _abu)),
                     ],
                     const SizedBox(height: AppSpacing.lg),
-                    const Text('Dibuat oleh Avoera POS · Webtales Studio', style: TextStyle(fontFamily: 'Roboto', fontSize: 10, color: _abu)),
+                    const Text('Dibuat oleh Avorea POS · Webtales Studio', style: TextStyle(fontFamily: 'Roboto', fontSize: 10, color: _abu)),
                   ],
                 ),
               ),
@@ -356,7 +356,7 @@ Future<Uint8List> buatPdfLabel({
           ],
         ),
         pw.SizedBox(height: 14),
-        pw.Text('Label harga $businessName · dibuat oleh Avoera POS', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+        pw.Text('Label harga $businessName · dibuat oleh Avorea POS', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
       ],
     ),
   );

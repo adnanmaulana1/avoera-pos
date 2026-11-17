@@ -36,7 +36,7 @@ class SplashScreen extends StatelessWidget {
               ),
               const Spacer(flex: 5),
               Text(
-                'AVOERA POS · BY WEBTALES STUDIO',
+                'AVOREA POS · BY WEBTALES STUDIO',
                 style: TextStyle(color: _hijauBrand.withValues(alpha: 0.75), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 2.2),
               ),
               const SizedBox(height: 22),

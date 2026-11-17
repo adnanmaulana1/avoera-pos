@@ -130,7 +130,7 @@ List<BarisStruk> susunStruk({
   required String branchName,
 }) {
   final b = <BarisStruk>[];
-  b.add(BarisStruk.teks(namaUsaha.isEmpty ? 'AVOERA POS' : namaUsaha, rata: RataStruk.tengah, tebal: true, besar: true));
+  b.add(BarisStruk.teks(namaUsaha.isEmpty ? 'AVOREA POS' : namaUsaha, rata: RataStruk.tengah, tebal: true, besar: true));
   if (desain.teksHeader.isNotEmpty) b.add(BarisStruk.teks(desain.teksHeader, rata: RataStruk.tengah));
   if (desain.tampilAlamat && alamat.isNotEmpty) b.add(BarisStruk.teks(alamat, rata: RataStruk.tengah));
   if (desain.tampilTelepon && telepon.isNotEmpty) b.add(BarisStruk.teks('Telp $telepon', rata: RataStruk.tengah));

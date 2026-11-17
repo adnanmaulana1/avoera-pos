@@ -177,7 +177,7 @@ class _KasirFnbAppState extends State<KasirFnbApp> {
       ),
     );
     return MaterialApp(
-      title: 'Avoera POS',
+      title: 'Avorea POS',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       themeMode: switch (_modeTema) {
@@ -369,6 +369,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         _settings.supabaseAnonKey = kSupabaseAnonKeyBawaan;
         _settings.businessKey = kKodeUsahaBawaan;
         _settings.backendBawaanDitanam = true;
+        LocalStore.saveSettings(_settings);
+      }
+      // Ganti nama Avoera → Avorea (permintaan Adnan
+      // 2026-11-17): nama usaha yang MASIH bawaan lama persis
+      // ikut diganti; nama yang sudah diubah pemilik sendiri
+      // tidak disentuh.
+      if (_settings.businessName == 'Avoera Cafe & Resto') {
+        _settings.businessName = 'Avorea Cafe & Resto';
         LocalStore.saveSettings(_settings);
       }
       _transactions = data.transactions;
@@ -602,7 +610,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _tambahNotifikasi(
       jenis: 'info',
       judul: 'Pembaruan tersedia',
-      isi: 'Avoera POS v${info.nama} siap dipasang. Ketuk pemberitahuan ini untuk memasangnya.',
+      isi: 'Avorea POS v${info.nama} siap dipasang. Ketuk pemberitahuan ini untuk memasangnya.',
       kunci: 'update-${info.kode}',
     );
     _tawarkanUpdate();
@@ -629,7 +637,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Ada versi baru — v${info.nama}'),
-        content: Text(info.catatan.isNotEmpty ? info.catatan : 'Versi terbaru Avoera POS sudah tersedia.'),
+        content: Text(info.catatan.isNotEmpty ? info.catatan : 'Versi terbaru Avorea POS sudah tersedia.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Nanti')),
           FilledButton(
@@ -677,7 +685,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Ada versi baru — v${info.nama}'),
-        content: Text(info.catatan.isNotEmpty ? info.catatan : 'Versi terbaru Avoera POS sudah tersedia.'),
+        content: Text(info.catatan.isNotEmpty ? info.catatan : 'Versi terbaru Avorea POS sudah tersedia.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Nanti')),
           FilledButton(

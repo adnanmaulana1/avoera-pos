@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 // ============================================================
-// Token desain Avoera POS — aturan lengkapnya di DESIGN.md.
+// Token desain Avorea POS — aturan lengkapnya di DESIGN.md.
 // File layar TIDAK boleh menulis Color(0x...), fontSize, atau
 // BorderRadius.circular sendiri; semua lewat token di sini
 // atau komponen bersama di widgets.dart.
@@ -264,7 +264,7 @@ ThemeData buildTheme() {
   );
 }
 
-/// Pembangun transisi halaman bersama Avoera: halaman masuk
+/// Pembangun transisi halaman bersama Avorea: halaman masuk
 /// memudar sambil bergeser sedikit dari kanan (0,05 lebar layar),
 /// kurva easeOutCubic; arah balik easeInCubic. Tenang, satu pola
 /// untuk semua rute halaman (MaterialPageRoute membaca tema ini).

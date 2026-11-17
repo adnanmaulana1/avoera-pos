@@ -326,7 +326,7 @@ class _DialogUnduhUpdateState extends State<DialogUnduhUpdate> {
         content: switch (_fase) {
           'unduh-gagal' => Text('Unduhan gagal. Periksa koneksi internet, lalu coba lagi.', style: AppText.body),
           'izin' => Text(
-              'Unduhan selesai. Android meminta izin sekali saja agar Avoera boleh memasang pembaruannya sendiri — halaman izin sudah dibuka. Aktifkan "Izinkan dari sumber ini", kembali ke sini, lalu ketuk Pasang.',
+              'Unduhan selesai. Android meminta izin sekali saja agar Avorea boleh memasang pembaruannya sendiri — halaman izin sudah dibuka. Aktifkan "Izinkan dari sumber ini", kembali ke sini, lalu ketuk Pasang.',
               style: AppText.body,
             ),
           'gagal' => Column(

@@ -8,7 +8,7 @@ import 'theme.dart';
 import 'package:avoera_pos/ikon.dart';
 
 // ============================================================
-// Komponen bersama Avoera POS — aturan lengkapnya di DESIGN.md.
+// Komponen bersama Avorea POS — aturan lengkapnya di DESIGN.md.
 // Semua layar memakai komponen di sini supaya bentuk, jarak,
 // dan gaya terpilih/tidak-terpilih sama persis di mana-mana.
 // ============================================================
@@ -33,7 +33,7 @@ class PageHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Motif khas Avoera (v0.12.0): garis aksen pendek —
+              // Motif khas Avorea (v0.12.0): garis aksen pendek —
               // penanda yang sama dengan indikator bar bawah &
               // garis tepi pita ringkasan laporan. Satu motif
               // kecil yang berulang = identitas, bukan dekorasi.
