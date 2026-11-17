@@ -42,6 +42,13 @@ import 'screens/persediaan_screen.dart';
 import 'screens/pembelian_screen.dart';
 import 'screens/hutang_screen.dart';
 import 'screens/promo_screen.dart';
+import 'screens/margin_tipis_screen.dart';
+import 'screens/pengunjung_screen.dart';
+import 'screens/sesi_kasir_screen.dart';
+import 'screens/struk_screen.dart';
+import 'screens/desain_struk_screen.dart';
+import 'struk.dart';
+import 'printer.dart';
 import 'package:avoera_pos/ikon.dart';
 
 void main() {
@@ -278,6 +285,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   // ---------- Hutang & Promo (update besar v0.11.0) ----------
   List<Hutang> _hutang = [];
   List<Promo> _promos = [];
+
+  // ---------- Sesi Kasir (v0.15.0) ----------
+  List<SesiKasir> _sesi = [];
+
+  /// Sesi yang sedang terbuka untuk cabang aktif (null = kasir
+  /// belum dibuka). Penjualan tidak pernah diblokir ini.
+  SesiKasir? get _sesiTerbuka => _sesi.where((s) => s.terbuka && s.branchId == _settings.activeBranchId).firstOrNull;
+
+  // ---------- Desain struk & printer (v0.15.0) ----------
+  DesainStruk _desainStruk = DesainStruk();
   final Map<String, double> _stokDikenal = {};
   int get _belumDibaca => _notifications.where((n) => !n.dibaca).length;
 
@@ -329,6 +346,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   Future<void> _loadData() async {
     final data = await LocalStore.load();
+    _desainStruk = await LocalStore.loadStruk();
     if (!mounted) return;
     setState(() {
       _menus = data.menus;
@@ -352,6 +370,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _expenses = data.expenses;
       _hutang = data.hutang;
       _promos = data.promos;
+      _sesi = data.sesi;
       _stokDikenal
         ..clear()
         ..addAll({for (final i in _ingredients) i.id: i.stock});
@@ -898,6 +917,60 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             transactions: _transactions,
             branchId: _settings.activeBranchId,
             branchName: _settings.activeBranch.name,
+            onLihatStruk: _openStruk,
+          ),
+        ),
+      );
+
+  // ---------- Struk & printer (v0.15.0) ----------
+
+  void _simpanDesainStruk(DesainStruk d) {
+    setState(() => _desainStruk = d);
+    LocalStore.saveStruk(d);
+  }
+
+  void _openDesainStruk() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => DesainStrukScreen(
+            awal: _desainStruk,
+            namaUsaha: _settings.businessName,
+            alamat: _settings.businessAddress,
+            telepon: _settings.businessPhone,
+            branchName: _settings.activeBranch.name,
+            onSimpan: _simpanDesainStruk,
+          ),
+        ),
+      );
+
+  Future<String?> _cetakStruk(TxRecord tx) {
+    if (!_desainStruk.printerSiap) {
+      return Future.value('Printer belum diatur. Buka Pengaturan → Struk & Printer untuk menghubungkan.');
+    }
+    final bytes = strukKeEscPos(
+      susunStruk(
+        tx: tx,
+        desain: _desainStruk,
+        namaUsaha: _settings.businessName,
+        alamat: _settings.businessAddress,
+        telepon: _settings.businessPhone,
+        branchName: _settings.activeBranch.name,
+      ),
+      _desainStruk.lebarKarakter,
+    );
+    return PrinterTermal.cetak(_desainStruk.idPrinter, bytes);
+  }
+
+  void _openStruk(TxRecord tx) => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => StrukScreen(
+            tx: tx,
+            desain: _desainStruk,
+            namaUsaha: _settings.businessName,
+            alamat: _settings.businessAddress,
+            telepon: _settings.businessPhone,
+            branchName: _settings.activeBranch.name,
+            onCetak: () => _cetakStruk(tx),
+            onEditDesain: _openDesainStruk,
           ),
         ),
       );
@@ -1040,6 +1113,64 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             onAdd: _addPromo,
             onEdit: _editPromo,
             onDelete: _deletePromo,
+          ),
+        ),
+      );
+
+  // ---------- Pembuka laporan v0.15.0 ----------
+
+  void _openMarginTipis() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => MarginTipisScreen(
+            menus: _menus,
+            ingredients: _ingredients,
+            transactions: _transactions,
+            branchId: _settings.activeBranchId,
+            branchName: _settings.activeBranch.name,
+          ),
+        ),
+      );
+
+  void _openPengunjung() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PengunjungScreen(
+            transactions: _transactions,
+            branchId: _settings.activeBranchId,
+            branchName: _settings.activeBranch.name,
+          ),
+        ),
+      );
+
+  // ---------- Sesi Kasir (v0.15.0) ----------
+
+  void _bukaSesi(String namaKasir, int modalAwal) {
+    final s = SesiKasir(branchId: _settings.activeBranchId, dibukaPada: DateTime.now(), modalAwal: modalAwal, namaKasir: namaKasir);
+    setState(() => _sesi = [s, ..._sesi]);
+    LocalStore.saveSesi(_sesi);
+  }
+
+  void _tutupSesi(int tunaiFisik, int pengeluaranLaci, String catatan) {
+    final s = _sesiTerbuka;
+    if (s == null) return;
+    setState(() {
+      s.ditutupPada = DateTime.now();
+      s.tunaiFisik = tunaiFisik;
+      s.pengeluaranLaci = pengeluaranLaci;
+      s.catatan = catatan;
+    });
+    LocalStore.saveSesi(_sesi);
+  }
+
+  void _openSesiKasir() => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SesiKasirScreen(
+            sesi: _sesi,
+            transactions: _transactions,
+            expenses: _expenses,
+            branchId: _settings.activeBranchId,
+            branchName: _settings.activeBranch.name,
+            onBuka: _bukaSesi,
+            onTutup: _tutupSesi,
           ),
         ),
       );
@@ -1407,7 +1538,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       });
   void _remove(CartItem c) => setState(() => _cart.remove(c));
 
-  void _checkout(String paymentMethod, String tableLabel, String orderType, Promo? promo) {
+  void _checkout(String paymentMethod, String tableLabel, String orderType, Promo? promo, {int tamu = 0}) {
     // Total dihitung SEBELUM keranjang dikosongkan, untuk catatan
     // tagihan berjalan di kartu meja.
     final subtotal = _cart.fold(0, (a, c) => a + c.total);
@@ -1461,6 +1592,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         tax: taxAmt,
         diskon: diskonAmt,
         promoNama: diskonAmt > 0 ? (promo?.nama ?? '') : '',
+        tamu: tamu,
         branchId: _settings.activeBranchId,
         uuid: 'u${DateTime.now().millisecondsSinceEpoch}-$_orderCounter',
         // Rincian item disimpan sejak v0.10.6 supaya halaman
@@ -1671,6 +1803,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onDec: _dec,
         onRemove: _remove,
         onCheckout: _checkout,
+        sesiTerbuka: _sesiTerbuka != null,
+        onBukaKasir: _openSesiKasir,
         promos: _promos,
       ),
       ProdukScreen(
@@ -1708,6 +1842,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onOpenPembelian: _openPembelian,
         onOpenHutang: _openHutang,
         onOpenPromo: _openPromo,
+        onOpenMarginTipis: _openMarginTipis,
+        onOpenPengunjung: _openPengunjung,
       ),
       StokScreen(
         ingredients: _ingredients,
@@ -1769,6 +1905,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           widget.onModeTema(v, true);
         },
         onCekUpdate: _cekUpdateManual,
+        statusSesiKasir: _sesiTerbuka == null ? 'Belum dibuka' : 'Buka sejak ${SesiKasirScreen.teksJam(_sesiTerbuka!.dibukaPada)}',
+        onOpenSesiKasir: _openSesiKasir,
+        statusPrinter: _desainStruk.printerSiap ? (_desainStruk.namaPrinter.isEmpty ? 'Terhubung' : _desainStruk.namaPrinter) : 'Belum diatur',
+        onOpenStruk: _openDesainStruk,
       ),
     ];
 

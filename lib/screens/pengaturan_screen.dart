@@ -46,6 +46,10 @@ class PengaturanScreen extends StatelessWidget {
     required this.modeTema,
     required this.onModeTemaChanged,
     this.onCekUpdate,
+    this.statusSesiKasir = 'Belum dibuka',
+    this.onOpenSesiKasir,
+    this.statusPrinter = 'Belum diatur',
+    this.onOpenStruk,
   });
 
   final String businessName;
@@ -102,6 +106,14 @@ class PengaturanScreen extends StatelessWidget {
   /// Cek pembaruan aplikasi ke server (baris "Pembaruan
   /// Aplikasi" di bagian Tentang). Null = baris tidak tampil.
   final VoidCallback? onCekUpdate;
+
+  /// Sesi Kasir & Struk (v0.15.0): teks status singkat untuk
+  /// baris di bagian Kasir + pintunya. Opsional supaya
+  /// konstruksi lama (tes) tetap sah.
+  final String statusSesiKasir;
+  final VoidCallback? onOpenSesiKasir;
+  final String statusPrinter;
+  final VoidCallback? onOpenStruk;
 
   @override
   Widget build(BuildContext context) {
@@ -294,6 +306,29 @@ class PengaturanScreen extends StatelessWidget {
         Text(
           'Tambah, ubah, dan hapus data. Semua tersimpan permanen di perangkat ini.',
           style: AppText.caption.copyWith(color: AppColors.muted),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        const SectionTitle('Kasir'),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              _SettingRow(
+                icon: Ikon.lock_outlined,
+                label: 'Sesi Kasir',
+                value: statusSesiKasir,
+                onTap: onOpenSesiKasir ?? () {},
+              ),
+              const Divider(height: 1, indent: 68),
+              _SettingRow(
+                icon: Ikon.print_outlined,
+                label: 'Struk & Printer',
+                value: statusPrinter,
+                onTap: onOpenStruk ?? () {},
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: AppSpacing.xl),
         const SectionTitle('Sinkronisasi Online'),

@@ -481,7 +481,7 @@ void main() {
         onInc: (_) {},
         onDec: (_) {},
         onRemove: (_) {},
-        onCheckout: (m, t, o, p) {
+        onCheckout: (m, t, o, p, {int? tamu}) {
           metodeCheckout = m;
           promoCheckout = p;
         },

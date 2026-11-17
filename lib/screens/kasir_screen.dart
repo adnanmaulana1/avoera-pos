@@ -25,6 +25,8 @@ class KasirScreen extends StatefulWidget {
     required this.onRemove,
     required this.onCheckout,
     this.promos = const [],
+    this.sesiTerbuka = true,
+    this.onBukaKasir,
   });
 
   final List<CartItem> cart;
@@ -53,12 +55,19 @@ class KasirScreen extends StatefulWidget {
   final ValueChanged<CartItem> onInc;
   final ValueChanged<CartItem> onDec;
   final ValueChanged<CartItem> onRemove;
-  final void Function(String paymentMethod, String tableLabel, String orderType, Promo? promo) onCheckout;
+  final void Function(String paymentMethod, String tableLabel, String orderType, Promo? promo, {int tamu}) onCheckout;
 
   /// Promo yang bisa dipilih kasir (v0.11.0). Pilihan kasir
   /// hidup di state layar ini dan diteruskan ke onCheckout;
   /// besar diskon selalu dihitung hitungDiskonPromo.
   final List<Promo> promos;
+
+  /// Sesi kasir sedang terbuka? Bila TIDAK, pita peringatan
+  /// tampil di atas area menu — penjualan TIDAK pernah
+  /// diblokir, hanya diingatkan (aturan Adnan). Bawaan true
+  /// supaya konstruksi lama (tes) tidak berubah.
+  final bool sesiTerbuka;
+  final VoidCallback? onBukaKasir;
 
   @override
   State<KasirScreen> createState() => _KasirScreenState();
@@ -156,6 +165,26 @@ class _KasirScreenState extends State<KasirScreen> {
             subtitle: 'Ketuk menu untuk memilih varian. Ketuk + untuk tambah cepat.',
             trailing: widget.tablesEnabled ? _tablePicker() : null,
           ),
+          if (!widget.sesiTerbuka) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(color: AppColors.warningSoft, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.warningBorder)),
+              child: Row(
+                children: [
+                  Icon(Ikon.error_outline, color: AppColors.warning, size: 20),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Kasir belum dibuka — penjualan tetap tercatat, tapi tidak masuk sesi.',
+                      style: AppText.small.copyWith(color: AppColors.warning, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (widget.onBukaKasir != null) TextButton(onPressed: widget.onBukaKasir, child: const Text('Buka')),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -472,7 +501,7 @@ class _KasirScreenState extends State<KasirScreen> {
     // v0.10.1: pembayaran kini HALAMAN penuh (PembayaranScreen),
     // bukan dialog — permintaan Adnan 2026-11-15 (dialog sempit,
     // tombol menimpa kolom saat keyboard naik).
-    final methodResult = await Navigator.of(context).push<String>(
+    final hasilBayar = await Navigator.of(context).push<HasilBayar>(
       MaterialPageRoute(
         builder: (_) => PembayaranScreen(
           subtotal: _subtotal,
@@ -483,6 +512,8 @@ class _KasirScreenState extends State<KasirScreen> {
           promoNama: _promoBerlaku?.nama ?? '',
           servicePercent: widget.servicePercent,
           taxPercent: widget.taxPercent,
+          jenisAwal: widget.selectedTable != null ? 'Dine-in' : _orderType,
+          labelMeja: widget.selectedTable != null ? 'Meja ${widget.selectedTable!.number}' : '',
           items: widget.cart
               .map((c) => BarisBayar(
                     nama: c.menu.name,
@@ -497,17 +528,24 @@ class _KasirScreenState extends State<KasirScreen> {
         ),
       ),
     );
-    if (methodResult == null || !context.mounted) return;
+    if (hasilBayar == null || !context.mounted) return;
     final paidTotal = _grandTotal;
-    // Label tiket dapur mengikuti pilihan kasir: meja terpilih selalu
-    // Dine-in; tanpa meja mengikuti tombol Dine-in/Bungkus di atas.
+    // Jenis final: meja terpilih selalu Dine-in; tanpa meja
+    // mengikuti pilihan TERAKHIR kasir — tombol di Kasir atau
+    // kartu jenis di halaman Pembayaran, keduanya sinkron
+    // (permintaan Adnan 2026-11-17): perubahan di Pembayaran
+    // ditulis kembali ke tombol Kasir untuk pesanan berikutnya.
+    final jenisFinal = widget.selectedTable != null ? 'Dine-in' : hasilBayar.jenis;
+    if (widget.selectedTable == null && jenisFinal != _orderType) {
+      setState(() => _orderType = jenisFinal);
+    }
     final tableLabel = widget.selectedTable != null
         ? 'Meja ${widget.selectedTable!.number}'
-        : (_orderType == 'Bungkus' ? 'Bungkus' : 'Dine-in');
+        : (jenisFinal == 'Bungkus' ? 'Bungkus' : 'Dine-in');
     final orderTypeLabel = widget.selectedTable != null
         ? 'Dine-in'
-        : (_orderType == 'Bungkus' ? 'Takeaway' : 'Dine-in');
-    widget.onCheckout(methodResult, tableLabel, orderTypeLabel, _promoBerlaku);
+        : (jenisFinal == 'Bungkus' ? 'Takeaway' : 'Dine-in');
+    widget.onCheckout(hasilBayar.metode, tableLabel, orderTypeLabel, _promoBerlaku, tamu: hasilBayar.tamu);
     // Promo sekali pakai per pesanan: kosongkan pilihan supaya
     // pelanggan berikutnya mulai dari harga normal.
     if (mounted) setState(() => _promo = null);
@@ -525,7 +563,7 @@ class _KasirScreenState extends State<KasirScreen> {
             const SizedBox(height: AppSpacing.lg),
             Text('Pembayaran Berhasil', style: AppText.title.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.sm),
-            Text('Metode: $methodResult · ${rupiah(paidTotal)}',
+            Text('Metode: ${hasilBayar.metode} · ${rupiah(paidTotal)}',
                 style: TextStyle(color: AppColors.muted)),
             const SizedBox(height: AppSpacing.xs),
             Text(widget.kitchenEnabled ? 'Pesanan diteruskan ke dapur.' : 'Transaksi tercatat di laporan.', style: TextStyle(color: AppColors.muted)),

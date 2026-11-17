@@ -4,13 +4,13 @@ import 'package:avoera_pos/ikon.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.14.3';
+const appVersion = '0.15.0';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 54;
+const appBuild = 55;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -632,6 +632,7 @@ class TxRecord {
     this.status = 'Lunas',
     this.diskon = 0,
     this.promoNama = '',
+    this.tamu = 0,
   });
   final String id;
 
@@ -670,6 +671,12 @@ class TxRecord {
   final int diskon;
   final String promoNama;
 
+  /// Jumlah tamu pada transaksi ini (fitur Laporan Pengunjung
+  /// v0.15.0), diisi kasir di halaman Pembayaran. 0 = tidak
+  /// dicatat — semua transaksi sebelum fitur ini bernilai 0 dan
+  /// TIDAK dihitung sebagai kunjungan tanpa tamu.
+  final int tamu;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'total': total,
@@ -685,6 +692,7 @@ class TxRecord {
         'status': status,
         'diskon': diskon,
         'promoNama': promoNama,
+        'tamu': tamu,
       };
 
   factory TxRecord.fromJson(Map<String, dynamic> j) => TxRecord(
@@ -704,7 +712,268 @@ class TxRecord {
         status: j['status'] as String? ?? 'Lunas',
         diskon: (j['diskon'] as num?)?.toInt() ?? 0,
         promoNama: j['promoNama'] as String? ?? '',
+        tamu: (j['tamu'] as num?)?.toInt() ?? 0,
       );
+}
+
+// ---------- Margin per menu (Laporan Margin Tipis, v0.15.0) ----------
+
+/// Status hitungan margin satu menu: terhitung penuh, belum
+/// ada resepnya, atau resep ada tapi harga beli bahannya belum
+/// diisi (HPP terbaca 0 — bukan berarti marginnya 100%).
+enum StatusMargin { terhitung, tanpaResep, hargaBahanKosong }
+
+/// Margin satu menu dari harga jual vs HPP resep saat ini.
+class MarginMenu {
+  const MarginMenu({required this.menu, required this.hpp, required this.status});
+  final MenuItem menu;
+  final int hpp;
+  final StatusMargin status;
+
+  int get untung => menu.price - hpp;
+
+  /// Persen margin dari harga jual: (harga − HPP) ÷ harga × 100.
+  double get persen => menu.price <= 0 ? 0 : untung / menu.price * 100;
+}
+
+/// Margin SEMUA menu, terurut: yang terhitung dulu dengan
+/// margin paling tipis di atas (itulah gunanya laporan ini),
+/// sisanya menurut abjad nama.
+List<MarginMenu> hitungMarginMenu({required List<MenuItem> menus, required List<Ingredient> ingredients}) {
+  final hasil = <MarginMenu>[];
+  for (final m in menus) {
+    final kebutuhan = kebutuhanBahan(m, menus);
+    if (kebutuhan.isEmpty) {
+      hasil.add(MarginMenu(menu: m, hpp: 0, status: StatusMargin.tanpaResep));
+      continue;
+    }
+    final hpp = hppMenu(m, menus, ingredients);
+    hasil.add(MarginMenu(menu: m, hpp: hpp, status: hpp > 0 ? StatusMargin.terhitung : StatusMargin.hargaBahanKosong));
+  }
+  hasil.sort((a, b) {
+    final aHitung = a.status == StatusMargin.terhitung;
+    final bHitung = b.status == StatusMargin.terhitung;
+    if (aHitung && bHitung) return a.persen.compareTo(b.persen);
+    if (aHitung) return -1;
+    if (bHitung) return 1;
+    return a.menu.name.compareTo(b.menu.name);
+  });
+  return hasil;
+}
+
+/// Jumlah terjual per NAMA menu dari rincian transaksi Lunas
+/// pada satu cabang + rentang (dasar kolom "terjual" di
+/// Laporan Margin Tipis). Pencocokan per nama, sama seperti
+/// Laba Rugi — transaksi lama tanpa rincian tidak terhitung.
+Map<String, int> jumlahTerjualPerMenu({
+  required List<TxRecord> transactions,
+  required String branchId,
+  required DateTime dari,
+  required DateTime sampai,
+}) {
+  final awal = DateTime(dari.year, dari.month, dari.day);
+  final akhir = DateTime(sampai.year, sampai.month, sampai.day).add(const Duration(days: 1));
+  final hasil = <String, int>{};
+  for (final t in transactions) {
+    if (t.status != 'Lunas') continue;
+    if (t.branchId.isNotEmpty && t.branchId != branchId) continue;
+    if (t.at.isBefore(awal) || !t.at.isBefore(akhir)) continue;
+    for (final l in t.lines) {
+      hasil[l.nama] = (hasil[l.nama] ?? 0) + l.qty;
+    }
+  }
+  return hasil;
+}
+
+// ---------- Laporan Pengunjung (v0.15.0) ----------
+
+/// Tamu pada satu hari (baris rincian Laporan Pengunjung).
+class TamuHari {
+  const TamuHari({required this.tanggal, required this.tamu, required this.transaksi});
+  final DateTime tanggal;
+  final int tamu;
+  final int transaksi;
+}
+
+/// Ringkasan pengunjung satu rentang: hanya transaksi Lunas
+/// yang jumlah tamunya diisi kasir (tamu > 0) yang terhitung —
+/// transaksi tanpa catatan tamu tidak dianggap kunjungan
+/// kosong, hanya tidak ikut dihitung.
+class HasilPengunjung {
+  const HasilPengunjung({required this.totalTamu, required this.txTercatat, required this.totalTransaksi, required this.terbanyak, required this.perHari});
+  final int totalTamu;
+
+  /// Transaksi Lunas dengan catatan tamu (tamu > 0).
+  final int txTercatat;
+
+  /// Semua transaksi Lunas pada rentang + cabang ini.
+  final int totalTransaksi;
+
+  /// Tamu terbanyak dalam satu transaksi.
+  final int terbanyak;
+
+  /// Rincian per hari, terbaru dulu; hanya hari dengan tamu.
+  final List<TamuHari> perHari;
+
+  /// Rata-rata tamu per transaksi TERCATAT.
+  double get rataRata => txTercatat == 0 ? 0 : totalTamu / txTercatat;
+}
+
+HasilPengunjung hitungPengunjung({
+  required List<TxRecord> transactions,
+  required String branchId,
+  required DateTime dari,
+  required DateTime sampai,
+}) {
+  final awal = DateTime(dari.year, dari.month, dari.day);
+  final akhir = DateTime(sampai.year, sampai.month, sampai.day).add(const Duration(days: 1));
+  var totalTamu = 0;
+  var txTercatat = 0;
+  var totalTransaksi = 0;
+  var terbanyak = 0;
+  final perHariMap = <DateTime, ({int tamu, int tx})>{};
+  for (final t in transactions) {
+    if (t.status != 'Lunas') continue;
+    if (t.branchId.isNotEmpty && t.branchId != branchId) continue;
+    if (t.at.isBefore(awal) || !t.at.isBefore(akhir)) continue;
+    totalTransaksi++;
+    if (t.tamu <= 0) continue;
+    txTercatat++;
+    totalTamu += t.tamu;
+    if (t.tamu > terbanyak) terbanyak = t.tamu;
+    final hari = DateTime(t.at.year, t.at.month, t.at.day);
+    final lama = perHariMap[hari] ?? (tamu: 0, tx: 0);
+    perHariMap[hari] = (tamu: lama.tamu + t.tamu, tx: lama.tx + 1);
+  }
+  final perHari = perHariMap.entries.map((e) => TamuHari(tanggal: e.key, tamu: e.value.tamu, transaksi: e.value.tx)).toList()
+    ..sort((a, b) => b.tanggal.compareTo(a.tanggal));
+  return HasilPengunjung(totalTamu: totalTamu, txTercatat: txTercatat, totalTransaksi: totalTransaksi, terbanyak: terbanyak, perHari: perHari);
+}
+
+// ---------- Sesi Kasir (Buka & Tutup Kasir, v0.15.0) ----------
+
+/// Satu sesi kasir: dibuka dengan modal awal, ditutup dengan
+/// hitung fisik uang di laci. Penjualan TIDAK pernah diblokir
+/// sesi — transaksi di luar sesi tetap tercatat, hanya tidak
+/// masuk ringkasan sesi mana pun (aturan Adnan: peringatan
+/// boleh, menghalangi jangan). Tersimpan LOKAL di perangkat
+/// (belum ikut sinkron, seperti pengeluaran & mutasi).
+class SesiKasir {
+  SesiKasir({
+    String? id,
+    required this.branchId,
+    required this.dibukaPada,
+    required this.modalAwal,
+    this.namaKasir = '',
+    this.ditutupPada,
+    this.tunaiFisik,
+    this.pengeluaranLaci,
+    this.catatan = '',
+  }) : id = id ?? 's${dibukaPada.microsecondsSinceEpoch}';
+
+  final String id;
+  final String branchId;
+  final DateTime dibukaPada;
+  final int modalAwal;
+  final String namaKasir;
+
+  /// null = sesi masih terbuka. Kolom-kolom tutup di bawah
+  /// terisi saat sesi ditutup.
+  DateTime? ditutupPada;
+  int? tunaiFisik;
+  int? pengeluaranLaci;
+  String catatan;
+
+  bool get terbuka => ditutupPada == null;
+
+  /// Uang tunai yang SEHARUSNYA ada di laci saat tutup:
+  /// modal awal + penjualan tunai − pengeluaran dari laci.
+  int tunaiSeharusnya(RingkasanSesi r) => modalAwal + r.totalTunai - (pengeluaranLaci ?? 0);
+
+  /// Selisih hitung fisik vs seharusnya: 0 pas, positif lebih,
+  /// negatif kurang.
+  int selisih(RingkasanSesi r) => (tunaiFisik ?? 0) - tunaiSeharusnya(r);
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'branchId': branchId,
+        'dibukaPada': dibukaPada.toIso8601String(),
+        'modalAwal': modalAwal,
+        'namaKasir': namaKasir,
+        'ditutupPada': ditutupPada?.toIso8601String(),
+        'tunaiFisik': tunaiFisik,
+        'pengeluaranLaci': pengeluaranLaci,
+        'catatan': catatan,
+      };
+
+  factory SesiKasir.fromJson(Map<String, dynamic> j) => SesiKasir(
+        id: j['id'] as String?,
+        branchId: j['branchId'] as String? ?? '',
+        dibukaPada: DateTime.tryParse(j['dibukaPada'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+        modalAwal: (j['modalAwal'] as num?)?.toInt() ?? 0,
+        namaKasir: j['namaKasir'] as String? ?? '',
+        ditutupPada: DateTime.tryParse(j['ditutupPada'] as String? ?? ''),
+        tunaiFisik: (j['tunaiFisik'] as num?)?.toInt(),
+        pengeluaranLaci: (j['pengeluaranLaci'] as num?)?.toInt(),
+        catatan: j['catatan'] as String? ?? '',
+      );
+}
+
+/// Ringkasan angka satu sesi dari transaksi + pengeluaran
+/// yang jatuh di jendela waktunya (dibuka s.d. ditutup;
+/// sesi terbuka = sampai sekarang).
+class RingkasanSesi {
+  const RingkasanSesi({
+    required this.jumlahTransaksi,
+    required this.totalPenjualan,
+    required this.totalTunai,
+    required this.totalQris,
+    required this.totalDiskon,
+    required this.totalPengeluaran,
+  });
+
+  final int jumlahTransaksi;
+  final int totalPenjualan;
+  final int totalTunai;
+  final int totalQris;
+  final int totalDiskon;
+
+  /// Semua pengeluaran tercatat pada jendela sesi (dasar
+  /// isian awal "pengeluaran dari laci" saat tutup kasir —
+  /// kasir boleh membetulkannya bila ada yang dibayar
+  /// lewat transfer, bukan dari laci).
+  final int totalPengeluaran;
+}
+
+RingkasanSesi ringkasSesi({
+  required SesiKasir sesi,
+  required List<TxRecord> transactions,
+  required List<Pengeluaran> expenses,
+}) {
+  bool diJendela(DateTime t) => !t.isBefore(sesi.dibukaPada) && (sesi.ditutupPada == null || !t.isAfter(sesi.ditutupPada!));
+  bool diCabang(String b) => b.isEmpty || b == sesi.branchId;
+  var n = 0;
+  var jual = 0;
+  var tunai = 0;
+  var qris = 0;
+  var diskon = 0;
+  var keluar = 0;
+  for (final t in transactions) {
+    if (t.status != 'Lunas' || !diCabang(t.branchId) || !diJendela(t.at)) continue;
+    n++;
+    jual += t.total;
+    diskon += t.diskon;
+    if (t.method == 'QRIS') {
+      qris += t.total;
+    } else {
+      tunai += t.total;
+    }
+  }
+  for (final e in expenses) {
+    if (!diCabang(e.branchId) || !diJendela(e.tanggal)) continue;
+    keluar += e.jumlah;
+  }
+  return RingkasanSesi(jumlahTransaksi: n, totalPenjualan: jual, totalTunai: tunai, totalQris: qris, totalDiskon: diskon, totalPengeluaran: keluar);
 }
 
 // ---------- Pengeluaran & Laba Rugi ----------

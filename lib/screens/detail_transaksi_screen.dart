@@ -14,10 +14,14 @@ import '../ikon.dart';
 /// (sebelumnya yang tersimpan hanya jumlah item) — transaksi
 /// lama menampilkan jumlah item + catatan jujur.
 class DetailTransaksiScreen extends StatelessWidget {
-  const DetailTransaksiScreen({super.key, required this.tx, this.branchName = ''});
+  const DetailTransaksiScreen({super.key, required this.tx, this.branchName = '', this.onLihatStruk});
 
   final TxRecord tx;
   final String branchName;
+
+  /// Pintu ke Pratinjau Struk (v0.15.0). Null = tombol
+  /// struk tidak tampil (konstruksi lama/tes).
+  final VoidCallback? onLihatStruk;
 
   static const _bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -151,11 +155,25 @@ class DetailTransaksiScreen extends StatelessWidget {
                 _barisUang('Biaya layanan', tx.service),
                 _barisUang('Pajak', tx.tax),
                 if (tx.diskon > 0) _barisUang('Diskon${tx.promoNama.isNotEmpty ? ' · ${tx.promoNama}' : ' promo'}', -tx.diskon),
+                if (tx.tamu > 0)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
+                      children: [
+                        const Expanded(child: Text('Jumlah tamu', style: AppText.body)),
+                        Text('${tx.tamu} orang', style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
                 const Divider(height: 17),
                 _barisUang('Total', tx.total, tebal: true),
               ],
             ),
           ),
+          if (onLihatStruk != null) ...[
+            const SizedBox(height: AppSpacing.lg),
+            PrimaryButton(label: 'Lihat Struk', icon: Ikon.print_outlined, onPressed: onLihatStruk),
+          ],
           const SizedBox(height: AppSpacing.lg),
         ],
       ),

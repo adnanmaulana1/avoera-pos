@@ -81,6 +81,9 @@ class Ikon {
   static const IconData local_cafe = IconData(0xf243, fontFamily: 'Lucide'); // coffee
   static const IconData local_drink = IconData(0xf599, fontFamily: 'Lucide'); // wine
   static const IconData local_offer_outlined = IconData(0xf521, fontFamily: 'Lucide'); // tag
+  static const IconData lock_outlined = IconData(0xf3ae, fontFamily: 'Lucide'); // lock
+  static const IconData lock_open_outlined = IconData(0xf55f, fontFamily: 'Lucide'); // unlock
+  static const IconData bluetooth = IconData(0xf1a8, fontFamily: 'Lucide'); // bluetooth
   static const IconData menu = IconData(0xf3ca, fontFamily: 'Lucide'); // menu
   static const IconData more_vert = IconData(0xf3ee, fontFamily: 'Lucide'); // moreVertical
   static const IconData notifications_none_outlined = IconData(0xf19c, fontFamily: 'Lucide'); // bell

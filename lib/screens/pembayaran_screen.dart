@@ -16,6 +16,15 @@ class BarisBayar {
   final int total;
 }
 
+/// Hasil halaman Pembayaran saat tombol Proses Bayar ditekan:
+/// metode terpilih, jumlah tamu yang dicatat kasir (0 = tidak
+/// dicatat, untuk Laporan Pengunjung), dan jenis pesanan final
+/// ('Dine-in' | 'Bungkus') — jenis bisa diubah di halaman ini
+/// dan WAJIB sinkron kembali ke tombol Dine-in/Bungkus di
+/// Kasir (permintaan Adnan 2026-11-17). Batal (tombol kembali)
+/// mengembalikan null seperti sebelumnya.
+typedef HasilBayar = ({String metode, int tamu, String jenis});
+
 /// Halaman Pembayaran PENUH (v0.10.1, permintaan Adnan
 /// 2026-11-15): dulu dialog melayang — sempit, tombol Proses
 /// Bayar menimpa kolom saat keyboard naik. v0.10.2: tampilan
@@ -24,8 +33,8 @@ class BarisBayar {
 /// penjualan Beranda), rincian pesanan asli dari keranjang,
 /// metode sebagai kartu pilih bergambar, nominal sebagai ubin
 /// besar, dan kartu status kembalian/kurang. Perilaku tidak
-/// berubah: mengembalikan nama metode ('Tunai'/'QRIS') saat
-/// dibayar, null bila dibatalkan (tombol kembali).
+/// berubah: mengembalikan HasilBayar (metode + tamu + jenis)
+/// saat dibayar, null bila dibatalkan (tombol kembali).
 class PembayaranScreen extends StatefulWidget {
   const PembayaranScreen({
     super.key,
@@ -38,6 +47,8 @@ class PembayaranScreen extends StatefulWidget {
     this.items = const [],
     this.diskon = 0,
     this.promoNama = '',
+    this.jenisAwal = 'Dine-in',
+    this.labelMeja = '',
   });
 
   final int subtotal;
@@ -54,6 +65,16 @@ class PembayaranScreen extends StatefulWidget {
   final int diskon;
   final String promoNama;
 
+  /// Jenis pesanan awal dari tombol Dine-in/Bungkus di Kasir
+  /// ('Dine-in' | 'Bungkus'). Bisa diubah di halaman ini dan
+  /// hasil akhirnya dikembalikan lewat HasilBayar.
+  final String jenisAwal;
+
+  /// Label meja terpilih ('Meja 3'); tidak kosong = pesanan
+  /// meja, jenisnya terkunci Dine-in (kartu tampil statis,
+  /// tidak bisa diganti Bungkus).
+  final String labelMeja;
+
   @override
   State<PembayaranScreen> createState() => _PembayaranScreenState();
 }
@@ -61,6 +82,13 @@ class PembayaranScreen extends StatefulWidget {
 class _PembayaranScreenState extends State<PembayaranScreen> {
   String _method = 'Tunai';
   int? _paid;
+
+  /// Jenis pesanan yang sedang dipilih di halaman ini
+  /// (diwarisi dari Kasir, bisa diubah di sini).
+  late String _jenis = widget.jenisAwal;
+
+  /// Jumlah tamu yang dicatat kasir (0 = tidak dicatat).
+  int _tamu = 0;
   // Kolom nominal & ubin berbagi satu nilai: memilih ubin
   // mengisi kolom (berformat titik), mengetik memperbarui ubin.
   final _amountCtrl = TextEditingController();
@@ -117,6 +145,31 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
               ],
             ),
           ),
+          // ===== Jenis pesanan: sinkron dengan Kasir =====
+          const SizedBox(height: AppSpacing.xl),
+          Text('Jenis pesanan', style: AppText.subtitle),
+          const SizedBox(height: AppSpacing.sm),
+          if (widget.labelMeja.isNotEmpty)
+            _kartuPilih(
+              aktif: true,
+              onTap: null,
+              isi: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Ikon.table_restaurant_outlined, size: 26, color: AppColors.accentDark),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text('Dine-in · ${widget.labelMeja}', style: AppText.subtitle.copyWith(fontSize: 14, color: AppColors.accentDark)),
+                ],
+              ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(child: _kartuJenis('Dine-in', Ikon.table_restaurant_outlined)),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: _kartuJenis('Bungkus', Ikon.shopping_bag_outlined)),
+              ],
+            ),
           // ===== Rincian pesanan dari keranjang =====
           if (widget.items.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
@@ -154,6 +207,37 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
               ),
             ),
           ],
+          // ===== Jumlah tamu (untuk Laporan Pengunjung) =====
+          const SizedBox(height: AppSpacing.xl),
+          Text('Jumlah tamu', style: AppText.subtitle),
+          const SizedBox(height: AppSpacing.sm),
+          AppCard(
+            child: Row(
+              children: [
+                Icon(Ikon.groups_outlined, color: AppColors.accentDark, size: 24),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_tamu == 0 ? 'Tidak dicatat' : '$_tamu orang', style: AppText.body.copyWith(fontWeight: FontWeight.w700)),
+                      Text('Tidak wajib — untuk Laporan Pengunjung', style: AppText.caption.copyWith(color: AppColors.muted)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Ikon.remove),
+                  color: AppColors.accentDark,
+                  onPressed: _tamu > 0 ? () => setState(() => _tamu--) : null,
+                ),
+                IconButton(
+                  icon: const Icon(Ikon.add),
+                  color: AppColors.accentDark,
+                  onPressed: _tamu < 99 ? () => setState(() => _tamu++) : null,
+                ),
+              ],
+            ),
+          ),
           // ===== Metode pembayaran: kartu pilih =====
           const SizedBox(height: AppSpacing.xl),
           Text('Metode pembayaran', style: AppText.subtitle),
@@ -262,7 +346,7 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
               ],
               PrimaryButton(
                 label: 'Proses Bayar',
-                onPressed: _bisaProses ? () => Navigator.of(context).pop(_method) : null,
+                onPressed: _bisaProses ? () => Navigator.of(context).pop((metode: _method, tamu: _tamu, jenis: _jenis)) : null,
               ),
             ],
           ),
@@ -305,6 +389,24 @@ class _PembayaranScreenState extends State<PembayaranScreen> {
           ),
           child: isi,
         ),
+      ),
+    );
+  }
+
+  /// Kartu pilih jenis pesanan (Dine-in/Bungkus) — rangka
+  /// [_kartuPilih] yang sama dengan kartu metode.
+  Widget _kartuJenis(String jenis, IconData icon) {
+    final aktif = _jenis == jenis;
+    return _kartuPilih(
+      aktif: aktif,
+      onTap: () => setState(() => _jenis = jenis),
+      isi: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 26, color: aktif ? AppColors.accentDark : AppColors.muted),
+          const SizedBox(height: 6),
+          Text(jenis, style: AppText.subtitle.copyWith(fontSize: 14, color: aktif ? AppColors.accentDark : AppColors.ink)),
+        ],
       ),
     );
   }

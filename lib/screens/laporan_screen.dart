@@ -6,9 +6,10 @@ import '../widgets.dart';
 import '../ikon.dart';
 
 /// Hub Laporan (v0.7.0): ringkasan hari ini dari ANGKA ASLI kasir
-/// (dulu layar ini data contoh) + daftar semua laporan. Sejak
-/// update besar v0.11.0 SEMUA laporan di daftar ini hidup —
-/// tidak ada lagi baris 'Segera'.
+/// (dulu layar ini data contoh) + daftar semua laporan. Update
+/// besar v0.11.0 menghidupkan hampir semuanya; v0.15.0
+/// menuntaskan dua baris terakhir (Margin Tipis & Laporan
+/// Pengunjung) — tidak ada lagi baris 'Segera'.
 class LaporanScreen extends StatelessWidget {
   const LaporanScreen({
     super.key,
@@ -27,6 +28,8 @@ class LaporanScreen extends StatelessWidget {
     this.onOpenPembelian,
     this.onOpenHutang,
     this.onOpenPromo,
+    this.onOpenMarginTipis,
+    this.onOpenPengunjung,
   });
 
   final List<TxRecord> transactions;
@@ -46,6 +49,8 @@ class LaporanScreen extends StatelessWidget {
   final VoidCallback? onOpenPembelian;
   final VoidCallback? onOpenHutang;
   final VoidCallback? onOpenPromo;
+  final VoidCallback? onOpenMarginTipis;
+  final VoidCallback? onOpenPengunjung;
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +74,8 @@ class LaporanScreen extends StatelessWidget {
         (Ikon.trending_up_outlined, 'Laporan Laba Rugi', 'Pendapatan, HPP, biaya operasional & laba bersih per periode.', onOpenLabaRugi),
         (Ikon.scale_outlined, 'Neraca', 'Posisi aset, utang & modal usaha pada tanggal tertentu.', onOpenNeraca),
         (Ikon.payments_outlined, 'Arus Kas', 'Uang masuk & keluar per periode + saldo awal-akhir.', onOpenArusKas),
+        (Ikon.show_chart_outlined, 'Margin Tipis', 'Menu dengan untung paling tipis dari harga jualnya.', onOpenMarginTipis),
+        (Ikon.groups_outlined, 'Laporan Pengunjung', 'Jumlah tamu dari catatan kasir saat pembayaran.', onOpenPengunjung),
       ]),
       ('Stok & Operasional', 1, [
         (Ikon.swap_horiz_outlined, 'Arus Stok', 'Rekap masuk, terpakai & penyesuaian bahan per periode.', onOpenArusStok),
@@ -76,10 +83,6 @@ class LaporanScreen extends StatelessWidget {
         (Ikon.shopping_bag_outlined, 'Laporan Pembelian', 'Semua barang masuk gudang per periode + nilainya.', onOpenPembelian),
         (Ikon.store_outlined, 'Laporan Hutang', 'Catatan hutang usaha: tambah, lunasi, pantau jatuh tempo.', onOpenHutang),
         (Ikon.percent_outlined, 'Promo & Diskon', 'Kelola promo kasir + total diskon yang sudah diberikan.', onOpenPromo),
-      ]),
-      ('Segera', 2, [
-        (Ikon.show_chart_outlined, 'Margin Tipis', 'Menu dengan untung paling tipis — butuh resep/HPP per menu.', null),
-        (Ikon.groups_outlined, 'Laporan Pengunjung', 'Butuh catatan jumlah tamu per transaksi.', null),
       ]),
     ];
 

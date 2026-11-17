@@ -119,13 +119,17 @@ String labelHariTx(DateTime hari, DateTime sekarang) {
 /// ikon) dan '+N' pindah ke sebelah nama produk; (7) garis
 /// pemisah + bayangan kartu dilembutkan.
 class RiwayatScreen extends StatefulWidget {
-  const RiwayatScreen({super.key, required this.transactions, required this.branchId, this.branchName = ''});
+  const RiwayatScreen({super.key, required this.transactions, required this.branchId, this.branchName = '', this.onLihatStruk});
   final List<TxRecord> transactions;
   final String branchId;
 
   /// Nama cabang aktif — diteruskan ke halaman Detail
   /// Transaksi. Kosong = tidak ditampilkan.
   final String branchName;
+
+  /// Pintu struk dari Detail Transaksi (v0.15.0) — diteruskan
+  /// ke DetailTransaksiScreen. Null = tombol tidak tampil.
+  final void Function(TxRecord)? onLihatStruk;
 
   @override
   State<RiwayatScreen> createState() => _RiwayatScreenState();
@@ -371,7 +375,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                 _BarisTx(
                                   tx: entri.value[i],
                                   onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => DetailTransaksiScreen(tx: entri.value[i], branchName: widget.branchName)),
+                                    MaterialPageRoute(
+                                        builder: (_) => DetailTransaksiScreen(
+                                              tx: entri.value[i],
+                                              branchName: widget.branchName,
+                                              onLihatStruk: widget.onLihatStruk == null ? null : () => widget.onLihatStruk!(entri.value[i]),
+                                            )),
                                   ),
                                 ),
                               ],
