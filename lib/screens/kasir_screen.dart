@@ -27,6 +27,10 @@ class KasirScreen extends StatefulWidget {
     this.promos = const [],
     this.sesiTerbuka = true,
     this.onBukaKasir,
+    this.jenisAwal,
+    this.promoIdAwal,
+    this.onJenisBerubah,
+    this.onPromoBerubah,
   });
 
   final List<CartItem> cart;
@@ -69,6 +73,16 @@ class KasirScreen extends StatefulWidget {
   final bool sesiTerbuka;
   final VoidCallback? onBukaKasir;
 
+  /// Draf kasir tersimpan (v0.16.0): jenis + promo dari sesi
+  /// aplikasi sebelumnya, dikirim induk sesudah data selesai
+  /// dimuat (null = belum siap, jangan terapkan apa pun).
+  /// Perubahan pilihan dilaporkan balik lewat dua callback
+  /// supaya induk bisa menyimpannya ke disk.
+  final String? jenisAwal;
+  final String? promoIdAwal;
+  final ValueChanged<String>? onJenisBerubah;
+  final ValueChanged<String?>? onPromoBerubah;
+
   @override
   State<KasirScreen> createState() => _KasirScreenState();
 }
@@ -77,6 +91,40 @@ class _KasirScreenState extends State<KasirScreen> {
   String _category = 'Semua';
   String _query = '';
   String _orderType = 'Dine-in';
+
+  /// Draf tersimpan hanya diterapkan SEKALI (v0.16.0) — sesudah
+  /// itu pilihan kasir di sesi ini yang berkuasa. Penerapan bisa
+  /// datang dari dua jalan: layar dibuat SESUDAH data termuat
+  /// (initState) atau data selesai dimuat saat layar sudah
+  /// tampil (didUpdateWidget).
+  bool _draftDiterapkan = false;
+
+  void _terapkanDraft() {
+    if (_draftDiterapkan || widget.jenisAwal == null) return;
+    _draftDiterapkan = true;
+    _orderType = widget.jenisAwal!;
+    final pid = widget.promoIdAwal;
+    if (pid != null) {
+      for (final p in widget.promos) {
+        if (p.id == pid) {
+          _promo = p;
+          break;
+        }
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _terapkanDraft();
+  }
+
+  @override
+  void didUpdateWidget(KasirScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _terapkanDraft();
+  }
 
   /// Promo pilihan kasir untuk pesanan ini (v0.11.0). Direset
   /// sesudah pembayaran berhasil supaya tidak terbawa ke
@@ -207,7 +255,10 @@ class _KasirScreenState extends State<KasirScreen> {
                   ButtonSegment(value: 'Bungkus', label: Text('Bungkus')),
                 ],
                 selected: {_orderType},
-                onSelectionChanged: (s) => setState(() => _orderType = s.first),
+                onSelectionChanged: (s) {
+                  setState(() => _orderType = s.first);
+                  widget.onJenisBerubah?.call(s.first);
+                },
               ),
             ],
           ),
@@ -494,6 +545,7 @@ class _KasirScreenState extends State<KasirScreen> {
     );
     if (hasil == null || !hasil.dipilih || !ctx.mounted) return;
     setState(() => _promo = hasil.promo);
+    widget.onPromoBerubah?.call(hasil.promo?.id);
     segarkanInduk();
   }
 
@@ -538,6 +590,7 @@ class _KasirScreenState extends State<KasirScreen> {
     final jenisFinal = widget.selectedTable != null ? 'Dine-in' : hasilBayar.jenis;
     if (widget.selectedTable == null && jenisFinal != _orderType) {
       setState(() => _orderType = jenisFinal);
+      widget.onJenisBerubah?.call(jenisFinal);
     }
     final tableLabel = widget.selectedTable != null
         ? 'Meja ${widget.selectedTable!.number}'
@@ -548,7 +601,10 @@ class _KasirScreenState extends State<KasirScreen> {
     widget.onCheckout(hasilBayar.metode, tableLabel, orderTypeLabel, _promoBerlaku, tamu: hasilBayar.tamu);
     // Promo sekali pakai per pesanan: kosongkan pilihan supaya
     // pelanggan berikutnya mulai dari harga normal.
-    if (mounted) setState(() => _promo = null);
+    if (mounted) {
+      setState(() => _promo = null);
+      widget.onPromoBerubah?.call(null);
+    }
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(

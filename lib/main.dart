@@ -241,9 +241,15 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _index = 0;
   final List<CartItem> _cart = [];
-  final List<KitchenOrder> _kitchen = seedKitchenOrders();
+  List<KitchenOrder> _kitchen = seedKitchenOrders();
   CafeTable? _selectedTable;
   int _orderCounter = 1043;
+
+  /// Draf kasir berjalan (v0.16.0): jenis pesanan + promo
+  /// terpilih tinggal di layar Kasir, induk memegang salinannya
+  /// di sini untuk disimpan ke disk bersama isi keranjang.
+  String _draftJenis = 'Dine-in';
+  String? _draftPromoId;
 
   /// Gerbang PIN kasir: terbuka sekali per sesi aplikasi.
   bool _kasirUnlocked = false;
@@ -347,6 +353,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   Future<void> _loadData() async {
     final data = await LocalStore.load();
     _desainStruk = await LocalStore.loadStruk();
+    final draft = await LocalStore.loadDraftKasir();
     if (!mounted) return;
     setState(() {
       _menus = data.menus;
@@ -371,6 +378,22 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _hutang = data.hutang;
       _promos = data.promos;
       _sesi = data.sesi;
+      _kitchen = data.dapur;
+      // Pulihkan draf kasir (v0.16.0): keranjang yang belum
+      // dibayar, meja terpilih, nomor urut, jenis & promo —
+      // supaya pesanan tidak hilang bila aplikasi tertutup
+      // paksa. Baris yang menunya sudah dihapus dibuang.
+      _draftJenis = draft.jenis;
+      _draftPromoId = draft.promoId;
+      _orderCounter = draft.counter;
+      _cart
+        ..clear()
+        ..addAll([
+          for (final b in draft.items)
+            if (_menus.any((m) => m.id == b.menuId))
+              CartItem(menu: _menus.firstWhere((m) => m.id == b.menuId), variant: b.variant, note: b.note, qty: b.qty, unitPrice: b.unitPrice),
+        ]);
+      _selectedTable = draft.nomorMeja == null ? null : _tables.where((t) => t.number == draft.nomorMeja).firstOrNull;
       _stokDikenal
         ..clear()
         ..addAll({for (final i in _ingredients) i.id: i.stock});
@@ -769,6 +792,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _menus.remove(m);
       _cart.removeWhere((c) => c.menu.id == m.id);
     });
+    _simpanDraft();
     LocalStore.saveMenus(_menus);
     _tandaiKotor('menus');
     _jadwalkanSinkron();
@@ -1515,6 +1539,34 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _jadwalkanSinkron();
   }
 
+  // ---------- Draf kasir & dapur (v0.16.0) ----------
+
+  /// Simpan keadaan kasir yang sedang berjalan ke disk:
+  /// isi keranjang, meja, nomor urut, jenis, promo, dan
+  /// seluruh antrean dapur. Dipanggil sesudah SETIAP perubahan
+  /// supaya tidak ada pesanan yang hilang bila aplikasi
+  /// tertutup paksa atau HP mati di tengah pesanan.
+  void _simpanDraft() {
+    LocalStore.saveDapur(_kitchen);
+    LocalStore.saveDraftKasir(DraftKasir(
+      items: [for (final c in _cart) BarisKeranjang(menuId: c.menu.id, variant: c.variant, note: c.note, qty: c.qty, unitPrice: c.unitPrice)],
+      nomorMeja: _selectedTable?.number,
+      counter: _orderCounter,
+      jenis: _draftJenis,
+      promoId: _draftPromoId,
+    ));
+  }
+
+  void _jenisBerubah(String jenis) {
+    _draftJenis = jenis;
+    _simpanDraft();
+  }
+
+  void _promoBerubah(String? promoId) {
+    _draftPromoId = promoId;
+    _simpanDraft();
+  }
+
   // ---------- Cart actions ----------
   void _addToCart(MenuItem menu, String variant, int unitPrice, String note) {
     setState(() {
@@ -1526,17 +1578,29 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         _cart.add(CartItem(menu: menu, variant: variant, unitPrice: unitPrice, note: note));
       }
     });
+    _simpanDraft();
   }
 
-  void _inc(CartItem c) => setState(() => c.qty++);
-  void _dec(CartItem c) => setState(() {
-        if (c.qty > 1) {
-          c.qty--;
-        } else {
-          _cart.remove(c);
-        }
-      });
-  void _remove(CartItem c) => setState(() => _cart.remove(c));
+  void _inc(CartItem c) {
+    setState(() => c.qty++);
+    _simpanDraft();
+  }
+
+  void _dec(CartItem c) {
+    setState(() {
+      if (c.qty > 1) {
+        c.qty--;
+      } else {
+        _cart.remove(c);
+      }
+    });
+    _simpanDraft();
+  }
+
+  void _remove(CartItem c) {
+    setState(() => _cart.remove(c));
+    _simpanDraft();
+  }
 
   void _checkout(String paymentMethod, String tableLabel, String orderType, Promo? promo, {int tamu = 0}) {
     // Total dihitung SEBELUM keranjang dikosongkan, untuk catatan
@@ -1635,6 +1699,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       }
       _cart.clear();
     });
+    _simpanDraft();
     LocalStore.saveTables(_tables);
     LocalStore.saveTransactions(_transactions);
     LocalStore.saveIngredients(_ingredients);
@@ -1661,9 +1726,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           _kitchen.remove(order);
       }
     });
+    _simpanDraft();
   }
 
-  void _selectTable(CafeTable t) => setState(() => _selectedTable = t);
+  void _selectTable(CafeTable t) {
+    setState(() => _selectedTable = t);
+    _simpanDraft();
+  }
 
   /// Tumpukan layar utama dengan pudar singkat saat pindah tab
   /// (permintaan Adnan 2026-11-14): perpindahan menu terasa halus
@@ -1806,6 +1875,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         sesiTerbuka: _sesiTerbuka != null,
         onBukaKasir: _openSesiKasir,
         promos: _promos,
+        // Draf kasir (v0.16.0): nilai awal hanya dikirim
+        // sesudah data selesai dimuat (_ready) supaya layar
+        // Kasir tidak menerapkan draf kosong lebih dulu.
+        jenisAwal: _ready ? _draftJenis : null,
+        promoIdAwal: _ready ? _draftPromoId : null,
+        onJenisBerubah: _jenisBerubah,
+        onPromoBerubah: _promoBerubah,
       ),
       ProdukScreen(
         menus: _menus,

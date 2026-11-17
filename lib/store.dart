@@ -7,7 +7,7 @@ import 'struk.dart';
 
 /// Data aplikasi yang tersimpan permanen di perangkat.
 class AppData {
-  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings, this.transactions = const [], this.notifications = const [], this.mutasi = const [], this.expenses = const [], this.hutang = const [], this.promos = const [], this.sesi = const []});
+  AppData({required this.menus, required this.tables, required this.ingredients, required this.settings, this.transactions = const [], this.notifications = const [], this.mutasi = const [], this.expenses = const [], this.hutang = const [], this.promos = const [], this.sesi = const [], this.dapur = const []});
   final List<MenuItem> menus;
   final List<CafeTable> tables;
   final List<Ingredient> ingredients;
@@ -19,6 +19,7 @@ class AppData {
   final List<Hutang> hutang;
   final List<Promo> promos;
   final List<SesiKasir> sesi;
+  final List<KitchenOrder> dapur;
 }
 
 /// Tempat simpan lokal (SharedPreferences + JSON).
@@ -38,6 +39,7 @@ class LocalStore {
   static const _kHutang = 'avoera.hutang.v1';
   static const _kPromos = 'avoera.promos.v1';
   static const _kSesi = 'avoera.sesi.v1';
+  static const _kDapur = 'avoera.dapur.v1';
   static const _kSyncMeta = 'avoera.syncmeta.v1';
   static const _kUpdateMeta = 'avoera.updatemeta.v1';
   static const _kNotifKunci = 'avoera.notifkunci.v1';
@@ -57,6 +59,7 @@ class LocalStore {
         hutang: _decodeList(prefs.getString(_kHutang), Hutang.fromJson) ?? <Hutang>[],
         promos: _decodeList(prefs.getString(_kPromos), Promo.fromJson) ?? <Promo>[],
         sesi: _decodeList(prefs.getString(_kSesi), SesiKasir.fromJson) ?? <SesiKasir>[],
+        dapur: _decodeList(prefs.getString(_kDapur), KitchenOrder.fromJson) ?? seedKitchenOrders(),
       );
     } catch (_) {
       // Penyimpanan tidak tersedia (mis. lingkungan tes) → data contoh.
@@ -103,6 +106,7 @@ class LocalStore {
   static Future<void> saveHutang(List<Hutang> h) => _save(_kHutang, h.map((x) => x.toJson()).toList());
   static Future<void> savePromos(List<Promo> p) => _save(_kPromos, p.map((x) => x.toJson()).toList());
   static Future<void> saveSesi(List<SesiKasir> s) => _save(_kSesi, s.map((x) => x.toJson()).toList());
+  static Future<void> saveDapur(List<KitchenOrder> d) => _save(_kDapur, d.map((x) => x.toJson()).toList());
 
   /// Meta sinkron untuk halaman Status Sinkronisasi: jumlah
   /// perubahan yang menunggu per tabel + laporan sinkron terakhir.
@@ -168,4 +172,20 @@ class LocalStore {
   }
 
   static Future<void> saveStruk(DesainStruk d) => _save(_kStruk, d.toJson());
+
+  // ---------- Draf kasir berjalan (v0.16.0) ----------
+  static const _kKeranjang = 'avoera.keranjang.v1';
+
+  static Future<DraftKasir> loadDraftKasir() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kKeranjang);
+      if (raw == null) return DraftKasir();
+      return DraftKasir.fromJson((jsonDecode(raw) as Map).cast<String, dynamic>());
+    } catch (_) {
+      return DraftKasir();
+    }
+  }
+
+  static Future<void> saveDraftKasir(DraftKasir d) => _save(_kKeranjang, d.toJson());
 }

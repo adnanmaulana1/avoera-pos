@@ -4,13 +4,13 @@ import 'package:avoera_pos/ikon.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avoera POS';
-const appVersion = '0.15.0';
+const appVersion = '0.16.0';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 55;
+const appBuild = 56;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -487,6 +487,14 @@ class KitchenOrderLine {
   final String name;
   final int qty;
   final String note;
+
+  Map<String, dynamic> toJson() => {'name': name, 'qty': qty, 'note': note};
+
+  factory KitchenOrderLine.fromJson(Map<String, dynamic> j) => KitchenOrderLine(
+        j['name'] as String? ?? '',
+        (j['qty'] as num?)?.toInt() ?? 0,
+        j['note'] as String? ?? '',
+      );
 }
 
 class KitchenOrder {
@@ -497,6 +505,77 @@ class KitchenOrder {
   KitchenStatus status;
   final String time;
   final String orderType;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'tableLabel': tableLabel,
+        'lines': lines.map((l) => l.toJson()).toList(),
+        'status': status.name,
+        'time': time,
+        'orderType': orderType,
+      };
+
+  factory KitchenOrder.fromJson(Map<String, dynamic> j) => KitchenOrder(
+        id: j['id'] as String? ?? '',
+        tableLabel: j['tableLabel'] as String? ?? '',
+        lines: ((j['lines'] as List?) ?? const []).map((e) => KitchenOrderLine.fromJson((e as Map).cast<String, dynamic>())).toList(),
+        status: KitchenStatus.values.asNameMap()[j['status'] as String?] ?? KitchenStatus.baru,
+        time: j['time'] as String? ?? '',
+        orderType: j['orderType'] as String? ?? 'Dine-in',
+      );
+}
+
+/// Satu baris keranjang sebagaimana tersimpan di disk (v0.16.0):
+/// menu dirujuk lewat id supaya sesudah aplikasi dibuka lagi
+/// baris ini bisa disambung ke menu yang sama. Baris yang
+/// menunya sudah dihapus pemilik dibuang saat pemulihan.
+class BarisKeranjang {
+  const BarisKeranjang({required this.menuId, required this.variant, this.note = '', required this.qty, required this.unitPrice});
+  final String menuId;
+  final String variant;
+  final String note;
+  final int qty;
+  final int unitPrice;
+
+  Map<String, dynamic> toJson() => {'menuId': menuId, 'variant': variant, 'note': note, 'qty': qty, 'unitPrice': unitPrice};
+
+  factory BarisKeranjang.fromJson(Map<String, dynamic> j) => BarisKeranjang(
+        menuId: j['menuId'] as String? ?? '',
+        variant: j['variant'] as String? ?? '',
+        note: j['note'] as String? ?? '',
+        qty: (j['qty'] as num?)?.toInt() ?? 1,
+        unitPrice: (j['unitPrice'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// Draf kasir yang sedang berjalan (v0.16.0): isi keranjang,
+/// meja terpilih, nomor urut pesanan, jenis pesanan, dan promo
+/// terpilih — disimpan lokal tiap ada perubahan supaya pesanan
+/// yang belum dibayar TIDAK hilang bila aplikasi tertutup paksa
+/// atau HP mati. Lokal saja, tidak ikut sinkron.
+class DraftKasir {
+  DraftKasir({this.items = const [], this.nomorMeja, this.counter = 1043, this.jenis = 'Dine-in', this.promoId});
+  final List<BarisKeranjang> items;
+  final int? nomorMeja;
+  final int counter;
+  final String jenis;
+  final String? promoId;
+
+  Map<String, dynamic> toJson() => {
+        'items': items.map((b) => b.toJson()).toList(),
+        'nomorMeja': nomorMeja,
+        'counter': counter,
+        'jenis': jenis,
+        'promoId': promoId,
+      };
+
+  factory DraftKasir.fromJson(Map<String, dynamic> j) => DraftKasir(
+        items: ((j['items'] as List?) ?? const []).map((e) => BarisKeranjang.fromJson((e as Map).cast<String, dynamic>())).toList(),
+        nomorMeja: (j['nomorMeja'] as num?)?.toInt(),
+        counter: (j['counter'] as num?)?.toInt() ?? 1043,
+        jenis: j['jenis'] as String? ?? 'Dine-in',
+        promoId: j['promoId'] as String?,
+      );
 }
 
 List<KitchenOrder> seedKitchenOrders() => [
