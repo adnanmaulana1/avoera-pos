@@ -1387,6 +1387,22 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         ),
       );
 
+  /// Ubah nama/alamat/telepon cabang (v0.19.0): id tetap, jadi
+  /// transaksi lama tidak berubah; nama baru ikut sinkron karena
+  /// daftar cabang diunggah utuh pada setiap sinkron.
+  void _bukaUbahCabang(Branch b) => showUbahCabangSheet(
+        context,
+        awal: b,
+        onSimpan: (hasil) {
+          _tandaiKotor('branches');
+          _settingChanged(() {
+            _settings.branches = [
+              for (final lama in _settings.branches) lama.id == hasil.id ? hasil : lama,
+            ];
+          });
+        },
+      );
+
   // ---------- Sinkronisasi Supabase ----------
   /// Sinkron dengan batas 25 detik: koneksi menggantung tidak
   /// boleh membuat status 'menyinkron' selamanya — gagalkan saja,
@@ -2045,6 +2061,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onOpenProfile: _openProfile,
         onOpenPinSettings: _openPinSettings,
         onOpenBranchWizard: _openBranchWizard,
+        onEditBranch: _bukaUbahCabang,
         businessPhotoPath: _settings.businessPhotoPath,
         cloudSyncEnabled: _settings.cloudSyncEnabled,
         onCloudSyncChanged: (v) => _settingChanged(() => _settings.cloudSyncEnabled = v),

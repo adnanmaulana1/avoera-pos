@@ -4,13 +4,13 @@ import 'package:avoera_pos/ikon.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avorea POS';
-const appVersion = '0.18.0';
+const appVersion = '0.19.0';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 58;
+const appBuild = 59;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -1777,6 +1777,23 @@ class Branch {
         address: j['address'] as String? ?? '',
         phone: j['phone'] as String? ?? '',
       );
+}
+
+/// Cabang yatim: transaksi menyebut branchId yang tidak ada di daftar
+/// cabang → buat baris cabang pengganti dengan id yang sama, supaya
+/// transaksinya nyambung lagi dan cabangnya muncul kembali (kejadian
+/// 2026-11-17: baris cabang kehapus dari awan, transaksinya selamat).
+/// Nama diberi tanda jelas supaya pemilik tahu harus menggantinya
+/// dari Pengaturan. Transaksi lama tanpa branchId (kosong) dilewati.
+List<Branch> pulihkanCabangYatim(List<Branch> cabang, List<TxRecord> transaksi) {
+  final ada = {for (final b in cabang) b.id};
+  final hasil = [...cabang];
+  for (final t in transaksi) {
+    if (t.branchId.isEmpty || ada.contains(t.branchId)) continue;
+    ada.add(t.branchId);
+    hasil.add(Branch(id: t.branchId, name: 'Cabang (dipulihkan)'));
+  }
+  return hasil;
 }
 
 // ---------- Pemberitahuan ----------

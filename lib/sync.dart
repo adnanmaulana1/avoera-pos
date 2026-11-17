@@ -224,7 +224,11 @@ Future<HasilSinkron> _kerjakanSinkron(
     }
   }
 
-  await bersihkanHantu('branches', 'avoera_branches', {for (final b in branches) b.id});
+  // Cabang SENGAJA tidak dibersihkan hantu: cabang tidak bisa
+  // dihapus dari aplikasi, jadi cabang yang "dikenal tapi tidak
+  // lokal" selalu sisa gabungan/pemulihan — bukan penghapusan
+  // sungguhan. Membersihkannya pernah menghapus baris cabang di
+  // server dan memutus transaksinya (kejadian 2026-11-17).
   await bersihkanHantu('menus', 'avoera_menus', {for (final m in menus) m.id});
   await bersihkanHantu('ingredients', 'avoera_ingredients', {for (final i in ingredients) i.id});
 
@@ -301,6 +305,11 @@ Future<HasilSinkron> _kerjakanSinkron(
       ? transactions
       : (gabung(transactions, [for (final j in txJson) TxRecord.fromJson(j)], (t) => t.uuid.isEmpty ? t.id : t.uuid)
         ..sort((a, b) => a.at.compareTo(b.at)));
+
+  // Cabang yatim: transaksi hasil gabungan yang cabangnya tidak ada
+  // di daftar cabang → cabangnya dibuatkan lagi dengan id yang sama,
+  // supaya transaksi itu nyambung dan cabangnya bisa dipakai lagi.
+  final cabangFinal = pulihkanCabangYatim(cabangGabung, txGabung);
   final pengaturanJson = await ambil('settings', 'avoera_settings');
   final pengaturanServer = (pengaturanJson == null || pengaturanJson.isEmpty) ? null : pengaturanJson.first;
 
@@ -308,7 +317,7 @@ Future<HasilSinkron> _kerjakanSinkron(
   // lagi, supaya server persis mencerminkan keadaan gabungan
   // terakhir (permintaan Adnan: tombol 'Perbarui Semua Data').
   if (perbaruiSemua) {
-    await unggah('branches', 'Cabang', 'avoera_branches', [for (final b in cabangGabung) barisData(b.id, b.toJson())]);
+    await unggah('branches', 'Cabang', 'avoera_branches', [for (final b in cabangFinal) barisData(b.id, b.toJson())]);
     await unggah('menus', 'Menu', 'avoera_menus', [for (final m in menuGabung) barisData(m.id, m.toJson())]);
     await unggah('ingredients', 'Bahan', 'avoera_ingredients', [for (final i in bahanGabung) barisData(i.id, i.toJson())]);
     await unggah('transactions', 'Transaksi', 'avoera_transactions', barisTx(txGabung));
@@ -318,7 +327,7 @@ Future<HasilSinkron> _kerjakanSinkron(
   final dikenalBaru = <String, Set<String>>{
     'menus': {for (final m in menuGabung) m.id},
     'ingredients': {for (final i in bahanGabung) i.id},
-    'branches': {for (final b in cabangGabung) b.id},
+    'branches': {for (final b in cabangFinal) b.id},
   };
 
   final daftar = rincian.values.toList();
@@ -326,7 +335,7 @@ Future<HasilSinkron> _kerjakanSinkron(
   return HasilSinkron(
     menus: menuGabung,
     ingredients: bahanGabung,
-    branches: cabangGabung,
+    branches: cabangFinal,
     transactions: txGabung,
     pengaturanServer: pengaturanServer,
     rincian: daftar,

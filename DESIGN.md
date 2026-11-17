@@ -526,3 +526,10 @@ untuk hasil akhir.
 - **Migrasi nama tersimpan**: nama usaha yang MASIH persis bawaan lama ('Avoera Cafe & Resto') diganti otomatis saat data dimuat; nama yang sudah diubah pemilik sendiri tidak disentuh (diuji dua arah di patch_0180).
 - **Yang SENGAJA tidak diganti (mesin, tak terlihat)**: applicationId `id.avoera.avoera_pos`, kunci penyimpanan `avoera.*`, nama paket Dart, nama tabel Supabase `avoera_*`, nama repo & kelas internal — menggantinya akan memutus jalur pembaruan dan menghapus data di HP yang sudah terpasang. Nama dagang dan nama mesin memang lazim berbeda.
 - Tes baru patch_0180 (4): konstanta nama, label splash, migrasi nama bawaan, nama kustom kebal.
+
+## v0.19.0 (2026-11-17) — Perbaikan cabang hilang + ubah nama cabang
+- Kejadian malam ini: sesudah install ulang, baris "Cabang 2" hilang dari awan — pembersih hantu ikut membersihkan cabang (padahal cabang tidak bisa dihapus dari aplikasi), dan nama cabang pertama tertimpa jadi "Cabang Ketiga" oleh isian sambutan awal. Baris Cabang 2 dipulihkan manual ke awan oleh Muse malam itu juga.
+- **Pembersih hantu khusus cabang DIMATIKAN** (sync.dart): cabang yang "dikenal tapi tidak lokal" selalu sisa gabungan/pemulihan, bukan penghapusan sungguhan. Menu & bahan tetap dibersihkan seperti biasa.
+- **Pemulihan cabang yatim** (`pulihkanCabangYatim` di data.dart, dipakai pada hasil gabungan sinkron): transaksi yang branchId-nya tidak ada di daftar cabang → cabangnya dibuatkan lagi dengan id yang sama, nama 'Cabang (dipulihkan)', supaya transaksi nyambung dan cabang bisa dipakai & diganti namanya.
+- **Ubah Cabang di Pengaturan**: setiap baris cabang kini punya tombol pensil (tooltip 'Ubah cabang') → sheet `showUbahCabangSheet` (branch_wizard_screen.dart; pola FormSheet yang sama dengan sheet kategori): nama wajib, alamat & telepon boleh kosong; id tidak berubah jadi transaksi lama aman. Inilah jalan membetulkan "Cabang Ketiga" → "Cabang Utama" dari HP.
+- Tes baru patch_0190 (6): pemulihan yatim (3), sheet ubah cabang (2), alur penuh ubah nama dari Pengaturan sampai tersimpan (1).

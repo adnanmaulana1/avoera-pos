@@ -38,6 +38,7 @@ class PengaturanScreen extends StatelessWidget {
     required this.onOpenProfile,
     required this.onOpenPinSettings,
     required this.onOpenBranchWizard,
+    this.onEditBranch,
     required this.businessPhotoPath,
     required this.cloudSyncEnabled,
     required this.onCloudSyncChanged,
@@ -85,6 +86,10 @@ class PengaturanScreen extends StatelessWidget {
   final VoidCallback onOpenProfile;
   final VoidCallback onOpenPinSettings;
   final VoidCallback onOpenBranchWizard;
+
+  /// Ubah nama/alamat/telepon cabang (v0.19.0); null = tombol
+  /// ubah tidak ditampilkan.
+  final ValueChanged<Branch>? onEditBranch;
 
   /// Foto usaha (berkas lokal) untuk kartu profil; null = ikon.
   final String? businessPhotoPath;
@@ -176,7 +181,19 @@ class PengaturanScreen extends StatelessWidget {
                   leading: const Icon(Ikon.storefront_outlined, color: AppColors.accentDark),
                   title: Text(b.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
                   subtitle: Text(b.id == activeBranchId ? 'Cabang aktif — penjualan tercatat di sini' : 'Ketuk untuk pindah ke cabang ini', style: AppText.small.copyWith(color: AppColors.muted)),
-                  trailing: b.id == activeBranchId ? const StatusChip(label: 'Aktif', color: AppColors.accent) : null,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (b.id == activeBranchId) const StatusChip(label: 'Aktif', color: AppColors.accent),
+                      if (onEditBranch != null)
+                        IconButton(
+                          tooltip: 'Ubah cabang',
+                          icon: Icon(Ikon.edit_outlined, size: 20),
+                          color: AppColors.accentDark,
+                          onPressed: () => onEditBranch!(b),
+                        ),
+                    ],
+                  ),
                   onTap: b.id == activeBranchId ? null : () => onSwitchBranch(b),
                 ),
               const Divider(height: 1),

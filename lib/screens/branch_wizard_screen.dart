@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../data.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'kelola_widgets.dart' show FormLabel;
+import 'kelola_widgets.dart' show FormLabel, FormSheet;
 import 'onboarding_screen.dart' show SetupCelebration;
 import '../ikon.dart';
 
@@ -222,4 +222,75 @@ class _BarisRingkasan extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Sheet ubah cabang (nama, alamat, telepon) dari Pengaturan —
+/// id cabang tidak berubah, jadi transaksi lama tetap nyambung.
+/// Lahir dari kejadian 2026-11-17: nama cabang tertimpa saat
+/// sambutan awal sesudah install ulang dan tidak ada jalan
+/// membetulkannya dari aplikasi.
+Future<void> showUbahCabangSheet(
+  BuildContext context, {
+  required Branch awal,
+  required ValueChanged<Branch> onSimpan,
+}) async {
+  final namaCtrl = TextEditingController(text: awal.name);
+  final alamatCtrl = TextEditingController(text: awal.address);
+  final teleponCtrl = TextEditingController(text: awal.phone);
+  String? error;
+  await showAppSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setSheet) {
+        return FormSheet(
+          title: 'Ubah Cabang',
+          showClose: true,
+          saveLabel: 'Simpan Perubahan',
+          errorText: error,
+          onSave: () {
+            final nama = namaCtrl.text.trim();
+            if (nama.isEmpty) {
+              setSheet(() => error = 'Nama cabang belum diisi.');
+              return;
+            }
+            Navigator.of(ctx).pop();
+            onSimpan(Branch(
+              id: awal.id,
+              name: nama,
+              address: alamatCtrl.text.trim(),
+              phone: teleponCtrl.text.trim(),
+            ));
+          },
+          children: [
+            const FormLabel('Nama Cabang'),
+            TextField(
+              controller: namaCtrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(hintText: 'Contoh: Cabang Utama'),
+              onChanged: (_) {
+                if (error != null) setSheet(() => error = null);
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const FormLabel('Alamat'),
+            TextField(
+              controller: alamatCtrl,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(hintText: 'Boleh kosong'),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const FormLabel('Telepon'),
+            TextField(
+              controller: teleponCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(hintText: 'Boleh kosong'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+  disposeControllersLater([namaCtrl, alamatCtrl, teleponCtrl]);
 }
