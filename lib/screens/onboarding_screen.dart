@@ -44,6 +44,31 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
   bool _pin2Terlihat = false;
   String? _error;
 
+  /// Mode pilih cabang (v0.21.0): id cabang yang dipilih untuk
+  /// perangkat ini. Hanya dipakai bila cabang lama ketemu.
+  String? _cabangDipilih;
+
+  /// Cabang lama "ketemu" bila daftar cabang (langsung dari
+  /// pengaturan hidup — hasil sinkron awan ikut terbaca) berisi
+  /// lebih dari satu cabang: artinya usaha ini sudah punya
+  /// cabang, perangkat ini hanya perlu MEMILIH, bukan membuat
+  /// dan menimpa (biang kejadian nama cabang tertimpa
+  /// 2026-11-17). Usaha baru & sesudah Reset Total daftarnya
+  /// satu → mode buat seperti biasa.
+  bool get _modePilih => widget.initial.branches.length > 1;
+
+  /// Id cabang terpilih yang sah saat ini: pilihan pengguna
+  /// bila masih ada di daftar, selain itu cabang aktif, selain
+  /// itu cabang pertama.
+  String get _idCabangDipilih {
+    final daftar = widget.initial.branches;
+    final pilih = _cabangDipilih;
+    if (pilih != null && daftar.any((b) => b.id == pilih)) return pilih;
+    final aktif = widget.initial.activeBranchId;
+    if (daftar.any((b) => b.id == aktif)) return aktif;
+    return daftar.first.id;
+  }
+
   static const _pages = <(String, String, String)>[
     ('assets/svg/onboarding_1.svg', 'Kasir Cepat untuk Cafe & Resto', 'Catat pesanan, pilih meja, terima tunai & QRIS. Semua tercatat rapi dan tersimpan di perangkat.'),
     ('assets/svg/onboarding_2.svg', 'Penjualan Terpantau Tiap Hari', 'Beranda menampilkan penjualan asli hari ini, grafik mingguan & bulanan, sampai laporan pajak yang terkumpul.'),
@@ -58,6 +83,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
     _cabangCtrl.text = widget.initial.activeBranch.name;
     _tables = widget.initial.tablesEnabled;
     _kitchen = widget.initial.kitchenEnabled;
+    _cabangDipilih = widget.initial.activeBranchId;
+  }
+
+  @override
+  void didUpdateWidget(OnboardingFlow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sinkron awan bisa mendarat SELAGI wizard terbuka (daftar
+    // cabang bertambah dari server): pilihan yang sudah tidak
+    // ada di daftar dibuang, supaya yang terpilih selalu sah.
+    final pilih = _cabangDipilih;
+    if (pilih != null && !widget.initial.branches.any((b) => b.id == pilih)) {
+      _cabangDipilih = widget.initial.activeBranchId;
+    }
   }
 
   @override
@@ -76,12 +114,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
     final cabang = _cabangCtrl.text.trim();
     final pin = _pinCtrl.text.trim();
     if (usaha.isEmpty) return setState(() => _error = 'Nama usaha wajib diisi.');
-    if (cabang.isEmpty) return setState(() => _error = 'Nama cabang wajib diisi.');
+    // Nama cabang hanya wajib di mode buat; di mode pilih
+    // tidak ada nama yang diketik.
+    if (!_modePilih && cabang.isEmpty) return setState(() => _error = 'Nama cabang wajib diisi.');
     if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) return setState(() => _error = 'PIN harus 4–6 angka.');
     if (pin != _pin2Ctrl.text.trim()) return setState(() => _error = 'Konfirmasi PIN tidak sama.');
     final s = widget.initial;
     s.businessName = usaha;
-    s.branches = [Branch(id: s.activeBranchId, name: cabang)];
+    if (s.branches.length > 1) {
+      // PENGAMAN ANTI-TIMPA (v0.21.0): daftar cabang hidup
+      // berisi lebih dari satu cabang → JANGAN PERNAH diganti
+      // jadi satu. Keputusan diambil dari daftar TERKINI saat
+      // tombol ditekan, jadi sinkron yang baru mendarat di
+      // tengah wizard pun aman. Yang berubah hanya cabang
+      // aktif perangkat ini.
+      s.activeBranchId = _idCabangDipilih;
+    } else {
+      s.branches = [Branch(id: s.activeBranchId, name: cabang)];
+    }
     s.pinHash = hashPin(pin);
     s.tablesEnabled = _tables;
     s.kitchenEnabled = _kitchen;
@@ -161,7 +211,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
           child: SizedBox(
             width: double.infinity,
             child: PrimaryButton(
-              label: _index == _pages.length - 1 ? 'Atur Cabang Pertama' : 'Lanjut',
+              label: _index == _pages.length - 1 ? (_modePilih ? 'Pilih Cabangmu' : 'Atur Cabang Pertama') : 'Lanjut',
               onPressed: () {
                 if (_index == _pages.length - 1) {
                   setState(() {
@@ -219,6 +269,52 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
         child: Icon(ikon, color: AppColors.accentDark, size: 20),
       );
 
+  /// Baris pilihan cabang di mode pilih (v0.21.0): gaya kartu
+  /// pilih yang sama dengan halaman Pembayaran — terpilih =
+  /// tepi aksen 2px di atas permukaan kartu, TANPA isian pastel
+  /// dan TANPA ikon centang (aturan permanen). Keterangan di
+  /// bawah nama menyebut cabang ini dipakai di perangkat ini.
+  Widget _barisPilihCabang(Branch b) {
+    final dipilih = _idCabangDipilih == b.id;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: () => setState(() => _cabangDipilih = b.id),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              border: Border.all(color: dipilih ? AppColors.accent : AppColors.border, width: dipilih ? 2 : 1),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              children: [
+                _ikonSamping(Ikon.storefront_outlined),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(b.name, style: AppText.body.copyWith(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text(
+                        dipilih ? 'Dipakai di perangkat ini' : (b.address.isNotEmpty ? b.address : 'Ketuk untuk memakai cabang ini'),
+                        style: AppText.caption.copyWith(color: dipilih ? AppColors.accentDark : AppColors.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _wizardView() {
     return ListView(
       padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, paddingBawahAman(context, AppSpacing.xl)),
@@ -244,9 +340,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Atur Cabang Pertama', style: AppText.pageTitle.copyWith(fontSize: 22)),
+                          Text(_modePilih ? 'Cabang Lamamu Ketemu' : 'Atur Cabang Pertama', style: AppText.pageTitle.copyWith(fontSize: 22)),
                           const SizedBox(height: 2),
-                          Text('Tiga hal ini cukup untuk mulai jualan. Sisanya bisa diubah kapan saja di Pengaturan.', style: AppText.small.copyWith(color: AppColors.muted)),
+                          Text(
+                            _modePilih
+                                ? 'Perangkat ini menemukan cabang yang sudah ada di awan. Pilih cabang untuk perangkat ini — tidak ada yang dihapus atau diganti namanya.'
+                                : 'Tiga hal ini cukup untuk mulai jualan. Sisanya bisa diubah kapan saja di Pengaturan.',
+                            style: AppText.small.copyWith(color: AppColors.muted),
+                          ),
                         ],
                       ),
                     ),
@@ -257,8 +358,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                 const FormLabel('Nama Usaha'),
                 TextField(controller: _usahaCtrl, decoration: _dekorWizard('cth. Kopi Senja')),
                 const SizedBox(height: AppSpacing.sm),
-                const FormLabel('Nama Cabang Pertama'),
-                TextField(controller: _cabangCtrl, decoration: _dekorWizard('cth. Cabang Utama')),
+                if (_modePilih) ...[
+                  const FormLabel('Cabang di Perangkat Ini'),
+                  for (final b in widget.initial.branches) _barisPilihCabang(b),
+                  Text(
+                    'Nama dan alamat cabang bisa diganti kapan saja di Pengaturan.',
+                    style: AppText.caption.copyWith(color: AppColors.muted),
+                  ),
+                ] else ...[
+                  const FormLabel('Nama Cabang Pertama'),
+                  TextField(controller: _cabangCtrl, decoration: _dekorWizard('cth. Cabang Utama')),
+                ],
                 const SizedBox(height: AppSpacing.xl),
                 _labelSeksi('KEAMANAN'),
                 const FormLabel('PIN Kasir (4–6 angka)'),
