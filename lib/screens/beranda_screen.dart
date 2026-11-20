@@ -100,9 +100,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final tx = _tx;
-    final todayTx = tx.where((t) => _sameDay(t.at, now)).toList();
+    // Angka uang HANYA dari transaksi Lunas (v0.23.0) — yang
+    // Batal/Refund tidak ikut omzet, jumlah, maupun rata-rata.
+    final todayTx = tx.where((t) => t.status == 'Lunas' && _sameDay(t.at, now)).toList();
     final yesterday = now.subtract(const Duration(days: 1));
-    final yesterdayTotal = tx.where((t) => _sameDay(t.at, yesterday)).fold(0, (a, t) => a + t.total);
+    final yesterdayTotal = tx.where((t) => t.status == 'Lunas' && _sameDay(t.at, yesterday)).fold(0, (a, t) => a + t.total);
     final totalToday = todayTx.fold(0, (a, t) => a + t.total);
     final countToday = todayTx.length;
     final avgToday = countToday == 0 ? 0 : (totalToday / countToday).round();
@@ -560,7 +562,7 @@ class _ChartCard extends StatelessWidget {
     if (!bulanan) {
       for (var i = 7; i >= 0; i--) {
         final d = today.subtract(Duration(days: i));
-        values.add(tx.where((t) => t.at.year == d.year && t.at.month == d.month && t.at.day == d.day).fold(0, (a, t) => a + t.total));
+        values.add(tx.where((t) => t.status == 'Lunas' && t.at.year == d.year && t.at.month == d.month && t.at.day == d.day).fold(0, (a, t) => a + t.total));
         labels.add(hariSingkat[d.weekday - 1]);
       }
     } else {
@@ -568,6 +570,7 @@ class _ChartCard extends StatelessWidget {
         final start = today.subtract(Duration(days: w * 7 + 6));
         final end = today.subtract(Duration(days: w * 7));
         values.add(tx.where((t) {
+          if (t.status != 'Lunas') return false;
           final d = DateTime(t.at.year, t.at.month, t.at.day);
           return !d.isBefore(start) && !d.isAfter(end);
         }).fold(0, (a, t) => a + t.total));

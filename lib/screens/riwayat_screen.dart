@@ -119,7 +119,7 @@ String labelHariTx(DateTime hari, DateTime sekarang) {
 /// ikon) dan '+N' pindah ke sebelah nama produk; (7) garis
 /// pemisah + bayangan kartu dilembutkan.
 class RiwayatScreen extends StatefulWidget {
-  const RiwayatScreen({super.key, required this.transactions, required this.branchId, this.branchName = '', this.onLihatStruk});
+  const RiwayatScreen({super.key, required this.transactions, required this.branchId, this.branchName = '', this.onLihatStruk, this.onUbahStatusTx});
   final List<TxRecord> transactions;
   final String branchId;
 
@@ -130,6 +130,11 @@ class RiwayatScreen extends StatefulWidget {
   /// Pintu struk dari Detail Transaksi (v0.15.0) — diteruskan
   /// ke DetailTransaksiScreen. Null = tombol tidak tampil.
   final void Function(TxRecord)? onLihatStruk;
+
+  /// Alur Batal/Refund dari Detail Transaksi (v0.23.0) —
+  /// diteruskan ke DetailTransaksiScreen. Null = tombol
+  /// kelola tidak tampil.
+  final void Function(TxRecord tx, String statusBaru)? onUbahStatusTx;
 
   @override
   State<RiwayatScreen> createState() => _RiwayatScreenState();
@@ -192,9 +197,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       list = list.where((t) => txCocokCari(t, _cari)).toList();
     }
     list.sort((a, b) => b.at.compareTo(a.at));
-    final total = list.fold(0, (a, t) => a + t.total);
-    final totalTunai = list.where((t) => t.method == 'Tunai').fold(0, (a, t) => a + t.total);
-    final totalQris = list.where((t) => t.method == 'QRIS').fold(0, (a, t) => a + t.total);
+    // Total uang HANYA menghitung transaksi Lunas (v0.23.0):
+    // baris Batal/Refund tetap tampil dengan badgenya, tapi
+    // uangnya tidak ikut total — sama seperti laporan lain.
+    final lunas = list.where((t) => t.status == 'Lunas').toList();
+    final total = lunas.fold(0, (a, t) => a + t.total);
+    final totalTunai = lunas.where((t) => t.method == 'Tunai').fold(0, (a, t) => a + t.total);
+    final totalQris = lunas.where((t) => t.method == 'QRIS').fold(0, (a, t) => a + t.total);
     final grup = kelompokTxPerHari(list);
     // Bayangan lebih lembut khusus layar ini (poin 7 Adnan).
     final bayanganLembut = AppColors.gelap ? 0.18 : 0.03;
@@ -360,7 +369,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                               Expanded(
                                 child: Text(labelHariTx(entri.key, now), style: AppText.small.copyWith(fontWeight: FontWeight.w700)),
                               ),
-                              Text(rupiah(entri.value.fold(0, (a, t) => a + t.total)), style: AppText.small.copyWith(color: AppColors.muted)),
+                              Text(rupiah(entri.value.where((t) => t.status == 'Lunas').fold(0, (a, t) => a + t.total)), style: AppText.small.copyWith(color: AppColors.muted)),
                             ],
                           ),
                         ),
@@ -374,14 +383,21 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                 if (i > 0) Divider(height: 1, indent: 68, endIndent: AppSpacing.lg, color: garisLembut),
                                 _BarisTx(
                                   tx: entri.value[i],
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                        builder: (_) => DetailTransaksiScreen(
-                                              tx: entri.value[i],
-                                              branchName: widget.branchName,
-                                              onLihatStruk: widget.onLihatStruk == null ? null : () => widget.onLihatStruk!(entri.value[i]),
-                                            )),
-                                  ),
+                                  onTap: () async {
+                                    await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) => DetailTransaksiScreen(
+                                                tx: entri.value[i],
+                                                branchName: widget.branchName,
+                                                onLihatStruk: widget.onLihatStruk == null ? null : () => widget.onLihatStruk!(entri.value[i]),
+                                                onUbahStatusTx: widget.onUbahStatusTx,
+                                              )),
+                                    );
+                                    // Kembali dari Detail: segarkan
+                                    // (status bisa saja baru diubah
+                                    // jadi Batal/Refund di sana).
+                                    if (mounted) setState(() {});
+                                  },
                                 ),
                               ],
                             ],

@@ -108,6 +108,8 @@ class Ikon {
   static const IconData receipt_long_outlined = IconData(0xf477, fontFamily: 'Lucide'); // receipt
   static const IconData receipt_outlined = IconData(0xf477, fontFamily: 'Lucide'); // receipt
   static const IconData refresh = IconData(0xf480, fontFamily: 'Lucide'); // refreshCw
+  static const IconData undo = IconData(0xf557, fontFamily: 'Lucide'); // undo
+  static const IconData block_outlined = IconData(0xf182, fontFamily: 'Lucide'); // ban
   static const IconData remove = IconData(0xf3dc, fontFamily: 'Lucide'); // minus
   static const IconData restaurant_menu_outlined = IconData(0xf576, fontFamily: 'Lucide'); // utensils
   static const IconData restaurant_menu_rounded = IconData(0xf576, fontFamily: 'Lucide'); // utensils

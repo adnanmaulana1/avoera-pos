@@ -296,6 +296,7 @@ Future<void> showOpnameSheet(
       'masuk' => (Ikon.add_box_outlined, AppColors.accent, 'Barang Masuk'),
       'jual' => (Ikon.point_of_sale_outlined, AppColors.warning, 'Penjualan'),
       'opname' => (Ikon.fact_check_outlined, AppColors.ink, 'Opname'),
+      'batal' => (Ikon.undo, AppColors.warning, 'Batal/Refund'),
       _ => (Ikon.edit_outlined, AppColors.muted, 'Ubah Manual'),
     };
 
@@ -340,7 +341,7 @@ class _RiwayatMutasiScreenState extends State<RiwayatMutasiScreen> {
         children: [
           FilterChipRow(
             children: [
-              for (final (kode, label) in [('Semua', 'Semua'), ('masuk', 'Masuk'), ('jual', 'Penjualan'), ('opname', 'Opname'), ('edit', 'Ubah Manual')])
+              for (final (kode, label) in [('Semua', 'Semua'), ('masuk', 'Masuk'), ('jual', 'Penjualan'), ('opname', 'Opname'), ('edit', 'Ubah Manual'), ('batal', 'Batal/Refund')])
                 AppChip(label: label, selected: _jenis == kode, onSelected: (_) => setState(() => _jenis = kode)),
             ],
           ),

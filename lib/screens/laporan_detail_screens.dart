@@ -23,7 +23,8 @@ class LaporanBulananScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tx = _txCabang(transactions, branchId);
+    // Hanya transaksi Lunas yang dihitung (v0.23.0).
+    final tx = _txCabang(transactions, branchId).where((t) => t.status == 'Lunas').toList();
     final now = DateTime.now();
     final rows = <(String, int, int)>[]; // label, total, jumlah
     for (var i = 0; i < 6; i++) {
@@ -126,7 +127,7 @@ class _LaporanPajakScreenState extends State<LaporanPajakScreen> {
     final now = DateTime.now();
     final target = _bulanLalu ? DateTime(now.year, now.month - 1) : DateTime(now.year, now.month);
     final tx = _txCabang(widget.transactions, widget.branchId)
-        .where((t) => t.at.year == target.year && t.at.month == target.month)
+        .where((t) => t.status == 'Lunas' && t.at.year == target.year && t.at.month == target.month)
         .toList();
     final subtotal = tx.fold(0, (a, t) => a + t.subtotal);
     final service = tx.fold(0, (a, t) => a + t.service);

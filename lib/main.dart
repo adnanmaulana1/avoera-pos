@@ -998,9 +998,59 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             branchId: _settings.activeBranchId,
             branchName: _settings.activeBranch.name,
             onLihatStruk: _openStruk,
+            onUbahStatusTx: _ubahStatusTx,
           ),
         ),
       );
+
+  /// Batal/Refund transaksi (v0.23.0, diminta Adnan): status
+  /// diganti (transaksi tidak dihitung lagi di omzet/laporan
+  /// mana pun — semua penghitung hanya membaca yang 'Lunas')
+  /// dan stok bahan dari resep pesanan ini DIKEMBALIKAN,
+  /// kebalikan dari potongan saat _checkout. Mutasi jenis
+  /// 'batal' mencatat pengembaliannya. Transaksi lama tanpa
+  /// rincian pesanan tidak bisa mengembalikan stok — dialog
+  /// konfirmasinya sudah menyebut itu.
+  void _ubahStatusTx(TxRecord tx, String statusBaru) {
+    final kunci = tx.uuid.isNotEmpty ? tx.uuid : tx.id;
+    final i = _transactions.indexWhere((t) => (t.uuid.isNotEmpty ? t.uuid : t.id) == kunci);
+    if (i < 0) return;
+    final lama = _transactions[i];
+    if (lama.status != 'Lunas') return;
+    setState(() {
+      _transactions[i] = lama.denganStatus(statusBaru);
+      if (lama.lines.isNotEmpty) {
+        final kebutuhan = <String, double>{};
+        for (final l in lama.lines) {
+          final menu = _menus.where((m) => m.name == l.nama).firstOrNull;
+          if (menu == null) continue;
+          kebutuhanBahan(menu, _menus).forEach((idBahan, qty) {
+            kebutuhan[idBahan] = (kebutuhan[idBahan] ?? 0) + qty * l.qty;
+          });
+        }
+        for (final ing in _ingredients) {
+          final kembali = kebutuhan[ing.id];
+          if (kembali != null && kembali > 0) {
+            ing.stock += kembali;
+            _catatMutasi(ing, 'batal', kembali, catatan: 'Stok kembali — ${lama.id} ${statusBaru == 'Refund' ? 'direfund' : 'dibatalkan'}');
+          }
+        }
+      }
+    });
+    LocalStore.saveTransactions(_transactions);
+    LocalStore.saveIngredients(_ingredients);
+    _tandaiKotor('transactions');
+    _tandaiKotor('ingredients');
+    _jadwalkanSinkron();
+    _periksaStokNotifikasi();
+    if (mounted) {
+      tampilToast(
+        context,
+        statusBaru == 'Refund' ? 'Transaksi ${lama.id} sudah direfund.' : 'Transaksi ${lama.id} sudah dibatalkan.',
+        icon: statusBaru == 'Refund' ? Ikon.undo : Ikon.block_outlined,
+      );
+    }
+  }
 
   // ---------- Struk & printer (v0.15.0) ----------
 

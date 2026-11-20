@@ -56,7 +56,8 @@ class LaporanScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final tx = transactions.where((t) => t.branchId.isEmpty || t.branchId == branchId).toList();
-    final todayTx = tx.where((t) => t.at.year == now.year && t.at.month == now.month && t.at.day == now.day).toList();
+    // Ubin angka hanya dari transaksi Lunas (v0.23.0).
+    final todayTx = tx.where((t) => t.status == 'Lunas' && t.at.year == now.year && t.at.month == now.month && t.at.day == now.day).toList();
     final omzet = todayTx.fold(0, (a, t) => a + t.total);
     final rata = todayTx.isEmpty ? 0 : (omzet / todayTx.length).round();
     final mejaTerisi = tables.where((t) => t.status != TableStatus.kosong).length;

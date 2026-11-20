@@ -14,7 +14,7 @@ import '../ikon.dart';
 /// (sebelumnya yang tersimpan hanya jumlah item) — transaksi
 /// lama menampilkan jumlah item + catatan jujur.
 class DetailTransaksiScreen extends StatelessWidget {
-  const DetailTransaksiScreen({super.key, required this.tx, this.branchName = '', this.onLihatStruk});
+  const DetailTransaksiScreen({super.key, required this.tx, this.branchName = '', this.onLihatStruk, this.onUbahStatusTx});
 
   final TxRecord tx;
   final String branchName;
@@ -22,6 +22,11 @@ class DetailTransaksiScreen extends StatelessWidget {
   /// Pintu ke Pratinjau Struk (v0.15.0). Null = tombol
   /// struk tidak tampil (konstruksi lama/tes).
   final VoidCallback? onLihatStruk;
+
+  /// Alur Batal/Refund (v0.23.0): dipanggil dengan status
+  /// baru ('Batal'/'Refund') sesudah pengguna mengonfirmasi.
+  /// Null = tombol kelola tidak tampil.
+  final void Function(TxRecord tx, String statusBaru)? onUbahStatusTx;
 
   static const _bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -47,6 +52,12 @@ class DetailTransaksiScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final (badgeLabel, badgeLatar, badgeTeks) = switch (tx.status) {
+      'Batal' => ('Batal', AppColors.danger.withValues(alpha: AppColors.gelap ? 0.25 : 0.10), AppColors.danger),
+      'Refund' => ('Refund', AppColors.warningSoft, AppColors.warning),
+      'Belum bayar' => ('Belum bayar', AppColors.track, AppColors.muted),
+      _ => ('Lunas', AppColors.accentSoft, AppColors.accentDark),
+    };
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Transaksi')),
       body: ListView(
@@ -75,8 +86,8 @@ class DetailTransaksiScreen extends StatelessWidget {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(999)),
-                  child: Text('Lunas', style: AppText.caption.copyWith(color: AppColors.accentDark, fontWeight: FontWeight.w700)),
+                  decoration: BoxDecoration(color: badgeLatar, borderRadius: BorderRadius.circular(999)),
+                  child: Text(badgeLabel, style: AppText.caption.copyWith(color: badgeTeks, fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
@@ -95,6 +106,24 @@ class DetailTransaksiScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (tx.status != 'Lunas') ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Ikon.info_outline, size: 16, color: badgeTeks),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    tx.status == 'Belum bayar'
+                        ? 'Transaksi ini belum dibayar.'
+                        : 'Transaksi ini sudah ditandai ${tx.status} — tidak dihitung di omzet, laporan, dan sesi kasir.',
+                    style: AppText.caption.copyWith(color: AppColors.muted),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
           const SectionTitle('Rincian Pesanan'),
           const SizedBox(height: AppSpacing.sm),
@@ -174,9 +203,120 @@ class DetailTransaksiScreen extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(label: 'Lihat Struk', icon: Ikon.print_outlined, onPressed: onLihatStruk),
           ],
+          if (tx.status == 'Lunas' && onUbahStatusTx != null) ...[
+            const SizedBox(height: AppSpacing.xl),
+            const SectionTitle('Kelola Transaksi'),
+            const SizedBox(height: AppSpacing.sm),
+            AppCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  _BarisKelola(
+                    ikon: Ikon.undo,
+                    warna: AppColors.warning,
+                    label: 'Refund Transaksi',
+                    keterangan: 'Uang dikembalikan ke pelanggan.',
+                    onTap: () => _konfirmasi(context, 'Refund'),
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _BarisKelola(
+                    ikon: Ikon.block_outlined,
+                    warna: AppColors.danger,
+                    label: 'Batalkan Transaksi',
+                    keterangan: 'Anggap transaksi ini tidak pernah terjadi.',
+                    onTap: () => _konfirmasi(context, 'Batal'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );
   }
+
+  Future<void> _konfirmasi(BuildContext context, String statusBaru) async {
+    final jadi = await showKonfirmasiStatusTx(context, tx: tx, statusBaru: statusBaru);
+    if (!jadi || !context.mounted) return;
+    onUbahStatusTx!(tx, statusBaru);
+    if (context.mounted) Navigator.of(context).pop();
+  }
+}
+
+/// Satu baris aksi di kartu Kelola Transaksi.
+class _BarisKelola extends StatelessWidget {
+  const _BarisKelola({required this.ikon, required this.warna, required this.label, required this.keterangan, required this.onTap});
+
+  final IconData ikon;
+  final Color warna;
+  final String label;
+  final String keterangan;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(color: warna.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.sm)),
+              child: Icon(ikon, size: 19, color: warna),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: AppText.body.copyWith(fontWeight: FontWeight.w600, color: warna)),
+                  Text(keterangan, style: AppText.caption.copyWith(color: AppColors.muted)),
+                ],
+              ),
+            ),
+            Icon(Ikon.chevron_right, size: 20, color: AppColors.muted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dialog konfirmasi Batal/Refund: menyebut akibatnya dengan
+/// jujur sebelum status benar-benar diubah (keputusan ini
+/// tidak bisa dibatalkan).
+Future<bool> showKonfirmasiStatusTx(BuildContext context, {required TxRecord tx, required String statusBaru}) async {
+  final hasil = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(statusBaru == 'Refund' ? 'Refund Transaksi?' : 'Batalkan Transaksi?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Transaksi ${tx.id} sebesar ${rupiah(tx.total)} akan ditandai ${statusBaru == 'Refund' ? 'Refund' : 'Batal'}.', style: AppText.body),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            tx.lines.isNotEmpty
+                ? '• Stok bahan dari resep pesanan ini dikembalikan.\n• Transaksi tidak dihitung lagi di omzet, laporan, dan sesi kasir.\n• Keputusan ini tidak bisa dibatalkan.'
+                : '• Transaksi lama ini tidak punya rincian pesanan, jadi stok bahan tidak bisa dikembalikan otomatis.\n• Transaksi tidak dihitung lagi di omzet, laporan, dan sesi kasir.\n• Keputusan ini tidak bisa dibatalkan.',
+            style: AppText.small.copyWith(color: AppColors.muted),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Kembali')),
+        PrimaryButton(
+          label: statusBaru == 'Refund' ? 'Ya, Refund' : 'Ya, Batalkan',
+          backgroundColor: AppColors.danger,
+          onPressed: () => Navigator.of(ctx).pop(true),
+        ),
+      ],
+    ),
+  );
+  return hasil ?? false;
 }

@@ -4,13 +4,13 @@ import 'package:avoera_pos/ikon.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avorea POS';
-const appVersion = '0.22.0';
+const appVersion = '0.23.0';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 63;
+const appBuild = 64;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -767,13 +767,33 @@ class TxRecord {
   /// sebelum v0.10.6).
   final List<TxLine> lines;
 
-  /// Status transaksi: 'Lunas' (bawaan, semua transaksi yang
-  /// tercatat aplikasi sampai v0.10.11) | 'Batal' | 'Refund' |
-  /// 'Belum bayar'. Belum ada alur yang menulis status selain
-  /// Lunas — kolomnya disiapkan v0.10.11 supaya Riwayat bisa
-  /// menandai status luar biasa dengan badge (permintaan
-  /// Adnan: baris biasa TANPA badge).
+  /// Status transaksi: 'Lunas' (bawaan) | 'Batal' | 'Refund' |
+  /// 'Belum bayar'. Kolom disiapkan v0.10.11 (badge Riwayat);
+  /// sejak v0.23.0 status 'Batal'/'Refund' bisa ditulis dari
+  /// halaman Detail Transaksi — transaksi berstatus selain
+  /// 'Lunas' TIDAK dihitung di omzet & laporan mana pun, dan
+  /// stok bahannya dikembalikan saat status diubah.
   final String status;
+
+  /// Salinan transaksi ini dengan status baru (untuk alur
+  /// Batal/Refund v0.23.0 — semua kolom lain tetap).
+  TxRecord denganStatus(String statusBaru) => TxRecord(
+        id: id,
+        total: total,
+        method: method,
+        at: at,
+        items: items,
+        subtotal: subtotal,
+        service: service,
+        tax: tax,
+        branchId: branchId,
+        uuid: uuid,
+        lines: lines,
+        status: statusBaru,
+        diskon: diskon,
+        promoNama: promoNama,
+        tamu: tamu,
+      );
 
   /// Diskon promo yang dipakai pada transaksi ini (Rp, 0 =
   /// tanpa promo) + nama promonya. Fitur Promo & Diskon
