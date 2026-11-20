@@ -39,6 +39,7 @@ class PengaturanScreen extends StatelessWidget {
     required this.onOpenPinSettings,
     required this.onOpenBranchWizard,
     this.onEditBranch,
+    this.onDeleteBranch,
     required this.businessPhotoPath,
     required this.cloudSyncEnabled,
     required this.onCloudSyncChanged,
@@ -91,6 +92,11 @@ class PengaturanScreen extends StatelessWidget {
   /// Ubah nama/alamat/telepon cabang (v0.19.0); null = tombol
   /// ubah tidak ditampilkan.
   final ValueChanged<Branch>? onEditBranch;
+
+  /// Hapus cabang (v0.24.0). Null = tombol hapus tidak
+  /// tampil. Tombolnya sendiri hanya muncul untuk cabang
+  /// yang tidak aktif dan bukan satu-satunya cabang.
+  final ValueChanged<Branch>? onDeleteBranch;
 
   /// Foto usaha (berkas lokal) untuk kartu profil; null = ikon.
   final String? businessPhotoPath;
@@ -199,6 +205,15 @@ class PengaturanScreen extends StatelessWidget {
                           icon: Icon(Ikon.edit_outlined, size: 20),
                           color: AppColors.accentDark,
                           onPressed: () => onEditBranch!(b),
+                        ),
+                      if (onDeleteBranch != null && branches.length > 1 && b.id != activeBranchId)
+                        IconButton(
+                          tooltip: 'Hapus cabang',
+                          icon: Icon(Ikon.delete_outline, size: 20),
+                          color: AppColors.danger,
+                          onPressed: () async {
+                            if (await showHapusCabangDialog(context, cabang: b)) onDeleteBranch!(b);
+                          },
                         ),
                     ],
                   ),
@@ -701,6 +716,31 @@ void showAppInfoDialog(BuildContext context) {
   );
 }
 
+
+/// Dialog konfirmasi Hapus Cabang (v0.24.0): menyebut
+/// akibatnya dengan jujur sebelum cabang benar-benar
+/// dihapus. Mengembalikan true bila pengguna menekan
+/// 'Hapus Cabang'.
+Future<bool> showHapusCabangDialog(BuildContext context, {required Branch cabang}) async {
+  final hasil = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Hapus Cabang?'),
+      content: Text(
+        'Cabang "${cabang.name}" akan dihapus.\n\n'
+        '• Cabang ini hilang dari semua perangkat sesudah sinkron.\n'
+        '• Transaksinya TIDAK ikut terhapus, tapi tidak tampil lagi di laporan cabang mana pun.\n'
+        '• Keputusan ini tidak bisa dibatalkan.',
+        style: AppText.body,
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
+        PrimaryButton(label: 'Hapus Cabang', backgroundColor: AppColors.danger, onPressed: () => Navigator.of(ctx).pop(true)),
+      ],
+    ),
+  );
+  return hasil ?? false;
+}
 
 /// Dialog Reset Total (v0.20.0): penjelasan akibatnya dengan
 /// kata biasa, lalu pengguna wajib mengetik RESET sebelum

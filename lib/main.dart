@@ -1512,6 +1512,29 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         },
       );
 
+  /// Hapus cabang (v0.24.0, diminta Adnan): cabang dibuang
+  /// dari daftar + id-nya dicatat di penanda hapus
+  /// (cabangTerhapus) yang ikut sinkron — perangkat lain
+  /// menyaringnya keluar dan baris awannya dibersihkan.
+  /// Transaksinya TIDAK dihapus. Cabang aktif dan cabang
+  /// terakhir tidak bisa dihapus (jaga di sini juga, bukan
+  /// hanya di tampilan).
+  void _hapusCabang(Branch b) {
+    if (_settings.branches.length <= 1 || b.id == _settings.activeBranchId) return;
+    if (!_settings.branches.any((c) => c.id == b.id)) return;
+    _tandaiKotor('branches');
+    _tandaiKotor('settings');
+    _settingChanged(() {
+      _settings.branches = [for (final c in _settings.branches) if (c.id != b.id) c];
+      if (!_settings.cabangTerhapus.contains(b.id)) {
+        _settings.cabangTerhapus = [..._settings.cabangTerhapus, b.id];
+      }
+    });
+    if (mounted) {
+      tampilToast(context, 'Cabang ${b.name} dihapus.', icon: Ikon.delete_outline);
+    }
+  }
+
   // ---------- Reset Total (v0.20.0) ----------
   /// Hapus SEMUA data — awan dulu, lalu HP ini — dan muat
   /// ulang dari nol seperti pemasangan baru. Mengembalikan
@@ -1702,6 +1725,21 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           _settings.businessPhone = srv['businessPhone'] as String? ?? _settings.businessPhone;
           _settings.servicePercent = (srv['servicePercent'] as num?)?.toInt() ?? _settings.servicePercent;
           _settings.taxPercent = (srv['taxPercent'] as num?)?.toInt() ?? _settings.taxPercent;
+          // Penanda cabang terhapus (v0.24.0): gabungan dari
+          // semua perangkat — penanda hanya boleh bertambah.
+          final srvTerhapus = (srv['cabangTerhapus'] as List?)?.map((e) => e.toString()) ?? const <String>[];
+          _settings.cabangTerhapus = {..._settings.cabangTerhapus, ...srvTerhapus}.toList();
+        }
+        // Saringan pengaman: cabang berpenanda hapus tidak
+        // boleh tampil lagi di perangkat ini.
+        if (_settings.cabangTerhapus.isNotEmpty) {
+          final saring = [for (final b in _settings.branches) if (!_settings.cabangTerhapus.contains(b.id)) b];
+          if (saring.isNotEmpty && saring.length != _settings.branches.length) {
+            _settings.branches = saring;
+            if (!_settings.branches.any((b) => b.id == _settings.activeBranchId)) {
+              _settings.activeBranchId = _settings.branches.first.id;
+            }
+          }
         }
         // Data ekstra hasil gabungan (v0.22.0): daftar diganti
         // dengan hasil gabungan awan+lokal.
@@ -2362,6 +2400,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         onOpenPinSettings: _openPinSettings,
         onOpenBranchWizard: _openBranchWizard,
         onEditBranch: _bukaUbahCabang,
+        onDeleteBranch: _hapusCabang,
         businessPhotoPath: _settings.businessPhotoPath,
         cloudSyncEnabled: _settings.cloudSyncEnabled,
         onCloudSyncChanged: (v) => _settingChanged(() => _settings.cloudSyncEnabled = v),

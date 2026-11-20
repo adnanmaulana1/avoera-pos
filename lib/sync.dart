@@ -402,13 +402,30 @@ Future<HasilSinkron> _kerjakanSinkron(
     }
   }
 
-  // Cabang SENGAJA tidak dibersihkan hantu: cabang tidak bisa
-  // dihapus dari aplikasi, jadi cabang yang "dikenal tapi tidak
-  // lokal" selalu sisa gabungan/pemulihan — bukan penghapusan
-  // sungguhan. Membersihkannya pernah menghapus baris cabang di
-  // server dan memutus transaksinya (kejadian 2026-11-17).
+  // Cabang TIDAK dibersihkan dengan aturan umum "dikenal tapi
+  // tidak lokal": itu pernah menghapus baris cabang di server
+  // dan memutus transaksinya (kejadian 2026-11-17). Sejak
+  // v0.24.0 cabang bisa SENGAJA dihapus pengguna — baris
+  // servernya dibersihkan lewat daftar penanda hapus
+  // (cabangTerhapus), hanya untuk id yang memang ditandai DAN
+  // pernah dikenal perangkat ini.
   await bersihkanHantu('menus', 'avoera_menus', {for (final m in menus) m.id});
   await bersihkanHantu('ingredients', 'avoera_ingredients', {for (final i in ingredients) i.id});
+  final dikenalCabang = dikenal['branches'] ?? const <String>{};
+  if (settings.cabangTerhapus.isNotEmpty && dikenalCabang.isNotEmpty) {
+    try {
+      final rows = await client.from('avoera_branches').select('id').eq('business_key', kode);
+      final idServer = {for (final r in rows) r['id'] as String};
+      final target = idServer.intersection(settings.cabangTerhapus.toSet()).intersection(dikenalCabang).toList();
+      if (target.isNotEmpty) {
+        await client.from('avoera_branches').delete().eq('business_key', kode).inFilter('id', target);
+      }
+    } catch (e) {
+      // Diamkan — dicoba lagi pada sinkron berikutnya.
+      // ignore: avoid_print
+      print('Bersihkan cabang terhapus gagal: $e');
+    }
+  }
 
   // ---------- UNGGAH (per tabel dijaga sendiri-sendiri: satu
   // tabel gagal tidak membatalkan tabel lain, dan kegagalannya
@@ -477,6 +494,13 @@ Future<HasilSinkron> _kerjakanSinkron(
   final menuGabung = menuJson == null ? menus : gabung(menus, [for (final j in menuJson) MenuItem.fromJson(j)], (m) => m.id);
   final bahanJson = await ambil('ingredients', 'avoera_ingredients');
   final bahanGabung = bahanJson == null ? ingredients : gabung(ingredients, [for (final j in bahanJson) Ingredient.fromJson(j)], (i) => i.id);
+  // Baris pengaturan WAJIB disaring id 'main': sejak v0.22.0
+  // tabel yang sama juga menyimpan baris blob 'extras', dan
+  // mengambil baris pertama tanpa saringan bisa tertukar.
+  // Ditarik SEBELUM gabungan cabang karena penanda cabang
+  // terhapus (v0.24.0) ikut menentukan hasil gabungan.
+  final pengaturanJson = await ambil('settings', 'avoera_settings', idSaja: 'main');
+  final pengaturanServer = (pengaturanJson == null || pengaturanJson.isEmpty) ? null : pengaturanJson.first;
   final cabangJson = await ambil('branches', 'avoera_branches');
   final cabangGabung = cabangJson == null ? branches : gabung(branches, [for (final j in cabangJson) Branch.fromJson(j)], (b) => b.id);
   final txJson = await ambil('transactions', 'avoera_transactions');
@@ -485,15 +509,19 @@ Future<HasilSinkron> _kerjakanSinkron(
       : (gabung(transactions, [for (final j in txJson) TxRecord.fromJson(j)], (t) => t.uuid.isEmpty ? t.id : t.uuid)
         ..sort((a, b) => a.at.compareTo(b.at)));
 
+  // Penanda cabang terhapus = gabungan penanda lokal + server
+  // (penanda hanya boleh bertambah). Cabang berpenanda disaring
+  // keluar dari hasil gabungan di semua perangkat.
+  final terhapusSet = <String>{
+    ...settings.cabangTerhapus,
+    ...((pengaturanServer?['cabangTerhapus'] as List?)?.map((e) => e.toString()) ?? const <String>[]),
+  };
+  final cabangTersaring = [for (final b in cabangGabung) if (!terhapusSet.contains(b.id)) b];
   // Cabang yatim: transaksi hasil gabungan yang cabangnya tidak ada
   // di daftar cabang → cabangnya dibuatkan lagi dengan id yang sama,
   // supaya transaksi itu nyambung dan cabangnya bisa dipakai lagi.
-  final cabangFinal = pulihkanCabangYatim(cabangGabung, txGabung);
-  // Baris pengaturan WAJIB disaring id 'main': sejak v0.22.0
-  // tabel yang sama juga menyimpan baris blob 'extras', dan
-  // mengambil baris pertama tanpa saringan bisa tertukar.
-  final pengaturanJson = await ambil('settings', 'avoera_settings', idSaja: 'main');
-  final pengaturanServer = (pengaturanJson == null || pengaturanJson.isEmpty) ? null : pengaturanJson.first;
+  // Cabang berpenanda hapus TIDAK dipulihkan.
+  final cabangFinal = pulihkanCabangYatim(cabangTersaring, txGabung, terhapus: terhapusSet);
 
   // ---------- DATA LAINNYA (v0.22.0): meja, promo,
   // pengeluaran, hutang, mutasi, sesi, dapur, desain struk &
@@ -554,7 +582,7 @@ Future<HasilSinkron> _kerjakanSinkron(
     rincian: daftar,
     dikenalBaru: dikenalBaru,
     ringkasan: gagal == 0
-        ? 'Sinkron selesai: ${menuGabung.length} menu, ${bahanGabung.length} bahan, ${cabangGabung.length} cabang, ${txGabung.length} transaksi${extras != null ? ', ${ekstraGabung?.jumlah ?? 0} data lainnya' : ''}.'
+        ? 'Sinkron selesai: ${menuGabung.length} menu, ${bahanGabung.length} bahan, ${cabangFinal.length} cabang, ${txGabung.length} transaksi${extras != null ? ', ${ekstraGabung?.jumlah ?? 0} data lainnya' : ''}.'
         : 'Sinkron belum tuntas: $gagal dari ${daftar.length} bagian gagal — rincian di Status Sinkronisasi.',
   );
 }

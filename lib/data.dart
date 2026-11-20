@@ -4,13 +4,13 @@ import 'package:avoera_pos/ikon.dart';
 // ---------- Info aplikasi (satu sumber: popup Info Aplikasi, kaki sidebar) ----------
 // appVersion WAJIB sama dengan angka di depan '+' pada version di pubspec.yaml.
 const appName = 'Avorea POS';
-const appVersion = '0.23.0';
+const appVersion = '0.24.0';
 
 /// Nomor build aplikasi — WAJIB sama dengan angka sesudah '+'
 /// pada version di pubspec.yaml. Dipakai fitur pembaruan dalam
 /// aplikasi (lib/update.dart) untuk membandingkan dengan versi
 /// terbaru di server.
-const appBuild = 64;
+const appBuild = 65;
 const appStudio = 'Webtales Studio';
 
 // ---------- Pengaturan (tersimpan permanen) ----------
@@ -38,8 +38,10 @@ class AppSettings {
     // 2026-11-14). Pilihan yang sudah tersimpan tidak ditimpa.
     this.modeTema = 'terang',
     List<String>? menuCategories,
+    List<String>? cabangTerhapus,
   })  : branches = branches ?? [Branch(id: 'c1', name: 'Cabang Utama')],
-        menuCategories = menuCategories ?? [];
+        menuCategories = menuCategories ?? [],
+        cabangTerhapus = cabangTerhapus ?? [];
   String businessName;
   String businessAddress;
   String businessPhone;
@@ -98,6 +100,14 @@ class AppSettings {
   /// pengaturan (bukan data khusus perangkat).
   List<String> menuCategories;
 
+  /// Id cabang yang SENGAJA dihapus pengguna (fitur Hapus
+  /// Cabang v0.24.0). Penanda ini ikut sinkron lewat baris
+  /// pengaturan dan hanya boleh bertambah: cabang berpenanda
+  /// disaring keluar dari hasil gabungan awan di semua
+  /// perangkat dan tidak dipulihkan oleh pemulih cabang yatim,
+  /// walau transaksinya masih ada.
+  List<String> cabangTerhapus;
+
   Branch get activeBranch => branches.firstWhere((b) => b.id == activeBranchId, orElse: () => branches.first);
 
   Map<String, dynamic> toJson() => {
@@ -121,6 +131,7 @@ class AppSettings {
         'cloudSyncEnabled': cloudSyncEnabled,
         'businessPhotoPath': businessPhotoPath,
         'menuCategories': menuCategories,
+        'cabangTerhapus': cabangTerhapus,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -150,6 +161,7 @@ class AppSettings {
         businessPhotoPath: j['businessPhotoPath'] as String?,
         // Data lama belum punya kunci ini → kosong (bawaan).
         menuCategories: (j['menuCategories'] as List?)?.map((e) => e.toString()).toList(),
+        cabangTerhapus: (j['cabangTerhapus'] as List?)?.map((e) => e.toString()).toList(),
       );
 }
 
@@ -1805,11 +1817,13 @@ class Branch {
 /// 2026-11-17: baris cabang kehapus dari awan, transaksinya selamat).
 /// Nama diberi tanda jelas supaya pemilik tahu harus menggantinya
 /// dari Pengaturan. Transaksi lama tanpa branchId (kosong) dilewati.
-List<Branch> pulihkanCabangYatim(List<Branch> cabang, List<TxRecord> transaksi) {
+List<Branch> pulihkanCabangYatim(List<Branch> cabang, List<TxRecord> transaksi, {Set<String> terhapus = const {}}) {
   final ada = {for (final b in cabang) b.id};
   final hasil = [...cabang];
   for (final t in transaksi) {
-    if (t.branchId.isEmpty || ada.contains(t.branchId)) continue;
+    // Cabang yang SENGAJA dihapus (v0.24.0) tidak dipulihkan,
+    // walau transaksinya masih ada.
+    if (t.branchId.isEmpty || ada.contains(t.branchId) || terhapus.contains(t.branchId)) continue;
     ada.add(t.branchId);
     hasil.add(Branch(id: t.branchId, name: 'Cabang (dipulihkan)'));
   }
