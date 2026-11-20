@@ -189,7 +189,7 @@ void main() {
     // bukan RenderBox).
     Finder wadah(Finder kepala) => find.descendant(of: kepala, matching: find.byType(Container)).first;
     final kepala = find.byType(SliverPersistentHeader);
-    expect(tester.getSize(wadah(kepala.first)).height, 168);
+    expect(tester.getSize(wadah(kepala.first)).height, 136);
     // Gulir jauh: kepala menyusut ke baris ringkas, pill kategori
     // (kepala kedua) tetap menempel setinggi 50.
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));

@@ -431,7 +431,7 @@ class _ProdukScreenState extends State<ProdukScreen> {
                 tinggi: 50,
                 child: Container(
                   color: Theme.of(context).scaffoldBackgroundColor,
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.sm),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
                   child: FilterChipRow(
                     children: [
                       for (final c in ['Semua', ..._daftarKategori])
@@ -653,7 +653,11 @@ class _KepalaProdukDelegate extends SliverPersistentHeaderDelegate {
   final Widget trailing;
 
   @override
-  double get maxExtent => 168;
+  // 136 = isi terukur 124 (judul+subjudul+kolom cari) + sisa 12.
+  // Dulu 168: ruang kosong 44 di bawah kolom cari membuat jarak
+  // ke pill kategori terasa jauh (keluhan Adnan 2026-11-20,
+  // terukur 48.5 → sesudah rapat ±12).
+  double get maxExtent => 136;
 
   @override
   double get minExtent => 58;
