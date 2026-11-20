@@ -275,12 +275,37 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// Laporan sinkron terakhir per tabel + jumlah perubahan yang
   /// menunggu per tabel — bahan halaman Status Sinkronisasi.
   List<StatusTabel> _laporanSinkron = [];
-  final Map<String, int> _kotor = {'menus': 0, 'ingredients': 0, 'branches': 0, 'transactions': 0, 'settings': 0};
+  final Map<String, int> _kotor = {'menus': 0, 'ingredients': 0, 'branches': 0, 'transactions': 0, 'settings': 0, 'extras': 0};
 
   /// Id per tabel yang PERNAH terlihat perangkat ini (untuk
   /// membedakan barang yang dihapus di sini dari barang baru
   /// perangkat lain saat sinkron — lihat idHantuDiServer).
-  final Map<String, Set<String>> _dikenal = {'menus': {}, 'ingredients': {}, 'branches': {}};
+  /// Kunci 'x:' = sub-daftar data ekstra (v0.22.0).
+  final Map<String, Set<String>> _dikenal = {
+    'menus': {},
+    'ingredients': {},
+    'branches': {},
+    'x:tables': {},
+    'x:promos': {},
+    'x:expenses': {},
+    'x:hutang': {},
+    'x:mutasi': {},
+    'x:sesi': {},
+    'x:dapur': {},
+  };
+
+  /// Bendera benda tunggal data ekstra (v0.22.0): true berarti
+  /// desain struk / draf keranjang di perangkat INI berubah
+  /// sejak sinkron terakhir yang berhasil — penentu sisi mana
+  /// yang menang saat gabungan (lihat gabungEkstra). Ikut
+  /// disimpan di meta sinkron supaya selamat dari mulai ulang.
+  bool _strukKotor = false;
+  bool _draftKotor = false;
+
+  /// Sudah pernah ada sinkron yang tuntas (berhasil/gagal)
+  /// selama aplikasi berjalan — dipakai wizard awal untuk
+  /// memutuskan perlu menunggu sinkron atau tidak.
+  bool _pernahSinkron = false;
   final ValueNotifier<int> _penandaSinkron = ValueNotifier<int>(0);
 
   /// Cloud Sync benar-benar jalan hanya bila diatur DAN saklarnya
@@ -449,6 +474,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (lap != null) {
         _laporanSinkron = lap.map((e) => StatusTabel.fromJson((e as Map).cast<String, dynamic>())).toList();
       }
+      _strukKotor = meta['strukKotor'] as bool? ?? false;
+      _draftKotor = meta['draftKotor'] as bool? ?? false;
       _penandaSinkron.value++;
     }
     widget.onModeTema(_settings.modeTema, false);
@@ -739,7 +766,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       'kotor': _kotor,
       'laporan': _laporanSinkron.map((r) => r.toJson()).toList(),
       'dikenal': {for (final e in _dikenal.entries) e.key: e.value.toList()},
+      'strukKotor': _strukKotor,
+      'draftKotor': _draftKotor,
     });
+  }
+
+  /// Penanda data ekstra berubah (v0.22.0): hitungan menunggu
+  /// naik + sinkron dijadwalkan, sama seperti tabel utama.
+  void _extraBerubah() {
+    _tandaiKotor('extras');
+    _jadwalkanSinkron();
   }
 
   /// Ringkasan satu baris untuk baris Status Sinkronisasi di
@@ -824,12 +860,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       _tables.sort((a, b) => a.number.compareTo(b.number));
     });
     LocalStore.saveTables(_tables);
+    _extraBerubah();
     _jadwalkanSinkron();
   }
 
   void _tableChanged() {
     setState(() => _tables.sort((a, b) => a.number.compareTo(b.number)));
     LocalStore.saveTables(_tables);
+    _extraBerubah();
     _jadwalkanSinkron();
   }
 
@@ -839,6 +877,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       if (_selectedTable == t) _selectedTable = null;
     });
     LocalStore.saveTables(_tables);
+    _extraBerubah();
     _jadwalkanSinkron();
     if (mounted) tampilToast(context, 'Meja ${t.number} dihapus.', icon: Ikon.delete_outline);
   }
@@ -863,6 +902,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (_mutasi.length > 800) _mutasi.removeRange(800, _mutasi.length);
     _stokDikenal[ing.id] = stokSesudah ?? ing.stock;
     LocalStore.saveMutasi(_mutasi);
+    _extraBerubah();
   }
 
   void _barangMasuk(Ingredient ing, double qty, int hargaBeli, String catatan) {
@@ -967,6 +1007,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void _simpanDesainStruk(DesainStruk d) {
     setState(() => _desainStruk = d);
     LocalStore.saveStruk(d);
+    _strukKotor = true;
+    _extraBerubah();
   }
 
   void _openDesainStruk() => Navigator.of(context).push(
@@ -1046,16 +1088,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void _addExpense(Pengeluaran e) {
     setState(() => _expenses = [e, ..._expenses]);
     LocalStore.saveExpenses(_expenses);
+    _extraBerubah();
   }
 
   void _editExpense(Pengeluaran e) {
     setState(() => _expenses = [for (final x in _expenses) x.id == e.id ? e : x]);
     LocalStore.saveExpenses(_expenses);
+    _extraBerubah();
   }
 
   void _deleteExpense(Pengeluaran e) {
     setState(() => _expenses = _expenses.where((x) => x.id != e.id).toList());
     LocalStore.saveExpenses(_expenses);
+    _extraBerubah();
   }
 
   // ---------- Hutang & Promo: simpan lokal ----------
@@ -1063,31 +1108,37 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void _addHutang(Hutang h) {
     setState(() => _hutang = [h, ..._hutang]);
     LocalStore.saveHutang(_hutang);
+    _extraBerubah();
   }
 
   void _editHutang(Hutang h) {
     setState(() => _hutang = [for (final x in _hutang) x.id == h.id ? h : x]);
     LocalStore.saveHutang(_hutang);
+    _extraBerubah();
   }
 
   void _deleteHutang(Hutang h) {
     setState(() => _hutang = _hutang.where((x) => x.id != h.id).toList());
     LocalStore.saveHutang(_hutang);
+    _extraBerubah();
   }
 
   void _addPromo(Promo p) {
     setState(() => _promos = [p, ..._promos]);
     LocalStore.savePromos(_promos);
+    _extraBerubah();
   }
 
   void _editPromo(Promo p) {
     setState(() => _promos = [for (final x in _promos) x.id == p.id ? p : x]);
     LocalStore.savePromos(_promos);
+    _extraBerubah();
   }
 
   void _deletePromo(Promo p) {
     setState(() => _promos = _promos.where((x) => x.id != p.id).toList());
     LocalStore.savePromos(_promos);
+    _extraBerubah();
   }
 
   // ---------- Pembuka laporan baru (v0.11.0) ----------
@@ -1187,6 +1238,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final s = SesiKasir(branchId: _settings.activeBranchId, dibukaPada: DateTime.now(), modalAwal: modalAwal, namaKasir: namaKasir);
     setState(() => _sesi = [s, ..._sesi]);
     LocalStore.saveSesi(_sesi);
+    _extraBerubah();
   }
 
   void _tutupSesi(int tunaiFisik, int pengeluaranLaci, String catatan) {
@@ -1199,6 +1251,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       s.catatan = catatan;
     });
     LocalStore.saveSesi(_sesi);
+    _extraBerubah();
   }
 
   void _openSesiKasir() => Navigator.of(context).push(
@@ -1452,6 +1505,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         _kasirUnlocked = false;
         _celebrate = false;
         _laporanSinkron = [];
+        _strukKotor = false;
+        _draftKotor = false;
+        _pernahSinkron = false;
         for (final k in _kotor.keys) {
           _kotor[k] = 0;
         }
@@ -1481,6 +1537,29 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   // ---------- Sinkronisasi Supabase ----------
+
+  /// Gerbang wizard awal (v0.22.0): sebelum wizard boleh
+  /// selesai, pastikan sinkron pertama SUDAH mendarat — kalau
+  /// belum, wizard bisa keburu mengganti daftar cabang sebelum
+  /// cabang lama dari awan terlihat (kejadian 2026-11-20:
+  /// pasang baru di HP lain, cabang lama tidak ketemu, malah
+  /// terdaftar cabang pertama baru). Sinkron yang sedang
+  /// terbang ditunggu (batas sinkronnya sendiri 25 detik);
+  /// belum pernah sinkron sama sekali → jalankan sekarang.
+  /// Gagal pun tidak apa: wizard lanjut dengan data lokal.
+  Future<void> _sinkronSebelumWizard() async {
+    if (!_cloudAktif) return;
+    if (_syncing) {
+      var t = 0;
+      while (_syncing && t < 300) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        t++;
+      }
+    } else if (!_pernahSinkron) {
+      await _syncNow(diam: true);
+    }
+  }
+
   /// Sinkron dengan batas 25 detik: koneksi menggantung tidak
   /// boleh membuat status 'menyinkron' selamanya — gagalkan saja,
   /// ikon jadi merah dan sinkron berikutnya mencoba lagi. Timer
@@ -1502,6 +1581,19 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       transactions: _transactions,
       perbaruiSemua: perbaruiSemua,
       dikenal: _dikenal,
+      extras: DataEkstra(
+        tables: _tables,
+        promos: _promos,
+        expenses: _expenses,
+        hutang: _hutang,
+        mutasi: _mutasi,
+        sesi: _sesi,
+        dapur: _kitchen,
+        struk: _desainStruk,
+        draft: _draftSekarang,
+      ),
+      strukKotor: _strukKotor,
+      draftKotor: _draftKotor,
     ).then((h) {
       _syncTimeoutTimer?.cancel();
       if (!selesai.isCompleted) selesai.complete(h);
@@ -1561,6 +1653,42 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           _settings.servicePercent = (srv['servicePercent'] as num?)?.toInt() ?? _settings.servicePercent;
           _settings.taxPercent = (srv['taxPercent'] as num?)?.toInt() ?? _settings.taxPercent;
         }
+        // Data ekstra hasil gabungan (v0.22.0): daftar diganti
+        // dengan hasil gabungan awan+lokal.
+        final ex = hasil.extras;
+        if (ex != null) {
+          _tables = ex.tables;
+          _promos = ex.promos;
+          _expenses = ex.expenses;
+          _hutang = ex.hutang;
+          _mutasi = ex.mutasi;
+          _sesi = ex.sesi;
+          _kitchen = ex.dapur;
+          if (ex.struk != null) _desainStruk = ex.struk!;
+          // Meja terpilih disambung ulang ke objek di daftar
+          // baru (daftar lama sudah dibuang).
+          if (_selectedTable != null) {
+            _selectedTable = _tables.where((t) => t.number == _selectedTable!.number).firstOrNull;
+          }
+          // Draf dari perangkat lain hanya diterapkan bila
+          // keranjang di sini SEDANG KOSONG dan tidak ada meja
+          // terpilih — pesanan yang sedang diketik kasir tidak
+          // boleh ditimpa draf dari HP lain.
+          final d = ex.draft;
+          if (d != null && _cart.isEmpty && _selectedTable == null) {
+            _draftJenis = d.jenis;
+            _draftPromoId = d.promoId;
+            _orderCounter = d.counter;
+            _cart
+              ..clear()
+              ..addAll([
+                for (final b in d.items)
+                  if (_menus.any((m) => m.id == b.menuId))
+                    CartItem(menu: _menus.firstWhere((m) => m.id == b.menuId), variant: b.variant, note: b.note, qty: b.qty, unitPrice: b.unitPrice),
+              ]);
+            _selectedTable = d.nomorMeja == null ? null : _tables.where((t) => t.number == d.nomorMeja).firstOrNull;
+          }
+        }
         final n = DateTime.now();
         _settings.lastSyncLabel =
             '${n.day}/${n.month}/${n.year} ${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
@@ -1580,8 +1708,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       LocalStore.saveIngredients(_ingredients);
       LocalStore.saveTransactions(_transactions);
       LocalStore.saveSettings(_settings);
+      if (hasil.extras != null) {
+        LocalStore.saveTables(_tables);
+        LocalStore.savePromos(_promos);
+        LocalStore.saveExpenses(_expenses);
+        LocalStore.saveHutang(_hutang);
+        LocalStore.saveMutasi(_mutasi);
+        LocalStore.saveSesi(_sesi);
+        LocalStore.saveStruk(_desainStruk);
+        _tulisDraft();
+        // Bagian ekstra terkirim utuh → perubahan lokal untuk
+        // benda tunggalnya sudah tersimpan di awan.
+        if (hasil.rincian.any((r) => r.kunci == 'extras' && r.berhasil)) {
+          _strukKotor = false;
+          _draftKotor = false;
+        }
+      }
       _simpanMetaSinkron();
       _syncing = false;
+      _pernahSinkron = true;
       _penandaSinkron.value++;
       if (mounted) setState(() => _syncStatus = hasil.adaGagal ? StatusSinkron.gagal : StatusSinkron.tersinkron);
       _periksaStokNotifikasi();
@@ -1608,6 +1753,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('Sinkron gagal: $e');
       _syncing = false;
+      _pernahSinkron = true;
       final ringkas = ringkasErrorSinkron(e);
       _laporanSinkron = [
         for (final (kunci, label) in [
@@ -1616,6 +1762,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ('ingredients', 'Bahan'),
           ('transactions', 'Transaksi'),
           ('settings', 'Pengaturan'),
+          ('extras', 'Data Lainnya'),
         ])
           StatusTabel(kunci: kunci, label: label, berhasil: false, jumlah: 0, galat: ringkas),
       ];
@@ -1719,15 +1866,26 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   /// seluruh antrean dapur. Dipanggil sesudah SETIAP perubahan
   /// supaya tidak ada pesanan yang hilang bila aplikasi
   /// tertutup paksa atau HP mati di tengah pesanan.
-  void _simpanDraft() {
+  /// Potret draf kasir saat ini (untuk disimpan & disinkronkan).
+  DraftKasir get _draftSekarang => DraftKasir(
+        items: [for (final c in _cart) BarisKeranjang(menuId: c.menu.id, variant: c.variant, note: c.note, qty: c.qty, unitPrice: c.unitPrice)],
+        nomorMeja: _selectedTable?.number,
+        counter: _orderCounter,
+        jenis: _draftJenis,
+        promoId: _draftPromoId,
+      );
+
+  /// Tulis dapur + draf ke disk TANPA menandai perubahan
+  /// (dipakai jalur penerapan hasil sinkron).
+  void _tulisDraft() {
     LocalStore.saveDapur(_kitchen);
-    LocalStore.saveDraftKasir(DraftKasir(
-      items: [for (final c in _cart) BarisKeranjang(menuId: c.menu.id, variant: c.variant, note: c.note, qty: c.qty, unitPrice: c.unitPrice)],
-      nomorMeja: _selectedTable?.number,
-      counter: _orderCounter,
-      jenis: _draftJenis,
-      promoId: _draftPromoId,
-    ));
+    LocalStore.saveDraftKasir(_draftSekarang);
+  }
+
+  void _simpanDraft() {
+    _tulisDraft();
+    _draftKotor = true;
+    _extraBerubah();
   }
 
   void _jenisBerubah(String jenis) {
@@ -1874,6 +2032,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     });
     _simpanDraft();
     LocalStore.saveTables(_tables);
+    _extraBerubah();
     LocalStore.saveTransactions(_transactions);
     LocalStore.saveIngredients(_ingredients);
     _tandaiKotor('transactions');
@@ -1993,7 +2152,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     }
     // Pemasangan pertama: onboarding + wizard cabang pertama dulu.
     if (!_settings.onboarded) {
-      return OnboardingFlow(initial: _settings, onDone: _finishOnboarding);
+      return OnboardingFlow(
+        initial: _settings,
+        onDone: _finishOnboarding,
+        sebelumSelesai: _cloudAktif ? _sinkronSebelumWizard : null,
+      );
     }
     final screens = <Widget>[
       BerandaScreen(

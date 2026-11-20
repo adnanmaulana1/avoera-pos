@@ -1,6 +1,7 @@
 import 'package:supabase/supabase.dart';
 
 import 'data.dart';
+import 'struk.dart';
 
 /// Sinkronisasi Supabase (permintaan Adnan 2026-11-14 — backend
 /// gratis). Modelnya: data LOKAL tetap utama (aplikasi jalan penuh
@@ -54,6 +55,138 @@ String ringkasErrorSinkron(Object e) {
 List<String> idHantuDiServer({required Set<String> idServer, required Set<String> idLokal, required Set<String> idDikenal}) =>
     idServer.intersection(idDikenal).difference(idLokal).toList();
 
+/// Data "lainnya" yang ikut sinkron sejak v0.22.0 (permintaan
+/// Adnan: SEMUA data harus masuk awan, termasuk yang kecil-kecil
+/// seperti resep & bundle — resep/bundle sendiri adalah kolom di
+/// dalam data menu, jadi sudah tersinkron sejak awal; yang baru
+/// di sini adalah data yang sebelumnya hanya lokal).
+///
+/// Disimpan sebagai SATU baris blob id 'extras' di tabel
+/// avoera_settings yang sudah ada — tanpa tabel baru di server.
+/// Isinya: meja, promo, pengeluaran, hutang, mutasi stok, sesi
+/// kasir, antrean dapur, desain struk, dan draf keranjang.
+/// Notifikasi SENGAJA tidak ikut: isinya peringatan yang dibuat
+/// otomatis di tiap perangkat dari datanya (datanya sendiri
+/// sudah tersinkron, jadi peringatannya muncul sendiri).
+class DataEkstra {
+  DataEkstra({
+    this.tables = const [],
+    this.promos = const [],
+    this.expenses = const [],
+    this.hutang = const [],
+    this.mutasi = const [],
+    this.sesi = const [],
+    this.dapur = const [],
+    this.struk,
+    this.draft,
+  });
+
+  final List<CafeTable> tables;
+  final List<Promo> promos;
+  final List<Pengeluaran> expenses;
+  final List<Hutang> hutang;
+  final List<MutasiStok> mutasi;
+  final List<SesiKasir> sesi;
+  final List<KitchenOrder> dapur;
+  final DesainStruk? struk;
+  final DraftKasir? draft;
+
+  int get jumlah => tables.length + promos.length + expenses.length + hutang.length + mutasi.length + sesi.length + dapur.length;
+
+  Map<String, dynamic> toJson() => {
+        'tables': [for (final t in tables) t.toJson()],
+        'promos': [for (final p in promos) p.toJson()],
+        'expenses': [for (final e in expenses) e.toJson()],
+        'hutang': [for (final h in hutang) h.toJson()],
+        'mutasi': [for (final m in mutasi) m.toJson()],
+        'sesi': [for (final s in sesi) s.toJson()],
+        'dapur': [for (final d in dapur) d.toJson()],
+        if (struk != null) 'struk': struk!.toJson(),
+        if (draft != null) 'draft': draft!.toJson(),
+      };
+
+  static List<T> _daftar<T>(Map<String, dynamic> j, String kunci, T Function(Map<String, dynamic>) dari) {
+    final mentah = j[kunci];
+    if (mentah is! List) return <T>[];
+    return [for (final e in mentah) if (e is Map) dari(e.cast<String, dynamic>())];
+  }
+
+  factory DataEkstra.fromJson(Map<String, dynamic> j) => DataEkstra(
+        tables: _daftar(j, 'tables', CafeTable.fromJson),
+        promos: _daftar(j, 'promos', Promo.fromJson),
+        expenses: _daftar(j, 'expenses', Pengeluaran.fromJson),
+        hutang: _daftar(j, 'hutang', Hutang.fromJson),
+        mutasi: _daftar(j, 'mutasi', MutasiStok.fromJson),
+        sesi: _daftar(j, 'sesi', SesiKasir.fromJson),
+        dapur: _daftar(j, 'dapur', KitchenOrder.fromJson),
+        struk: j['struk'] is Map ? DesainStruk.fromJson((j['struk'] as Map).cast<String, dynamic>()) : null,
+        draft: j['draft'] is Map ? DraftKasir.fromJson((j['draft'] as Map).cast<String, dynamic>()) : null,
+      );
+}
+
+/// Gabungan data ekstra (fungsi murni — bisa dites tanpa
+/// jaringan). Per daftar: gabung per id, server menang untuk id
+/// yang sama; lalu id HANTU dibuang (pernah dikenal perangkat
+/// ini, sudah tidak ada di lokal = dihapus di sini, walau server
+/// masih punya salinannya). Benda tunggal (desain struk & draf
+/// keranjang): yang menang adalah sisi yang BERUBAH sejak
+/// sinkron terakhir menurut bendera kotor dari shell — lokal
+/// kotor berarti lokal menang; tidak kotor berarti server
+/// menang bila punya (perubahan dari perangkat lain masuk).
+DataEkstra gabungEkstra({
+  required DataEkstra lokal,
+  required DataEkstra server,
+  required Map<String, Set<String>> dikenal,
+  required bool strukKotor,
+  required bool draftKotor,
+}) {
+  List<T> per<T>(String sub, List<T> lo, List<T> sv, String Function(T) idOf) {
+    final hasil = <T>[...lo];
+    for (final s in sv) {
+      final i = hasil.indexWhere((e) => idOf(e) == idOf(s));
+      if (i >= 0) {
+        hasil[i] = s;
+      } else {
+        hasil.add(s);
+      }
+    }
+    final hantu = idHantuDiServer(
+      idServer: {for (final e in sv) idOf(e)},
+      idLokal: {for (final e in lo) idOf(e)},
+      idDikenal: dikenal['x:$sub'] ?? const <String>{},
+    );
+    if (hantu.isNotEmpty) hasil.removeWhere((e) => hantu.contains(idOf(e)));
+    return hasil;
+  }
+
+  // Mutasi disimpan terbaru-di-depan (penulisnya insert(0, …)),
+  // jadi hasil gabungan diurutkan menurun menurut waktu.
+  final mutasi = per('mutasi', lokal.mutasi, server.mutasi, (m) => m.id)..sort((a, b) => b.waktu.compareTo(a.waktu));
+  return DataEkstra(
+    tables: per('tables', lokal.tables, server.tables, (t) => '${t.number}'),
+    promos: per('promos', lokal.promos, server.promos, (p) => p.id),
+    expenses: per('expenses', lokal.expenses, server.expenses, (e) => e.id),
+    hutang: per('hutang', lokal.hutang, server.hutang, (h) => h.id),
+    mutasi: mutasi,
+    sesi: per('sesi', lokal.sesi, server.sesi, (s) => s.id),
+    dapur: per('dapur', lokal.dapur, server.dapur, (d) => d.id),
+    struk: strukKotor ? (lokal.struk ?? server.struk) : (server.struk ?? lokal.struk),
+    draft: draftKotor ? (lokal.draft ?? server.draft) : (server.draft ?? lokal.draft),
+  );
+}
+
+/// Keanggotaan id data ekstra sesudah gabungan — dicatat shell
+/// sebagai dasar keputusan hantu pada sinkron berikutnya.
+Map<String, Set<String>> dikenalEkstra(DataEkstra g) => {
+      'x:tables': {for (final t in g.tables) '${t.number}'},
+      'x:promos': {for (final p in g.promos) p.id},
+      'x:expenses': {for (final e in g.expenses) e.id},
+      'x:hutang': {for (final h in g.hutang) h.id},
+      'x:mutasi': {for (final m in g.mutasi) m.id},
+      'x:sesi': {for (final s in g.sesi) s.id},
+      'x:dapur': {for (final d in g.dapur) d.id},
+    };
+
 class HasilSinkron {
   HasilSinkron({
     required this.menus,
@@ -64,12 +197,17 @@ class HasilSinkron {
     required this.ringkasan,
     required this.rincian,
     required this.dikenalBaru,
+    this.extras,
   });
   final List<MenuItem> menus;
   final List<Ingredient> ingredients;
   final List<Branch> branches;
   final List<TxRecord> transactions;
   final Map<String, dynamic>? pengaturanServer;
+
+  /// Data ekstra hasil gabungan (v0.22.0). Null bila tidak
+  /// diminta, atau tarikan blob gagal (data lokal dibiarkan).
+  final DataEkstra? extras;
   final String ringkasan;
 
   /// Hasil per tabel (untuk halaman Status Sinkronisasi):
@@ -163,6 +301,9 @@ Future<HasilSinkron> sinkronkanSupabase({
   required List<TxRecord> transactions,
   bool perbaruiSemua = false,
   Map<String, Set<String>> dikenal = const {},
+  DataEkstra? extras,
+  bool strukKotor = false,
+  bool draftKotor = false,
 }) async {
   final kode = settings.businessKey.trim();
   // Jaring pengaman kedua (selain pembersihan saat disimpan):
@@ -192,6 +333,9 @@ Future<HasilSinkron> sinkronkanSupabase({
       transactions: transactions,
       perbaruiSemua: perbaruiSemua,
       dikenal: dikenal,
+      extras: extras,
+      strukKotor: strukKotor,
+      draftKotor: draftKotor,
     );
   } finally {
     // WAJIB dibuang: SupabaseClient menyalakan timer auto-refresh
@@ -211,6 +355,9 @@ Future<HasilSinkron> _kerjakanSinkron(
   required List<TxRecord> transactions,
   bool perbaruiSemua = false,
   Map<String, Set<String>> dikenal = const {},
+  DataEkstra? extras,
+  bool strukKotor = false,
+  bool draftKotor = false,
 }) async {
   final sekarang = DateTime.now().toUtc().toIso8601String();
   final rincian = <String, StatusTabel>{};
@@ -298,9 +445,10 @@ Future<HasilSinkron> _kerjakanSinkron(
 
   // ---------- TARIK & GABUNG (per tabel juga dijaga: tarik yang
   // gagal memakai data lokal apa adanya) ----------
-  Future<List<Map<String, dynamic>>?> ambil(String kunci, String tabel) async {
+  Future<List<Map<String, dynamic>>?> ambil(String kunci, String tabel, {String? idSaja}) async {
     try {
-      final rows = await client.from(tabel).select('data').eq('business_key', kode);
+      var tanya = client.from(tabel).select('data').eq('business_key', kode);
+      final rows = idSaja == null ? await tanya : await tanya.eq('id', idSaja);
       return [for (final r in rows) (r['data'] as Map).cast<String, dynamic>()];
     } catch (e) {
       final lama = rincian[kunci];
@@ -341,8 +489,40 @@ Future<HasilSinkron> _kerjakanSinkron(
   // di daftar cabang → cabangnya dibuatkan lagi dengan id yang sama,
   // supaya transaksi itu nyambung dan cabangnya bisa dipakai lagi.
   final cabangFinal = pulihkanCabangYatim(cabangGabung, txGabung);
-  final pengaturanJson = await ambil('settings', 'avoera_settings');
+  // Baris pengaturan WAJIB disaring id 'main': sejak v0.22.0
+  // tabel yang sama juga menyimpan baris blob 'extras', dan
+  // mengambil baris pertama tanpa saringan bisa tertukar.
+  final pengaturanJson = await ambil('settings', 'avoera_settings', idSaja: 'main');
   final pengaturanServer = (pengaturanJson == null || pengaturanJson.isEmpty) ? null : pengaturanJson.first;
+
+  // ---------- DATA LAINNYA (v0.22.0): meja, promo,
+  // pengeluaran, hutang, mutasi, sesi, dapur, desain struk &
+  // draf keranjang — satu baris blob id 'extras' di tabel
+  // pengaturan. Alurnya beda dari tabel utama: TARIK DULU,
+  // gabung di sini, lalu unggah hasil gabungan. Mengunggah
+  // lokal lebih dulu akan menimpa blob perangkat lain sebelum
+  // sempat digabung. Tarikan gagal = bagian ini gagal dan data
+  // lokal dibiarkan (tidak ada unggahan buta).
+  DataEkstra? ekstraGabung;
+  final ekstraDikenal = <String, Set<String>>{};
+  if (extras != null) {
+    try {
+      final rows = await client.from('avoera_settings').select('data').eq('business_key', kode).eq('id', 'extras');
+      final serverJson = rows.isEmpty ? null : (rows.first['data'] as Map).cast<String, dynamic>();
+      final server = serverJson == null ? DataEkstra() : DataEkstra.fromJson(serverJson);
+      final gab = gabungEkstra(lokal: extras, server: server, dikenal: dikenal, strukKotor: strukKotor, draftKotor: draftKotor);
+      ekstraGabung = gab;
+      try {
+        await client.from('avoera_settings').upsert([barisData('extras', gab.toJson())]);
+        catat('extras', 'Data Lainnya', true, gab.jumlah);
+        ekstraDikenal.addAll(dikenalEkstra(gab));
+      } catch (e) {
+        catat('extras', 'Data Lainnya', false, 0, e);
+      }
+    } catch (e) {
+      catat('extras', 'Data Lainnya', false, 0, e);
+    }
+  }
 
   // ---------- PERBARUI SEMUA: hasil gabungan diunggah sekali
   // lagi, supaya server persis mencerminkan keadaan gabungan
@@ -359,6 +539,7 @@ Future<HasilSinkron> _kerjakanSinkron(
     'menus': {for (final m in menuGabung) m.id},
     'ingredients': {for (final i in bahanGabung) i.id},
     'branches': {for (final b in cabangFinal) b.id},
+    ...ekstraDikenal,
   };
 
   final daftar = rincian.values.toList();
@@ -369,10 +550,11 @@ Future<HasilSinkron> _kerjakanSinkron(
     branches: cabangFinal,
     transactions: txGabung,
     pengaturanServer: pengaturanServer,
+    extras: ekstraGabung,
     rincian: daftar,
     dikenalBaru: dikenalBaru,
     ringkasan: gagal == 0
-        ? 'Sinkron selesai: ${menuGabung.length} menu, ${bahanGabung.length} bahan, ${cabangGabung.length} cabang, ${txGabung.length} transaksi.'
+        ? 'Sinkron selesai: ${menuGabung.length} menu, ${bahanGabung.length} bahan, ${cabangGabung.length} cabang, ${txGabung.length} transaksi${extras != null ? ', ${ekstraGabung?.jumlah ?? 0} data lainnya' : ''}.'
         : 'Sinkron belum tuntas: $gagal dari ${daftar.length} bagian gagal — rincian di Status Sinkronisasi.',
   );
 }

@@ -20,9 +20,16 @@ String hashPin(String pin) => sha256.convert(utf8.encode('avoera:$pin')).toStrin
 /// kasir, dan mode meja. Sesudah selesai aplikasi tidak
 /// menampilkannya lagi (penanda onboarded di pengaturan).
 class OnboardingFlow extends StatefulWidget {
-  const OnboardingFlow({super.key, required this.initial, required this.onDone});
+  const OnboardingFlow({super.key, required this.initial, required this.onDone, this.sebelumSelesai});
   final AppSettings initial;
   final ValueChanged<AppSettings> onDone;
+
+  /// Gerbang sinkron (v0.22.0): dipanggil & ditunggu SEBELUM
+  /// wizard boleh selesai di mode buat — memastikan data awan
+  /// (terutama cabang lama) sudah mendarat, supaya wizard bisa
+  /// beralih ke mode pilih dan tidak menimpa apa pun. Null =
+  /// tanpa gerbang (tes & mode tanpa awan).
+  final Future<void> Function()? sebelumSelesai;
 
   @override
   State<OnboardingFlow> createState() => _OnboardingFlowState();
@@ -109,7 +116,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
     super.dispose();
   }
 
-  void _finish() {
+  /// Sedang menunggu gerbang sinkron sebelum selesai.
+  bool _menyinkron = false;
+
+  /// Gerbang sinkron sudah dilewati sekali — ketukan kedua
+  /// pada tombol selesai tidak mengulang penantian.
+  bool _sudahSinkronCek = false;
+
+  Future<void> _finish() async {
     final usaha = _usahaCtrl.text.trim();
     final cabang = _cabangCtrl.text.trim();
     final pin = _pinCtrl.text.trim();
@@ -119,6 +133,31 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
     if (!_modePilih && cabang.isEmpty) return setState(() => _error = 'Nama cabang wajib diisi.');
     if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) return setState(() => _error = 'PIN harus 4–6 angka.');
     if (pin != _pin2Ctrl.text.trim()) return setState(() => _error = 'Konfirmasi PIN tidak sama.');
+    // GERBANG SINKRON (v0.22.0): di mode buat, sebelum selesai
+    // tunggu dulu sinkron pertama mendarat. Kalau ternyata
+    // cabang lama ketemu, wizard TIDAK jadi selesai — tampil
+    // beralih ke mode pilih dan pengguna memilih dulu. Tanpa
+    // gerbang ini, wizard yang keburu selesai menimpa daftar
+    // cabang yang belum sempat turun (kejadian 2026-11-20).
+    if (!_modePilih && !_sudahSinkronCek && widget.sebelumSelesai != null) {
+      setState(() {
+        _menyinkron = true;
+        _error = null;
+      });
+      try {
+        await widget.sebelumSelesai!();
+      } catch (_) {
+        // Gagal menghubungi awan bukan penghalang: lanjut
+        // dengan data lokal apa adanya.
+      }
+      if (!mounted) return;
+      setState(() => _menyinkron = false);
+      _sudahSinkronCek = true;
+      if (_modePilih) {
+        setState(() => _error = 'Cabang lamamu ketemu dari awan — pilih cabang untuk perangkat ini dulu, lalu ketuk Mulai Berjualan lagi.');
+        return;
+      }
+    }
     final s = widget.initial;
     s.businessName = usaha;
     if (s.branches.length > 1) {
@@ -449,9 +488,23 @@ class _OnboardingFlowState extends State<OnboardingFlow> with SingleTickerProvid
                   ),
                 ],
                 const SizedBox(height: AppSpacing.xl),
+                if (_menyinkron) ...[
+                  const LinearProgressIndicator(minHeight: 3),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Menghubungi awan — memastikan cabangmu…',
+                    textAlign: TextAlign.center,
+                    style: AppText.caption.copyWith(color: AppColors.muted),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
                 SizedBox(
                   width: double.infinity,
-                  child: PrimaryButton(label: 'Mulai Berjualan', icon: Ikon.rocket_launch_outlined, onPressed: _finish),
+                  child: PrimaryButton(
+                    label: _menyinkron ? 'Menghubungi Awan…' : 'Mulai Berjualan',
+                    icon: Ikon.rocket_launch_outlined,
+                    onPressed: _menyinkron ? null : _finish,
+                  ),
                 ),
               ],
             ),
